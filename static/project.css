@@ -1,0 +1,25 @@
+body {
+    background: lightslategray;
+}
+
+.page {
+    margin: 0 25vw;
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  overflow: scroll;
+  margin-top: 2px;
+}
+
+.head {
+  margin: 0 32vw;
+}
+
+.center {
+  margin: 0 27vw;
+  padding-bottom: 8px;
+}
+
+#trigger-checkbox:checked ~ * > button { 
+  display: none;
+}

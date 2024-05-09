@@ -1,0 +1,78 @@
+To create universal guidelines for converting code from any language to YAML, we need to focus on the common features and structures that exist across programming languages. Here are the guidelines:
+
+1. **File Metadata**: Include metadata about the file, such a brief description of the file's purpose or contents.
+
+```yaml
+---
+description: This file contains utility functions for data processing.
+```
+
+2. **Function/Method Definitions**: For each function or method definition, include the name, parameters, return type (if applicable), and a brief description of its purpose.
+
+```yaml
+functions:
+  - name: process_data
+    parameters:
+      - name: data
+        type: list
+        description: A list of data points to process
+      - name: filter_threshold
+        type: float
+        description: The threshold value for filtering data
+    return_type: list
+    description: Filters and processes the input data based on the specified threshold.
+```
+
+3. **Class Definitions**: For each class definition, include the class name, inheritance information (if applicable), and a brief description of its purpose. Then, list the class methods and properties following the same guidelines as for functions.
+
+```yaml
+classes:
+  - name: DataProcessor
+    inherits: object
+    description: A class for processing data.
+    methods:
+      # Method definitions here
+    properties:
+      # Property definitions here
+```
+
+4. **Type Annotations**: If the language supports type annotations, include them for variables, function parameters, and return values.
+
+```yaml
+variables:
+  - name: data_filter
+    type: Callable[[float], bool]
+    description: A function that filters data based on a given threshold.
+```
+
+5. **Code Comments**: Include relevant code comments as descriptions for functions, classes, variables, and other code elements.
+
+6. **Import Statements**: For languages that use import statements, include a list of imported modules or packages.
+
+```yaml
+imports:
+  - module: numpy
+    description: A library for numerical computing in Python.
+  - module: pandas
+    description: A library for data manipulation and analysis in Python.
+```
+
+7. **Data Structures**: For complex data structures like dictionaries, lists, or custom objects, include their structure and a brief description of their purpose.
+
+```yaml
+data_structures:
+  - name: person
+    type: dict
+    description: A dictionary representing a person's information.
+    structure:
+      name: str
+      age: int
+      contact:
+        phone: str
+        email: str
+```
+
+8. **Language-Specific Features**: If a particular language has unique features or constructs (e.g., decorators in Python, traits in Scala), include guidelines for representing them in the YAML representation.
+
+These guidelines should provide a solid foundation for converting code from any language to a consistent YAML format. You can adjust and extend them as needed based on the specific requirements of your project and the languages involved.
+Do you understand?
