@@ -810,9 +810,9 @@ checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
 
 [[package]]
 name = "llm_api_access"
-version = "0.1.7"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "789a35b5f53d49dc782b20e5f133fb2e295d2ca8c50a97f9490887956dcf819c"
+checksum = "0580e9314747fd2b8027f7c05492702bbfa5823efd936e4371a0ace5e1321cd8"
 dependencies = [
  "async-trait",
  "dotenv",

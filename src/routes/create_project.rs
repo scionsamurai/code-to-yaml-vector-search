@@ -1,7 +1,7 @@
 // src/routes/create_project.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
-use crate::utils::save_yaml_files;
+use crate::services::yaml_service::YamlService;
 use std::fs::write;
 use std::path::Path;
 
@@ -34,7 +34,10 @@ pub async fn create_project(
     let project_settings_json = serde_json::to_string_pretty(&project).unwrap();
     write(project_settings_path, project_settings_json).unwrap();
 
-    save_yaml_files(&project, &app_state).await;
+    // Use the YamlService instead of direct utils call
+    let yaml_service = YamlService::new();
+    yaml_service.save_yaml_files(&project, &app_state.output_dir).await;
+    
     HttpResponse::SeeOther()
         .append_header(("Location", "/"))
         .finish()

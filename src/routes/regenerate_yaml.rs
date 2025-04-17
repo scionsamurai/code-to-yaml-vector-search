@@ -1,8 +1,8 @@
 // src/routes/regenerate_yaml.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project, ProjectFile};
-use crate::utils::convert_to_yaml;
-use std::fs::{ read_to_string, write };
+use crate::services::llm_service::LlmService;
+use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
 
 #[post("/regenerate")]
@@ -25,7 +25,11 @@ pub async fn regenerate_yaml(
                 content: file_content,
                 last_modified: 0, // this shouldn't be zero but a specific time in ?millis?
             };
-            let yaml_content = convert_to_yaml(&project_file, &project.model).await;
+            
+            // Use the LlmService instead of direct utils call
+            let llm_service = LlmService{};
+            let yaml_content = llm_service.convert_to_yaml(&project_file, &project.model).await;
+            
             write(&yaml_path, yaml_content.as_bytes()).unwrap();
             return HttpResponse::Ok().body(yaml_content);
         }

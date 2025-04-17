@@ -31,7 +31,7 @@ Project YAML Generator is a Rust web application that allows users to generate a
 The application can be configured through environment variables or a `.env` file in the project root directory. The following variables are available:
 
 - `OPENAI_API_KEY`: The API key for the OpenAI language model (if used).
-- `OPENAI_ORG`: The organization ID for the OpenAI API (if used).
+- `OPEN_AI_ORG`: The organization ID for the OpenAI API (if used).
 - `GEMINI_API_KEY`: The API key for the Gemini language model (if used).
 - `ANTHROPIC_API_KEY`: The API key for the Anthropic language model (if used).
 

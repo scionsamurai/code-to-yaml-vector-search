@@ -6,7 +6,7 @@ pub struct Project {
     pub name: String,
     pub languages: String,
     pub source_dir: String,
-    pub model: String
+    pub model: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

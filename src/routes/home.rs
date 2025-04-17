@@ -1,17 +1,18 @@
 // src/routes/home.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
-use crate::utils::read_files;
-use std::fs::{ metadata, read_dir, read_to_string };
+use crate::services::file_service::FileService;
+use std::fs::read_to_string;
 use std::path::Path;
 
 #[get("/")]
 pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
     let output_dir = Path::new(&app_state.output_dir);
     let mut projects = Vec::new();
+    let file_service = FileService {};
 
     // Read existing projects from the output directory
-    for entry in read_dir(output_dir).unwrap() {
+    for entry in std::fs::read_dir(output_dir).unwrap() {
         let entry = entry.unwrap();
         let path = entry.path();
 
@@ -19,27 +20,7 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
             let project_settings_path = path.join("project_settings.json");
             if let Ok(project_settings_json) = read_to_string(project_settings_path) {
                 if let Ok(project) = serde_json::from_str::<Project>(&project_settings_json) {
-                    let mut gitignore_paths = vec![];
-                    let files = read_files(&project, &mut gitignore_paths);
-
-                    let needs_update = files.iter().any(|file| {
-                        let source_path = Path::new(&file.path);
-                        let output_dir = Path::new(&app_state.output_dir).join(&project.name);
-                        let yaml_path = output_dir.join(format!("{}.yml", file.path.replace("/", "*")));
-
-                        match metadata(&yaml_path) {
-                            Ok(yaml_metadata) => {
-                                let source_metadata = metadata(&source_path).unwrap();
-                                source_metadata.modified().unwrap()
-                                    > yaml_metadata.modified().unwrap()
-                            }
-                            Err(_) => {
-                                println!("Path not found {:?}", yaml_path);
-                                true
-                            }, // YAML file doesn't exist
-                        }
-                    });
-
+                    let needs_update = file_service.project_needs_update(&project, &app_state.output_dir);
                     projects.push((project, needs_update));
                 }
             }

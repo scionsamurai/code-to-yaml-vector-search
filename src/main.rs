@@ -3,8 +3,9 @@ use actix_web::{App, HttpServer, web};
 use actix_files::Files;
 use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env};
 
-mod models;
+mod services;
 mod routes;
+mod models;
 mod utils;
 
 #[actix_web::main]
