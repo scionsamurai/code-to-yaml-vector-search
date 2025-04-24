@@ -19,11 +19,12 @@ pub async fn create_project(
     form_data: web::Form<CreateProjectForm>,
 ) -> impl Responder {
     let form_data = form_data.into_inner();
-    let project = Project {
+    let mut project = Project {
         name: form_data.name.clone(),
         languages: form_data.languages.clone(),
         source_dir: form_data.source_dir.clone(),
-        model: form_data.llms.clone()
+        model: form_data.llms.clone(),
+        ..Default::default()
     };
 
     let project_name = project.name.clone();
@@ -36,7 +37,7 @@ pub async fn create_project(
 
     // Use the YamlService instead of direct utils call
     let yaml_service = YamlService::new();
-    yaml_service.save_yaml_files(&project, &app_state.output_dir).await;
+    yaml_service.save_yaml_files(&mut project, &app_state.output_dir).await;
     
     HttpResponse::SeeOther()
         .append_header(("Location", "/"))

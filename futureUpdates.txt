@@ -1,0 +1,26 @@
+Let me explain those more advanced techniques in straightforward terms:
+
+### Hierarchical Embeddings
+This involves creating embeddings at multiple levels of granularity - for example, embedding an entire file, then individual functions, then even smaller code blocks. This creates a hierarchy that allows you to first find relevant files, then zoom in on specific parts more effectively. It's like having both a map of a city and detailed street plans for each neighborhood.
+
+### RAG (Retrieval-Augmented Generation) for Code
+RAG combines retrieval of relevant information with generative AI. For code, specialized RAG techniques might include:
+- Code-specific chunking strategies that respect code structure
+- Retrieval methods that understand code semantics (not just treating code as text)
+- Special prompting techniques that help the LLM understand code context better
+
+### Custom Code-Specific Embedding Models
+Most embedding models are trained on general text. A code-specific model would be fine-tuned on programming languages to better understand code semantics. It would recognize that `int x = 5;` and `var x = 5;` are semantically similar despite different syntax, or understand that function names have special significance compared to variable names.
+
+### Graph Database for Function Dependencies
+Instead of just tracking "function A calls function B," you'd build a complete graph of all relationships between functions, classes, and variables. This would allow you to query things like "what would break if I change this return type?" or "which parts of the code depend on this variable?" more accurately than with vector search alone.
+
+### Why These Matter
+
+These techniques could improve your system by:
+1. Making search results more precise (finding exactly the right code sections)
+2. Better understanding the semantic meaning of code (not just textual similarity)
+3. Capturing complex relationships between different parts of the codebase
+4. Providing better context to the LLM for more accurate code modifications
+
+That said, your current approach is already quite solid. These would be refinements to consider as you evolve the system, not necessarily things you need to implement from the start.

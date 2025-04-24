@@ -62,7 +62,6 @@ pub async fn update_env() -> impl Responder {
     HttpResponse::Ok().body(html)
 }
 
-
 #[post("/update-env")]
 pub async fn save_env(form_data: web::Form<EnvForm>) -> HttpResponse {
     let form_data = form_data.into_inner();

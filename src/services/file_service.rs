@@ -1,3 +1,4 @@
+// src/services/file_service.rs
 use crate::models::{Project, ProjectFile};
 use std::fs::{metadata, read_dir, read_to_string, File};
 use std::io::{BufRead, BufReader};
@@ -6,6 +7,9 @@ use std::path::Path;
 pub struct FileService;
 
 impl FileService {
+    pub fn new() -> Self {
+        FileService {}
+    }
     // Check if a file needs update based on timestamps
     pub fn needs_yaml_update(&self, source_path: &str, yaml_path: &str) -> bool {
         match metadata(yaml_path) {
@@ -68,6 +72,8 @@ impl FileService {
                         languages: project.languages.clone(),
                         source_dir: path_str.clone(),
                         model: project.model.clone(),
+                        saved_queries: project.saved_queries.clone(),
+                        embeddings: project.embeddings.clone(),
                     },
                     gitignore_paths,
                 ));

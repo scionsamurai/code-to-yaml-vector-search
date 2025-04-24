@@ -1,15 +1,16 @@
 // src/main.rs
 use actix_web::{App, HttpServer, web};
 use actix_files::Files;
-use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env};
+use dotenv::dotenv;
+use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, analyze_query, execute_query};
 
 mod services;
 mod routes;
 mod models;
-mod utils;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    dotenv().ok();
     // std::env::set_var("RUST_LOG", "debug"); // debugging
     // env_logger::init(); // debugging
 
@@ -28,6 +29,8 @@ async fn main() -> std::io::Result<()> {
             .service(delete_project::delete_project) 
             .service(update_env::update_env)
             .service(update_env::save_env)
+            .service(analyze_query::analyze_query)
+            .service(execute_query::execute_query)
             .service(Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?

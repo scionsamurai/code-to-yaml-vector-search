@@ -27,7 +27,7 @@ pub async fn regenerate_yaml(
             };
             
             // Use the LlmService instead of direct utils call
-            let llm_service = LlmService{};
+            let llm_service = LlmService::new();
             let yaml_content = llm_service.convert_to_yaml(&project_file, &project.model).await;
             
             write(&yaml_path, yaml_content.as_bytes()).unwrap();
