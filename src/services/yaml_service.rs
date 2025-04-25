@@ -26,7 +26,7 @@ impl YamlService {
         std::fs::create_dir_all(&output_path).unwrap();
     
         let embedding_service = EmbeddingService::new();
-        let qdrant_server_url = env::var("QDRANT_SERVER_URL").unwrap();
+        let qdrant_server_url = env::var("QDRANT_SERVER_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
         let qdrant_service = QdrantService::new(&qdrant_server_url, 1536).await.unwrap();
         
         // Create collection for this project

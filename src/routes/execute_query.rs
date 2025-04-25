@@ -2,7 +2,6 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::AppState;
 use crate::services::llm_service::LlmService;
-use std::path::Path;
 
 #[derive(serde::Deserialize)]
 pub struct ExecuteQueryForm {

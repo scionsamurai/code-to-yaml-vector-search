@@ -2,7 +2,7 @@
 use actix_web::{App, HttpServer, web};
 use actix_files::Files;
 use dotenv::dotenv;
-use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, analyze_query, execute_query};
+use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, execute_query};
 
 mod services;
 mod routes;
@@ -29,7 +29,6 @@ async fn main() -> std::io::Result<()> {
             .service(delete_project::delete_project) 
             .service(update_env::update_env)
             .service(update_env::save_env)
-            .service(analyze_query::analyze_query)
             .service(execute_query::execute_query)
             .service(Files::new("/static", "./static"))
     })

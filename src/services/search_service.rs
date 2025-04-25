@@ -20,7 +20,7 @@ impl SearchService {
         };
         
         // Search for similar files
-        let qdrant_server_url = env::var("QDRANT_SERVER_URL").map_err(|e| e.to_string())?;
+        let qdrant_server_url = env::var("QDRANT_SERVER_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
         let qdrant_service = match QdrantService::new(&qdrant_server_url, 1536).await {
             Ok(service) => service,
             Err(e) => return Err(format!("Failed to connect to Qdrant: {}", e)),
