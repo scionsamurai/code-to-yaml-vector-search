@@ -1,18 +1,18 @@
-use crate::models::{ProjectFile, Project, EmbeddingMetadata};
+use crate::models::{Project, EmbeddingMetadata};
 use crate::services::file_service::FileService;
 use crate::services::llm_service::LlmService;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
-use std::fs::write;
 use std::path::Path;
+use std::fs::write;
 use std::env;
 
-pub struct YamlService {
+pub struct YamlManagement {
     file_service: FileService,
     llm_service: LlmService,
 }
 
-impl YamlService {
+impl YamlManagement {
     pub fn new() -> Self {
         Self {
             file_service: FileService {},
@@ -21,7 +21,6 @@ impl YamlService {
     }
 
     pub async fn save_yaml_files(&self, project: &mut Project, output_dir: &str) {
-
         let output_path = Path::new(output_dir).join(&project.name);
         std::fs::create_dir_all(&output_path).unwrap();
     
@@ -74,7 +73,6 @@ impl YamlService {
         let project_settings_json = serde_json::to_string_pretty(&project).unwrap();
         write(project_settings_path, project_settings_json).unwrap();
     }
-    
 
     pub async fn check_and_update_yaml_files(&self, project: &mut Project, output_dir: &str) {
         let output_path = Path::new(output_dir).join(&project.name);
@@ -156,7 +154,7 @@ impl YamlService {
                                     ).await {
                                         Ok(vector_id) => {
                                             // Update project metadata
-                                            let metadata = crate::models::EmbeddingMetadata {
+                                            let metadata = EmbeddingMetadata {
                                                 file_path: file_path.clone(),
                                                 last_updated: chrono::Utc::now(),
                                                 vector_id,
@@ -184,5 +182,27 @@ impl YamlService {
             }
         }
     }
+
+    pub fn clean_up_orphaned_files(&self, project_name: &str, orphaned_files: Vec<String>) {
+        let qdrant_server_url = env::var("QDRANT_SERVER_URL")
+            .unwrap_or_else(|_| "http://localhost:6334".to_string());
+            
+        // Clone project_name to own the data for the async task
+        let project_name_owned = project_name.to_string();
         
+        // Spawn a task to clean up vectors
+        tokio::spawn(async move {
+            match QdrantService::new(&qdrant_server_url, 1536).await {
+                Ok(qdrant_service) => {
+                    for file_path in orphaned_files {
+                        match qdrant_service.delete_file_vectors(&project_name_owned, &file_path).await {
+                            Ok(_) => println!("Removed vector for orphaned file: {}", file_path),
+                            Err(e) => eprintln!("Failed to remove vector for {}: {}", file_path, e),
+                        }
+                    }
+                },
+                Err(e) => eprintln!("Failed to connect to Qdrant for cleanup: {}", e),
+            }
+        });
+    }
 }

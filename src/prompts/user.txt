@@ -1,6 +1,6 @@
 To create universal guidelines for converting code from any language to YAML, we need to focus on the common features and structures that exist across programming languages. Here are the guidelines:
 
-1. **File Metadata**: Include metadata about the file, such a brief description of the file's purpose or contents.
+1. **File Metadata**: Include metadata about the file, such a brief description of the file's purpose or contents. Always include this at the top.
 
 ```yaml
 ---

@@ -1,7 +1,7 @@
 // src/routes/update_project.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
-use crate::services::yaml_service::YamlService;
+use crate::services::yaml::YamlService;
 use crate::services::project_service::ProjectService;
 use std::fs::read_to_string;
 use std::path::Path;

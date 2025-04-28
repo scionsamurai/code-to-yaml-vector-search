@@ -16,12 +16,4 @@ impl EmbeddingService {
         // Use the correct function from the llm_api_access crate
         llm_api_access::openai::get_embedding(content.to_string(), dimensions).await
     }
-    
-    pub async fn generate_file_embedding(
-        &self, 
-        yaml_content: &str, 
-        dimensions: Option<u32>
-    ) -> Result<Vec<f32>, Box<dyn Error + Send + Sync>> {
-        self.generate_embedding(yaml_content, dimensions).await
-    }
 }

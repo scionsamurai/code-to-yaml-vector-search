@@ -12,6 +12,18 @@ pub struct Project {
     #[serde(default)]
     pub embeddings: HashMap<String, EmbeddingMetadata>,
     pub saved_queries: Option<Vec<serde_json::Value>>,
+    #[serde(default)]
+    pub file_descriptions: HashMap<String, String>,
+}
+
+impl std::fmt::Display for EmbeddingMetadata {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Define how the struct should be formatted as a string
+        write!(f, "EmbeddingMetadata {{ file_path: {}, last_updated: {}, vector_id: {} }}", 
+            self.file_path, 
+            self.last_updated, //chrono::DateTime implements Display
+            self.vector_id)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

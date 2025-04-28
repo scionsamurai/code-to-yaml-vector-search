@@ -1,7 +1,7 @@
 // src/routes/create_project.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
-use crate::services::yaml_service::YamlService;
+use crate::services::yaml::YamlService;
 use std::fs::write;
 use std::path::Path;
 

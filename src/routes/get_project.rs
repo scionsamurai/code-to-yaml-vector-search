@@ -4,7 +4,7 @@ use crate::models::AppState;
 use crate::services::project_service::ProjectService;
 use crate::services::search_service::SearchService;
 use crate::services::template_service::TemplateService;
-use crate::services::yaml_service::YamlService;
+use crate::services::yaml::YamlService;
 use std::path::Path;
 
 #[derive(serde::Deserialize)]
@@ -25,7 +25,7 @@ pub async fn get_project(
     let project_service = ProjectService::new();
     let search_service = SearchService::new();
     let template_service = TemplateService::new();
-    let yaml_service = YamlService::new(); // Initialize YamlService
+    let yaml_service = YamlService::new();
     
     // Load project
     let mut project = match project_service.load_project(&output_dir) {

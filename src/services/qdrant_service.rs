@@ -161,4 +161,32 @@ impl QdrantService {
         
         Ok(results)
     }
+
+    // Add this method to QdrantService implementation
+    pub async fn delete_file_vectors(
+        &self,
+        project_name: &str,
+        file_path: &str,
+    ) -> Result<(), Box<dyn Error + Send + Sync>> {
+        let collection_name = format!("project_{}", project_name);
+        
+        println!("Deleting vectors for file: {} in collection {}", file_path, collection_name);
+        
+        // Use DeletePointsBuilder to delete points based on file_path
+        self.client
+            .delete_points(
+                DeletePointsBuilder::new(collection_name)
+                    .points(Filter::must([Condition::matches(
+                        "file_path".to_string(),
+                        file_path.to_string(),
+                    )]))
+                    .wait(true),
+            )
+            .await?;
+        
+        println!("Successfully deleted vectors for file: {}", file_path);
+        
+        Ok(())
+    }
+
 }

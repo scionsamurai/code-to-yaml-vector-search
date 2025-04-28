@@ -7,9 +7,6 @@ use std::path::Path;
 pub struct FileService;
 
 impl FileService {
-    pub fn new() -> Self {
-        FileService {}
-    }
     // Check if a file needs update based on timestamps
     pub fn needs_yaml_update(&self, source_path: &str, yaml_path: &str) -> bool {
         match metadata(yaml_path) {
@@ -74,6 +71,7 @@ impl FileService {
                         model: project.model.clone(),
                         saved_queries: project.saved_queries.clone(),
                         embeddings: project.embeddings.clone(),
+                        file_descriptions: project.file_descriptions.clone(),
                     },
                     gitignore_paths,
                 ));
