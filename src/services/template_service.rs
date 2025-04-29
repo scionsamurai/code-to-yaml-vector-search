@@ -41,53 +41,55 @@ impl TemplateService {
     }
 
     pub fn render_project_page(&self, 
-                              project: &Project, 
-                              search_results_html: &str, 
-                              yaml_files: &str,
-                              query_value: &str) -> String {
+            project: &Project, 
+            search_results_html: &str, 
+            yaml_files: &str,
+            query_value: &str) -> String {
         format!(
-            r#"
-            <html>
-                <head>
-                    <title>{}</title>
-                    <link rel="stylesheet" href="/static/project.css">
-                    <script src="/static/project.js"></script>
-                </head>
-                <body>
-                    <div class="head">
-                        <h1>{}</h1>
-                        <p>Languages: {}</p>
-                        <p>Source Directory: {}</p>
-                        <p>Model: {}</p>
-                        
-                        <!-- Search Form -->
-                        <div class="search-form">
-                            <form action="/projects/{}" method="get">
-                                <input type="text" name="q" placeholder="Enter your query..." value="{}">
-                                <button type="submit">Search</button>
-                            </form>
-                        </div>
-                        
-                        {}
-                        
-                        <h2>YAML Representations</h2>
+        r#"
+        <html>
+            <head>
+                <title>{}</title>
+                <link rel="stylesheet" href="/static/project.css">
+                <link rel="stylesheet" href="/static/split-modal.css">
+                <script src="/static/project.js"></script>
+                <script src="/static/split-file.js"></script>
+            </head>
+            <body>
+                <div class="head">
+                    <h1>{}</h1>
+                    <p>Languages: {}</p>
+                    <p>Source Directory: {}</p>
+                    <p>Model: {}</p>
+
+                    <!-- Search Form -->
+                    <div class="search-form">
+                        <form action="/projects/{}" method="get">
+                            <input type="text" name="q" placeholder="Enter your query..." value="{}">
+                            <button type="submit">Search</button>
+                        </form>
                     </div>
-                    <a href="/" class="center">Go Back</a>
-                    <input type="checkbox" id="trigger-checkbox">
-                    <label for="trigger-checkbox">Hide Regen Buttons</label>
+
                     {}
-                </body>
-            </html>
-            "#,
-            project.name,
-            project.name,
-            project.languages,
-            project.source_dir,
-            project.model,
-            project.name,
-            query_value,
-            search_results_html,
-            yaml_files
+
+                    <h2>YAML Representations</h2>
+                </div>
+                <a href="/" class="center">Go Back</a>
+                <input type="checkbox" id="trigger-checkbox">
+                <label for="trigger-checkbox">Hide Regen Buttons</label>
+                {}
+            </body>
+        </html>
+        "#,
+        project.name,
+        project.name,
+        project.languages,
+        project.source_dir,
+        project.model,
+        project.name,
+        query_value,
+        search_results_html,
+        yaml_files
         )
     }
 

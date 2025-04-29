@@ -12,7 +12,7 @@ impl LlmService {
     pub fn new() -> Self {
         LlmService {}
     }
-    // Add this method to the existing LlmService implementation
+    
     pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {
         // Determine the target model based on llm string
         let target_model = match llm.to_lowercase().as_str() {

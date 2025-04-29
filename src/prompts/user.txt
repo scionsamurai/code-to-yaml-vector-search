@@ -47,14 +47,12 @@ variables:
 
 5. **Code Comments**: Include relevant code comments as descriptions for functions, classes, variables, and other code elements.
 
-6. **Import Statements**: For languages that use import statements, include a list of imported modules or packages.
+6. **Import Statements**: For languages that use import statements, include a list of imported modules or packages. Do not generate a description for the files imports.
 
 ```yaml
 imports:
   - module: numpy
-    description: A library for numerical computing in Python.
   - module: pandas
-    description: A library for data manipulation and analysis in Python.
 ```
 
 7. **Data Structures**: For complex data structures like dictionaries, lists, or custom objects, include their structure and a brief description of their purpose.

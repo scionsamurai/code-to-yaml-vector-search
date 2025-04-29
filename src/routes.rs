@@ -7,3 +7,4 @@ pub mod regenerate_yaml;
 pub mod delete_project;
 pub mod update_env;
 pub mod execute_query;
+pub mod suggest_split;

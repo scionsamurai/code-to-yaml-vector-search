@@ -2,7 +2,7 @@
 use actix_web::{App, HttpServer, web};
 use actix_files::Files;
 use dotenv::dotenv;
-use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, execute_query};
+use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, execute_query, suggest_split};
 
 mod services;
 mod routes;
@@ -30,6 +30,7 @@ async fn main() -> std::io::Result<()> {
             .service(update_env::update_env)
             .service(update_env::save_env)
             .service(execute_query::execute_query)
+            .service(suggest_split::suggest_split)
             .service(Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?
