@@ -1,3 +1,4 @@
+// src/services/mod.rs
 pub mod file_service;
 pub mod llm_service;
 pub mod qdrant_service;
