@@ -94,10 +94,7 @@ impl YamlProcessing {
                 }
             }
         }
-
-        // Check if the file exists and is not in a gitignore folder
-        let file_path_str = original_source_path.to_string_lossy().to_string();
-
+        
         // Get the relative path from the project source directory
         let relative_path = if let Ok(rel_path) = original_source_path.strip_prefix(source_dir) {
             rel_path.to_string_lossy().to_string()
@@ -184,9 +181,9 @@ impl YamlProcessing {
 
         // Return HTML for this file
         Ok(format!(
-            "<div class=\"page\"><p>---</p><h3>path: {} (Lines: {})</h3><pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}</div>",
-            source_path,
+            "<div class=\"page\"><p>---</p><h3 data-lines=\"{}\">path: {}</h3><pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}</div>",
             line_count,
+            source_path,
             content.replace("---\n", "").replace("```", ""),
             project_name,
             yaml_path.display(),

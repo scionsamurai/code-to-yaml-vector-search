@@ -12,7 +12,7 @@ pub struct ExecuteQueryForm {
 
 #[post("/execute-query")]
 pub async fn execute_query(
-    app_state: web::Data<AppState>,
+    _app_state: web::Data<AppState>,
     form: web::Form<ExecuteQueryForm>,
 ) -> impl Responder {
     // 1. Create the final prompt with code

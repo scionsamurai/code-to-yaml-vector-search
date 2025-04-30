@@ -1,12 +1,9 @@
+// src/services/yaml/mod.rs
 mod management;
 mod processing;
 
 pub use management::YamlManagement;
 pub use processing::YamlProcessing;
-pub use management::generation::generate_yaml_files;
-pub use management::embedding::check_and_update_yaml_embeddings;
-pub use management::cleanup::clean_up_orphaned_files;
-
 
 use crate::models::Project;
 use std::path::Path;
@@ -24,22 +21,19 @@ impl YamlService {
         }
     }
 
-    // Delegate save_yaml_files to YamlManagement
+    // Methods that delegate to appropriate modules
     pub async fn save_yaml_files(&self, project: &mut Project, output_dir: &str) {
-        generate_yaml_files(&self.management, project, output_dir).await;
+        self.management.generate_yaml_files(project, output_dir).await;
     }
 
-    // Delegate check_and_update_yaml_files to YamlManagement
     pub async fn check_and_update_yaml_files(&self, project: &mut Project, output_dir: &str) {
-        check_and_update_yaml_embeddings(project, output_dir).await;
+        self.management.check_and_update_yaml_embeddings(project, output_dir).await;
     }
 
-    // Delegate clean_up_orphaned_files to YamlManagement
     pub fn clean_up_orphaned_files(&self, project_name: &str, orphaned_files: Vec<String>) {
-        clean_up_orphaned_files(project_name, orphaned_files);
+        self.management.clean_up_orphaned_files(project_name, orphaned_files);
     }
 
-    // Delegate process_yaml_files to YamlProcessing
     pub fn process_yaml_files(&self, output_dir: &Path, project_name: &str, project: &mut Project)
         -> Result<(String, Vec<(String, String)>, bool, Vec<String>), String>
     {
