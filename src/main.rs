@@ -2,7 +2,9 @@
 use actix_web::{App, HttpServer, web};
 use actix_files::Files;
 use dotenv::dotenv;
-use routes::{create_project, get_project, home, update_project, regenerate_yaml, delete_project, update_env, execute_query, suggest_split};
+use routes::llm::{regenerate_yaml, suggest_split, chat_split};
+use routes::api::{create_project, update_project, delete_project};
+use routes::ui::{home, get_project, update_env};
 
 mod services;
 mod routes;
@@ -21,16 +23,15 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
-            .service(home::home)
-            .service(create_project::create_project)
-            .service(get_project::get_project)
-            .service(update_project::update_project)
-            .service(regenerate_yaml::regenerate_yaml)
-            .service(delete_project::delete_project) 
-            .service(update_env::update_env)
-            .service(update_env::save_env)
-            .service(execute_query::execute_query)
-            .service(suggest_split::suggest_split)
+            .service(home)
+            .service(create_project)
+            .service(get_project)
+            .service(update_project)
+            .service(regenerate_yaml)
+            .service(delete_project) 
+            .service(update_env)
+            .service(suggest_split)
+            .service(chat_split)
             .service(Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?

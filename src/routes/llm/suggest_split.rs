@@ -1,4 +1,4 @@
-// src/routes/suggest_split.rs
+// Updated src/routes/suggest_split.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
 use crate::services::llm_service::LlmService;
@@ -32,15 +32,16 @@ pub async fn suggest_split(
         Ok(content) => content,
         Err(e) => return HttpResponse::NotFound().body(format!("File not found: {}", e)),
     };
+    
     // Create a prompt for the LLM with file descriptions
     let file_descriptions_text = project.file_descriptions.iter()
         .map(|(path, desc)| format!("{}: {}", path, desc))
         .collect::<Vec<String>>()
         .join("\n");
-    // print!("project: {:?}", project);
+    
     // Create a prompt for the LLM
-    let prompt = format!(
-        "{}\nAbove is the descriptions for the files in this project. I need to split a large file into smaller, more manageable pieces. Please suggest how to split this file into multiple smaller files.\n\n\
+    let initial_prompt = format!(
+        "File Descriptions:\n{}\n\nI need to split a large file into smaller, more manageable pieces. Please suggest how to split this file into multiple smaller files.\n\n\
         File path: {}\n\n\
         Please provide a detailed plan for splitting this file, including:\n\
         1. The new files that should be created\n\
@@ -56,9 +57,43 @@ pub async fn suggest_split(
     
     // Use the LLM service to get the analysis
     let llm_service = LlmService::new();
-    let analysis = llm_service.get_analysis(&prompt, &project.model).await;
+    let analysis = llm_service.get_analysis(&initial_prompt, &project.model).await;
     
-    HttpResponse::Ok().body(analysis)
+    // Create HTML response with chat interface
+    let html = format!(
+        r#"
+        <div class="modal-content split-chat-modal">
+            <span class="close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+            <div class="chat-header">
+                <h2>Split File: {}</h2>
+                <p>Project: {}</p>
+            </div>
+            
+            <input type="hidden" id="project-name" value="{}">
+            <input type="hidden" id="file-path" value="{}">
+            <input type="hidden" id="initial-prompt" value="{}">
+            
+            <div id="chat-container">
+                <div class="chat-message assistant-message">
+                    <div class="message-content">{}</div>
+                </div>
+            </div>
+            
+            <div class="chat-input">
+                <input type="text" id="message-input" placeholder="Type your follow-up question here...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+        "#,
+        file_path,
+        project_name,
+        project_name,
+        file_path,
+        html_escape::encode_text(&initial_prompt), // Escape the initial prompt to prevent HTML issues
+        analysis.replace("\n", "<br>")
+    );
+    
+    HttpResponse::Ok().content_type("text/html").body(html)
 }
 
 #[derive(serde::Deserialize)]
