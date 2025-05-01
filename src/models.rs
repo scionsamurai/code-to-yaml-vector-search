@@ -43,3 +43,4 @@ pub struct EmbeddingMetadata {
     pub last_updated: chrono::DateTime<chrono::Utc>,
     pub vector_id: String,
 }
+

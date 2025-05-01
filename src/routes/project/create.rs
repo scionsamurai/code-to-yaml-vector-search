@@ -14,7 +14,7 @@ struct CreateProjectForm {
 }
 
 #[post("/projects")]
-pub async fn create_project(
+pub async fn create(
     app_state: web::Data<AppState>,
     form_data: web::Form<CreateProjectForm>,
 ) -> impl Responder {

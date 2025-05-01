@@ -4,7 +4,7 @@ use std::fs::remove_dir_all;
 use std::path::Path;
 
 #[delete("/delete/{name}")]
-pub async fn delete_project(app_state: web::Data<AppState>, name: web::Path<String>) -> impl Responder {
+pub async fn delete(app_state: web::Data<AppState>, name: web::Path<String>) -> impl Responder {
     let name = name.into_inner();
     let output_dir = Path::new(&app_state.output_dir).join(&name);
 

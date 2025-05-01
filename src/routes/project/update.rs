@@ -7,7 +7,7 @@ use std::fs::read_to_string;
 use std::path::Path;
 
 #[get("/update/{name}")]
-pub async fn update_project(
+pub async fn update(
     app_state: web::Data<AppState>,
     name: web::Path<String>,
 ) -> impl Responder {

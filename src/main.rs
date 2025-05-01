@@ -3,8 +3,8 @@ use actix_web::{App, HttpServer, web};
 use actix_files::Files;
 use dotenv::dotenv;
 use routes::llm::{regenerate_yaml, suggest_split, chat_split};
-use routes::api::{create_project, update_project, delete_project};
-use routes::ui::{home, get_project, update_env};
+use routes::project::{create, update, delete, get_project};
+use routes::ui::{home, update_env};
 
 mod services;
 mod routes;
@@ -24,11 +24,11 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .service(home)
-            .service(create_project)
-            .service(get_project)
-            .service(update_project)
+            .service(create::create)
+            .service(get_project::get_project)
+            .service(update::update)
             .service(regenerate_yaml)
-            .service(delete_project) 
+            .service(delete::delete) 
             .service(update_env)
             .service(suggest_split)
             .service(chat_split)

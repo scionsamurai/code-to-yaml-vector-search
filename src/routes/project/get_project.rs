@@ -1,4 +1,4 @@
-// src/routes/get_project.rs
+// src/routes/project/get_project.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::AppState;
 use crate::services::project_service::ProjectService;
