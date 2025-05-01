@@ -8,7 +8,7 @@ impl TemplateService {
         Self {}
     }
 
-    pub fn render_search_results(&self, query_text: &str, similar_files: &[(String, String, f32)], project_name: &str) -> String {
+    pub fn render_search_results(&self, query_text: &str, similar_files: &[(String, String, f32)], llm_analysis: &str, project_name: &str) -> String {
         let mut search_results_html = format!(
             r#"<div class="search-results">
                 <h2>Search Results for: "{}"</h2>
@@ -26,9 +26,20 @@ impl TemplateService {
             ));
         }
         
-        search_results_html.push_str(
+        // Add LLM analysis section
+        search_results_html.push_str(&format!(
             r#"</div>
-            <form action="/analyze-query" method="post">
+            <div class="llm-analysis">
+                <h2>Analysis</h2>
+                <div class="analysis-content">
+                    {}
+                </div>
+            </div>"#,
+            llm_analysis.replace("\n", "<br>")
+        ));
+        
+        search_results_html.push_str(
+            r#"<form action="/analyze-query" method="post">
                 <input type="hidden" name="project" value="{}">
                 <input type="hidden" name="query" value="{}">
                 <button type="submit">Analyze Query</button>

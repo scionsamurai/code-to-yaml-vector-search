@@ -21,6 +21,23 @@ impl FileService {
         }
     }
 
+    pub fn read_specific_file(&self, project: &Project, file_path: &str) -> Option<String> {
+        // First try direct path from source directory
+        let source_path = Path::new(&project.source_dir).join(file_path);
+        if let Ok(content) = read_to_string(&source_path) {
+            return Some(content);
+        }
+        
+        // If direct path fails, try alternative approaches
+        // For example, the path might be relative in a different way
+        let alt_source_path = Path::new(&project.source_dir).join(file_path.trim_start_matches('/'));
+        if let Ok(content) = read_to_string(&alt_source_path) {
+            return Some(content);
+        }
+        
+        None
+    }
+
     // Read all files from a project directory
     pub fn read_project_files(&self, project: &Project) -> Vec<ProjectFile> {
         let mut gitignore_paths = Vec::new();

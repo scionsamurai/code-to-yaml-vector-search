@@ -3,6 +3,7 @@ use crate::models::Project;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
 use crate::services::llm_service::LlmService;
+use crate::services::file_service::FileService;
 use std::env;
 
 pub struct SearchService;
@@ -12,7 +13,7 @@ impl SearchService {
         Self {}
     }
 
-    pub async fn search_project(&self, project: &mut Project, query_text: &str) -> Result<Vec<(String, String, f32)>, String> {
+    pub async fn search_project(&self, project: &mut Project, query_text: &str) -> Result<(Vec<(String, String, f32)>, String), String> {
         // Generate embedding for query
         let embedding_service = EmbeddingService::new();
         let query_embedding = match embedding_service.generate_embedding(query_text, None).await {
@@ -20,7 +21,7 @@ impl SearchService {
             Err(e) => return Err(e.to_string()),
         };
         
-        // Search for similar files
+        // Search for similar files using vector search
         let qdrant_server_url = env::var("QDRANT_SERVER_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
         let qdrant_service = match QdrantService::new(&qdrant_server_url, 1536).await {
             Ok(service) => service,
@@ -32,97 +33,61 @@ impl SearchService {
             Err(e) => return Err(e.to_string()),
         };
         
-        // Get LLM-based file recommendations
-        let llm_recommendations = self.get_llm_recommendations(query_text, project).await;
+        // Get LLM recommendations based on search results
+        let llm_analysis = self.get_llm_analysis(query_text, &similar_files, project).await?;
         
-        // Combine vector-based and LLM-based results
-        let mut combined_results = similar_files.clone();
-        
-        // Add LLM recommended files that aren't already in the vector results
-        if let Ok(recommendations) = llm_recommendations {
-            for (file_path, yaml_content, score) in recommendations {
-                if !combined_results.iter().any(|(path, _, _)| path == &file_path) {
-                    combined_results.push((file_path, yaml_content, score));
-                }
-            }
-        }
-        
-        // Sort by score (descending) for final ranking
-        combined_results.sort_by(|(_, _, score1), (_, _, score2)| 
-            score2.partial_cmp(score1).unwrap_or(std::cmp::Ordering::Equal)
-        );
-        
-        // Update project with query and results
+        // Update project with query, vector results, and LLM analysis
         if project.saved_queries.is_none() {
             project.saved_queries = Some(Vec::new());
         }
         
         let query_result = serde_json::json!({
             "query": query_text,
-            "results": combined_results
+            "vector_results": similar_files,
+            "llm_analysis": llm_analysis
         });
         
         if let Some(saved_queries) = &mut project.saved_queries {
             saved_queries.push(query_result);
         }
         
-        Ok(combined_results)
+        Ok((similar_files, llm_analysis))
     }
 
-    async fn get_llm_recommendations(&self, query_text: &str, project: &Project) -> Result<Vec<(String, String, f32)>, String> {
-        // Initialize LLM service
+    async fn get_llm_analysis(&self, query_text: &str, similar_files: &[(String, String, f32)], project: &Project) -> Result<String, String> {
+        // Initialize LLM service and file service
         let llm_service = LlmService::new();
+        let file_service = FileService {};
         let llm_model = project.model.clone();
         
-        // Extract file information from project
-        let mut file_info = String::new();
-        
-        // Format the file information to include in the promptb
-        for (file_path, description) in project.file_descriptions.iter() {
-            file_info.push_str(&format!("- {}: {}\n", file_path, description));
+        // Extract code from similar files
+        let mut file_code = String::new();
+        for (file_path, _, _) in similar_files {
+            // Use the targeted file reading method
+            match file_service.read_specific_file(project, file_path) {
+                Some(content) => {
+                    file_code.push_str(&format!("// File: {}\n{}\n\n", file_path, content));
+                },
+                None => {
+                    // If content can't be found, note that in the analysis prompt
+                    file_code.push_str(&format!("// File: {} (content not available)\n\n", file_path));
+                }
+            }
         }
         
         // Create the prompt for the LLM
         let prompt = format!(
-            "Based on the user query: \"{}\", which of the following files would be most relevant? \
-            Rank the top 3 files by relevance and explain why they're relevant to the query. \
-            Format your response as a JSON array of objects with the fields 'file_path', 'reason', and 'relevance_score' \
-            (a number between 0 and 1). Only include the JSON in your response.\n\n\
-            Available files:\n{}", 
+            "User Query: \"{}\"\n\n\
+            Related code from vector search:\n\
+            ```\n{}\n```\n\n\
+            Based on the user query and the provided code: What other files or components would be needed to fully answer this query, and which files were not needed? Consider the relationship between files for your answer.",
             query_text, 
-            file_info
+            file_code
         );
         
         // Get LLM analysis
         let llm_response = llm_service.get_analysis(&prompt, &llm_model).await;
         
-        // Parse the LLM response to extract file recommendations
-        let mut recommendations = Vec::new();
-        
-        match serde_json::from_str::<Vec<serde_json::Value>>(&llm_response) {
-            Ok(json_array) => {
-                for item in json_array {
-                    if let (Some(file_path), Some(score)) = (
-                        item.get("file_path").and_then(|v| v.as_str()),
-                        item.get("relevance_score").and_then(|v| v.as_f64())
-                    ) {
-                        // Look up the YAML content for this file
-                        if let Some(yaml_content) = project.embeddings.get(file_path) {
-                            recommendations.push((
-                                file_path.to_string(),
-                                yaml_content.to_string(),
-                                score as f32
-                            ));
-                        }
-                    }
-                }
-            },
-            Err(_) => {
-                // Fallback if LLM doesn't return valid JSON
-                return Err("Failed to parse LLM recommendations".to_string());
-            }
-        }
-        
-        Ok(recommendations)
+        Ok(llm_response)
     }
 }
