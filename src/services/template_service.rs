@@ -8,56 +8,63 @@ impl TemplateService {
         Self {}
     }
 
-    pub fn render_search_results(&self, query_text: &str, similar_files: &[(String, String, f32)], llm_analysis: &str, project_name: &str) -> String {
+    pub fn render_search_results(
+        &self,
+        query_text: &str,
+        similar_files: &[(String, String, f32)],
+        llm_analysis: &str,
+        project_name: &str,
+    ) -> String {
         let mut search_results_html = format!(
             r#"<div class="search-results">
-                <h2>Search Results for: "{}"</h2>
-                <div class="result-files">"#,
+            <h2>Search Results for: "{}"</h2>
+            <div class="result-files">"#,
             query_text
         );
-        
+
         for (file_path, _yaml_content, score) in similar_files {
             search_results_html.push_str(&format!(
                 r#"<div class="result-file">
-                    <h3>{} (Score: {:.4})</h3>
-                </div>"#,
-                file_path,
-                score
+                <h3>{} (Score: {:.4})</h3>
+            </div>"#,
+                file_path, score
             ));
         }
-        
+
         // Add LLM analysis section
         search_results_html.push_str(&format!(
             r#"</div>
-            <div class="llm-analysis">
-                <h2>Analysis</h2>
-                <div class="analysis-content">
-                    {}
-                </div>
-            </div>"#,
+        <div class="llm-analysis">
+            <h2>Analysis</h2>
+            <div class="analysis-content">
+                {}
+            </div>
+        </div>"#,
             llm_analysis.replace("\n", "<br>")
         ));
-        
-        search_results_html.push_str(
+
+        // Update the analyze button to use the new endpoint
+        search_results_html.push_str(&format!(
             r#"<form action="/analyze-query" method="post">
-                <input type="hidden" name="project" value="{}">
-                <input type="hidden" name="query" value="{}">
-                <button type="submit">Analyze Query</button>
-            </form>
-            </div>"#
-        );
-        
-        search_results_html.replace("{}", project_name)
-            .replace("{}", query_text)
+            <input type="hidden" name="project" value="{}">
+            <input type="hidden" name="query" value="{}">
+            <button type="submit" class="analyze-button">Chat with Analysis</button>
+        </form>
+        </div>"#,
+            project_name, query_text
+        ));
+        search_results_html
     }
 
-    pub fn render_project_page(&self, 
-            project: &Project, 
-            search_results_html: &str, 
-            yaml_files: &str,
-            query_value: &str) -> String {
+    pub fn render_project_page(
+        &self,
+        project: &Project,
+        search_results_html: &str,
+        yaml_files: &str,
+        query_value: &str,
+    ) -> String {
         format!(
-        r#"
+            r#"
         <html>
             <head>
                 <title>{}</title>
@@ -93,15 +100,15 @@ impl TemplateService {
             </body>
         </html>
         "#,
-        project.name,
-        project.name,
-        project.languages,
-        project.source_dir,
-        project.model,
-        project.name,
-        query_value,
-        search_results_html,
-        yaml_files
+            project.name,
+            project.name,
+            project.languages,
+            project.source_dir,
+            project.model,
+            project.name,
+            query_value,
+            search_results_html,
+            yaml_files
         )
     }
 
@@ -110,23 +117,21 @@ impl TemplateService {
         // Sort the files
         let mut sorted_descriptions = file_descriptions.to_vec();
         sorted_descriptions.sort_by_key(|(path, _)| path.clone());
-        
+
         // Find common prefix
-        let common_prefix = sorted_descriptions.iter()
+        let common_prefix = sorted_descriptions
+            .iter()
             .map(|(path, _)| path.clone())
             .reduce(|a, b| self.common_path_prefix(&a, &b))
             .unwrap_or_default();
-        
+
         // Build indented list
         let mut indented_lines = vec![];
         for (full_path, description) in &sorted_descriptions {
             let trimmed = full_path.strip_prefix(&common_prefix).unwrap_or(full_path);
-            indented_lines.push(format!(
-                "{} // {}",
-                trimmed, description
-            ));
+            indented_lines.push(format!("{} // {}", trimmed, description));
         }
-        
+
         format!(
             r#"<div id="graphDiv"><input type="checkbox" id="fileGraph">
     <label for="fileGraph" style="cursor: pointer; font-weight: bold;">Show File Graph</label>

@@ -1,14 +1,14 @@
 // src/main.rs
-use actix_web::{App, HttpServer, web};
 use actix_files::Files;
+use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use routes::llm::{regenerate_yaml, suggest_split, chat_split};
-use routes::project::{create, update, delete, get_project};
+use routes::llm::{chat_split, regenerate_yaml, suggest_split};
+use routes::project::{create, delete, get_project, update};
 use routes::ui::{home, update_env};
 
-mod services;
-mod routes;
 mod models;
+mod routes;
+mod services;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -28,10 +28,14 @@ async fn main() -> std::io::Result<()> {
             .service(get_project::get_project)
             .service(update::update)
             .service(regenerate_yaml)
-            .service(delete::delete) 
+            .service(delete::delete)
             .service(update_env)
             .service(suggest_split)
             .service(chat_split)
+            .service(routes::llm::chat_analysis)
+            .service(routes::llm::save_analysis_history)
+            .service(routes::llm::reset_analysis_chat)
+            .service(routes::llm::analyze_query)
             .service(Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?

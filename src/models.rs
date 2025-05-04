@@ -26,6 +26,12 @@ impl std::fmt::Display for EmbeddingMetadata {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct ChatMessage {
+    pub role: String,
+    pub content: String,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ProjectFile {
     pub path: String,
