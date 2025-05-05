@@ -9,7 +9,6 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct ChatMessage {
     project: String,
-    file_path: String,
     message: String,
     history: Vec<MessageHistory>,
 }

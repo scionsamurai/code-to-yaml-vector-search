@@ -91,7 +91,6 @@ impl TemplateService {
 
                     {}
 
-                    <h2>YAML Representations</h2>
                 </div>
                 <a href="/" class="center">Go Back</a>
                 <input type="checkbox" id="trigger-checkbox">

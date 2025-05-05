@@ -71,9 +71,9 @@ function initSplitChat() {
                 headers: {
                     'Content-Type': 'application/json',
                 },
+
                 body: JSON.stringify({
                     project: projectName,
-                    file_path: filePath,
                     message: message,
                     history: chatHistory
                 })

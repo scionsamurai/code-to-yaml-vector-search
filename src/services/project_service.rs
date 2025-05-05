@@ -61,6 +61,6 @@ impl ProjectService {
         // Generate the file graph HTML using TemplateService
         let graph_html = self.template_service.generate_file_graph_html(&file_descriptions);
         
-        Ok(format!("{}{}", graph_html, yaml_html))
+        Ok(format!("{}<h2 style='text-align: center;'>YAML Representations</h2>{}", graph_html, yaml_html))
     }
 }
