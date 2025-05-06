@@ -77,9 +77,27 @@ impl TemplateService {
             <body>
                 <div class="head">
                     <h1>{}</h1>
-                    <p>Languages: {}</p>
+                    
+                    <!-- Project Settings Form -->
+                    <div class="project-settings">
+                        <form action="/update/{}/settings" method="post">
+                            <div class="form-group">
+                                <label for="languages">File Extensions (comma-separated):</label>
+                                <input type="text" id="languages" name="languages" value="{}" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="model">Model:</label>
+                                <select name="model" id="model">
+                                    <option value="gemini" {}> Gemini</option>
+                                    <option value="openai" {}> OpenAI</option>
+                                    <option value="anthropic" {}> Anthropic</option>
+                                </select>
+                            </div>
+                            <button type="submit">Update Settings</button>
+                        </form>
+                    </div>
+                    
                     <p>Source Directory: {}</p>
-                    <p>Model: {}</p>
 
                     <!-- Search Form -->
                     <div class="search-form">
@@ -101,9 +119,12 @@ impl TemplateService {
         "#,
             project.name,
             project.name,
+            project.name,
             project.languages,
+            if project.model == "gemini" { "selected" } else { "" },
+            if project.model == "openai" { "selected" } else { "" },
+            if project.model == "anthropic" { "selected" } else { "" },
             project.source_dir,
-            project.model,
             project.name,
             query_value,
             search_results_html,

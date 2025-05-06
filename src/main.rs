@@ -3,7 +3,7 @@ use actix_files::Files;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use routes::llm::{chat_split, regenerate_yaml, suggest_split};
-use routes::project::{create, delete, get_project, update};
+use routes::project::{create, delete, get_project, update_settings, update_yaml};
 use routes::ui::{home, update_env};
 
 mod models;
@@ -26,7 +26,7 @@ async fn main() -> std::io::Result<()> {
             .service(home)
             .service(create::create)
             .service(get_project::get_project)
-            .service(update::update)
+            .service(update_yaml::update)
             .service(regenerate_yaml)
             .service(delete::delete)
             .service(update_env)
@@ -36,6 +36,7 @@ async fn main() -> std::io::Result<()> {
             .service(routes::llm::save_analysis_history)
             .service(routes::llm::reset_analysis_chat)
             .service(routes::llm::analyze_query)
+            .service(update_settings::update_settings)
             .service(Files::new("/static", "./static"))
     })
     .bind("127.0.0.1:8080")?

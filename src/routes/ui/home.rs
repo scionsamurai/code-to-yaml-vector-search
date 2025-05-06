@@ -69,7 +69,7 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
             project.name,
             project.name,
             if *needs_update {
-                format!(r#" <button onclick="window.location.href='/update/{}'" style="background-color: green; color: white;">Update</button>"#, project.name)
+                format!(r#" <button onclick="window.location.href='/update/{}/yaml'" style="background-color: green; color: white;">Update</button>"#, project.name)
             } else {
                 "".to_string()
             },

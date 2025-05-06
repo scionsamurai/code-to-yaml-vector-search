@@ -132,3 +132,44 @@ body {
   overflow-y: auto;
   background-color: #f8f8f8;
 }
+
+
+/* Add to your project.css */
+.project-settings {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 5px;
+}
+
+.project-settings .form-group {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+}
+
+.project-settings label {
+  width: 200px;
+  display: inline-block;
+}
+
+.project-settings input,
+.project-settings select {
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  flex-grow: 1;
+}
+
+.project-settings button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.project-settings button:hover {
+  background: #45a049;
+}

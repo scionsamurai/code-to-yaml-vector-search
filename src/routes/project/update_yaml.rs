@@ -1,4 +1,4 @@
-// src/routes/project/update.rs
+// src/routes/project/update_yaml.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
 use crate::services::yaml::YamlService;
@@ -6,7 +6,7 @@ use crate::services::project_service::ProjectService;
 use std::fs::read_to_string;
 use std::path::Path;
 
-#[get("/update/{name}")]
+#[get("/update/{name}/yaml")]
 pub async fn update(
     app_state: web::Data<AppState>,
     name: web::Path<String>,
