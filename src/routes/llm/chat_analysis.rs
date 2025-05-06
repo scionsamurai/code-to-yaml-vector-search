@@ -89,7 +89,7 @@ pub async fn chat_analysis(
         }
     ];
     
-    // Add history messages
+    // Add history messages 
     messages.extend(
         data.history.iter()
             .cloned()
@@ -113,23 +113,9 @@ pub async fn chat_analysis(
         content: llm_response.clone(),
     };
     
-    // Save just the conversation without file contents
-    let history_messages = vec![
-        // Simple system message without file contents
-        ChatMessage {
-            role: "model".to_string(),
-            content: format!(
-                "You are an AI assistant helping with code analysis for a project. \
-                The user's original query was: \"{}\"\n\n\
-                The context includes {} selected files.",
-                data.query,
-                context_files.len()
-            ),
-        }
-    ];
     
     // Add rest of the conversation
-    let mut full_history = history_messages;
+    let mut full_history = vec![];
     full_history.extend(
         data.history.iter()
             .cloned()

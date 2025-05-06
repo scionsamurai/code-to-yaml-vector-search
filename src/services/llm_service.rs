@@ -46,8 +46,6 @@ impl LlmService {
                 content: msg.content.clone(),
             })
             .collect();
-
-        print!("Sending conversation to LLM: {:?}", api_messages);
         
         // Send the properly structured conversation to the LLM
         let llm_response = target_model.send_convo_message(api_messages).await;
