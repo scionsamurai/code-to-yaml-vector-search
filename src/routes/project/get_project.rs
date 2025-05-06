@@ -2,7 +2,7 @@
 use crate::models::AppState;
 use crate::services::project_service::ProjectService;
 use crate::services::search_service::SearchService;
-use crate::services::template_service::TemplateService;
+use crate::services::template::TemplateService;
 use crate::services::yaml::YamlService;
 use actix_web::{get, web, HttpResponse, Responder};
 use std::path::Path;

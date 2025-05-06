@@ -2,7 +2,7 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::AppState;
 use crate::services::project_service::ProjectService;
-use crate::services::template_service::TemplateService;
+use crate::services::template::TemplateService;
 use std::path::Path;
 use serde_json::Value;
 
@@ -77,10 +77,6 @@ pub async fn analyze_query(
         Vec::new()
     };
 
-    // Generate file lists - relevant files are no longer default checked
-    let relevant_files_html = generate_file_list(&relevant_files, &saved_context_files);
-    let other_files_html = generate_other_files_list(&project, &relevant_files, &saved_context_files);
-
     // Extract existing chat messages if any
     let existing_chat_html = if let Some(saved_queries) = &project.saved_queries {
         if let Some(last_query) = saved_queries.last() {
@@ -124,34 +120,4 @@ pub async fn analyze_query(
     );
     
     HttpResponse::Ok().body(html)
-}
-
-fn generate_file_list(files: &[String], selected_files: &[String]) -> String {
-    files.iter()
-        .map(|file| {
-            format!(
-                r#"<div class="file-item">
-                    <input type="checkbox" class="file-checkbox" value="{}" {}> {}
-                </div>"#,
-                file,
-                if selected_files.contains(file) { "checked" } else { "" },
-                file
-            )
-        })
-        .collect::<Vec<String>>()
-        .join("\n")
-}
-
-fn generate_other_files_list(project: &crate::models::Project, exclude_files: &[String], selected_files: &[String]) -> String {
-    // Get all project files
-    let all_files: Vec<String> = match &project.embeddings {
-        embeddings => embeddings.keys().cloned().collect(),
-    };
-
-    // Filter out the files that are already in the relevant files list
-    let other_files: Vec<String> = all_files.into_iter()
-        .filter(|file| !exclude_files.contains(file))
-        .collect();
-    
-    generate_file_list(&other_files, selected_files)
 }

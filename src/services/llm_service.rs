@@ -13,6 +13,10 @@ impl LlmService {
         LlmService {}
     }
 
+    async fn escape_html(&self, text: String) -> String {
+        html_escape::encode_text(&text).to_string()
+    }
+
     pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {
         // Determine the target model based on llm string
         let target_model = match llm.to_lowercase().as_str() {
@@ -25,7 +29,10 @@ impl LlmService {
         let llm_response = target_model.send_single_message(prompt).await;
 
         match llm_response {
-            Ok(content) => content,
+            Ok(content) => {
+                let escaped_content = self.escape_html(content).await;
+                escaped_content
+            },
             Err(e) => format!("Error during analysis: {}", e),
         }
     }
@@ -51,7 +58,10 @@ impl LlmService {
         let llm_response = target_model.send_convo_message(api_messages).await;
         
         match llm_response {
-            Ok(content) => content,
+            Ok(content) => {
+                let escaped_content = self.escape_html(content).await;
+                escaped_content
+            },
             Err(e) => format!("Error during conversation: {}", e),
         }
     }
@@ -104,7 +114,9 @@ impl LlmService {
                     cleaned = cleaned.replacen("```", "", 1);
                 }
 
-                cleaned.trim().to_string()
+                let trimmed = cleaned.trim().to_string();
+                let escaped_content = self.escape_html(trimmed).await;
+                escaped_content
             }
             Err(e) => format!("Error during conversion: {}", e),
         };

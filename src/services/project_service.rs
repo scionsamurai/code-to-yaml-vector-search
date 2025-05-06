@@ -1,7 +1,7 @@
 // src/services/project_service.rs
 use crate::models::Project;
 use crate::services::yaml::YamlService;
-use crate::services::template_service::TemplateService;
+use crate::services::template::TemplateService;
 use std::fs::read_to_string;
 use std::path::Path;
 
