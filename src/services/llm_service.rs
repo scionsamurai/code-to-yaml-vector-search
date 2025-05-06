@@ -30,17 +30,32 @@ impl LlmService {
         }
     }
 
-    // Add this method to the LlmService impl
     pub async fn send_conversation(&self, messages: &[ChatMessage], model: &str) -> String {
-        // Create a conversation string from messages
-        let conversation_prompt = messages
+        // Determine the target model based on model string
+        let target_model = match model.to_lowercase().as_str() {
+            "openai" => LLM::OpenAI,
+            "anthropic" => LLM::Anthropic,
+            "gemini" | _ => LLM::Gemini,
+        };
+        
+        // Convert your ChatMessage format to the LLM API's Message format
+        let api_messages: Vec<Message> = messages
             .iter()
-            .map(|msg| format!("{}:\n{}", msg.role.to_uppercase(), msg.content))
-            .collect::<Vec<String>>()
-            .join("\n\n");
+            .map(|msg| Message {
+                role: msg.role.clone(),
+                content: msg.content.clone(),
+            })
+            .collect();
 
-        // Use the existing get_analysis method with the conversation prompt
-        self.get_analysis(&conversation_prompt, model).await
+        print!("Sending conversation to LLM: {:?}", api_messages);
+        
+        // Send the properly structured conversation to the LLM
+        let llm_response = target_model.send_convo_message(api_messages).await;
+        
+        match llm_response {
+            Ok(content) => content,
+            Err(e) => format!("Error during conversation: {}", e),
+        }
     }
 
     pub async fn convert_to_yaml(&self, file: &ProjectFile, llm: &str) -> String {

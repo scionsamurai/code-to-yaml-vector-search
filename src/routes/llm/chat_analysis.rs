@@ -5,6 +5,7 @@ use serde::Deserialize;
 use crate::models::AppState;
 use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
+use crate::services::file_service::FileService;
 use std::path::Path;
 
 #[derive(Deserialize)]
@@ -15,7 +16,6 @@ pub struct ChatAnalysisRequest {
     history: Vec<ChatMessage>,
 }
 
-
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
     app_state: web::Data<AppState>,
@@ -23,6 +23,7 @@ pub async fn chat_analysis(
 ) -> HttpResponse {
     let llm_service = LlmService::new();
     let project_service = ProjectService::new();
+    let file_service = FileService {};
     
     // Load the project
     let output_dir = Path::new(&app_state.output_dir);
@@ -33,32 +34,64 @@ pub async fn chat_analysis(
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load project: {}", e)),
     };
     
-    // Create context prompt
-    let system_prompt = match data.history.first() {
-        Some(first_msg) if first_msg.role == "system" => first_msg.content.clone(),
-        _ => {
-            // If there's no system message, create one
-            format!(
-                "You are an AI assistant helping with code analysis for a project. \
-                The user's original query was: \"{}\"\n\n\
-                Answer the user's questions and help them understand the code.",
-                data.query
-            )
+    // Get selected context files from project settings
+    let context_files = if let Some(saved_queries) = &project.saved_queries {
+        if let Some(last_query) = saved_queries.last() {
+            if let Some(files) = last_query.get("context_files") {
+                if let Some(files_array) = files.as_array() {
+                    files_array.iter()
+                        .filter_map(|f| f.as_str().map(String::from))
+                        .collect::<Vec<String>>()
+                } else {
+                    Vec::new()
+                }
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
         }
+    } else {
+        Vec::new()
     };
+    
+    // Load file contents for the selected files
+    let file_contents = context_files.iter()
+        .filter_map(|file_path| {
+            if let Some(content) = file_service.read_specific_file(&project, file_path) {
+                Some(format!("--- FILE: {} ---\n{}\n\n", file_path, content))
+            } else {
+                None
+            }
+        })
+        .collect::<String>();
+    
+    // Create context prompt with the loaded file contents
+    let system_prompt = format!(
+        "You are an AI assistant helping with code analysis for a project. \
+        The user's original query was: \"{}\"\n\n\
+        You have access to the following files:\n{}\n\n\
+        Here are the contents of these files:\n\n{}",
+        data.query,
+        context_files.join("\n"),
+        file_contents
+    );
     
     // Format messages for LLM
     let mut messages = vec![
         ChatMessage {
-            role: "system".to_string(),
+            role: "user".to_string(),
             content: system_prompt,
+        },
+        ChatMessage {
+            role: "model".to_string(),
+            content: "I understand.".to_string(),
         }
     ];
     
-    // Add history messages, excluding any previous system messages
+    // Add history messages
     messages.extend(
         data.history.iter()
-            .filter(|msg| msg.role != "system")
             .cloned()
     );
     
@@ -67,17 +100,41 @@ pub async fn chat_analysis(
         role: "user".to_string(),
         content: data.message.clone(),
     });
+
+    // println!("Sending messages to LLM: {:?}", messages);
     
     // Send to LLM
     let model = project.model.clone();
     let llm_response = llm_service.send_conversation(&messages, &model).await;
     
-    // Add response to messages
+    // Add response to messages for history tracking (without file contents)
     let assistant_message = ChatMessage {
-        role: "assistant".to_string(),
+        role: "model".to_string(),
         content: llm_response.clone(),
     };
-    messages.push(assistant_message);
+    
+    // Save just the conversation without file contents
+    let history_messages = vec![
+        // Simple system message without file contents
+        ChatMessage {
+            role: "model".to_string(),
+            content: format!(
+                "You are an AI assistant helping with code analysis for a project. \
+                The user's original query was: \"{}\"\n\n\
+                The context includes {} selected files.",
+                data.query,
+                context_files.len()
+            ),
+        }
+    ];
+    
+    // Add rest of the conversation
+    let mut full_history = history_messages;
+    full_history.extend(
+        data.history.iter()
+            .cloned()
+    );
+    full_history.push(assistant_message);
     
     // Save the updated chat history to the project settings
     if project.saved_queries.is_none() {
@@ -87,7 +144,7 @@ pub async fn chat_analysis(
     if let Some(saved_queries) = &mut project.saved_queries {
         if let Some(last_query) = saved_queries.last_mut() {
             // Update the last query with the analysis chat history
-            last_query["analysis_chat_history"] = serde_json::to_value(&messages).unwrap_or_default();
+            last_query["analysis_chat_history"] = serde_json::to_value(&full_history).unwrap_or_default();
             
             // Save the updated project settings
             if let Err(e) = project_service.save_project(&project, &project_dir) {

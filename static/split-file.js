@@ -80,12 +80,12 @@ function initSplitChat() {
             })
             .then(response => response.text())
             .then(responseText => {
-                addMessageToChat('assistant', responseText);
+                addMessageToChat('model', responseText);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             })
             .catch(error => {
                 console.error('Error:', error);
-                addMessageToChat('system', 'Error: Could not get a response.');
+                addMessageToChat('model', 'Error: Could not get a response.');
             });
         }
     }
@@ -98,14 +98,14 @@ function initSplitChat() {
         const initialPrompt = document.getElementById('initial-prompt');
         if (initialPrompt) {
             history.push({
-                role: 'system',
+                role: 'model',
                 content: initialPrompt.value
             });
         }
         
         // Add all visible messages
         chatMessages.forEach(message => {
-            const role = message.classList.contains('user-message') ? 'user' : 'assistant';
+            const role = message.classList.contains('user-message') ? 'user' : 'model';
             const content = message.querySelector('.message-content').textContent;
             history.push({ role, content });
         });

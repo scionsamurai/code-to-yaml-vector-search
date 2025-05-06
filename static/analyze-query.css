@@ -1,0 +1,26 @@
+
+.file-list {
+    margin-bottom: 20px;
+}
+.file-list h3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.file-item {
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+.file-checkbox {
+    margin-right: 10px;
+}
+.toggle-button {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+.update-context {
+    margin: 15px 0;
+    text-align: right;
+}
