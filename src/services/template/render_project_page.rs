@@ -1,5 +1,6 @@
 use crate::models::Project;
 use super::TemplateService;
+use html_escape::encode_text;
 
 impl TemplateService {
     pub fn render_project_page(
@@ -9,6 +10,8 @@ impl TemplateService {
         yaml_files: &str,
         query_value: &str,
     ) -> String {
+        let escaped_query_value = encode_text(query_value);
+
         format!(
             r#"
         <html>
@@ -72,7 +75,7 @@ impl TemplateService {
             if project.model == "anthropic" { "selected" } else { "" },
             project.source_dir,
             project.name,
-            query_value,
+            escaped_query_value,
             search_results_html,
             yaml_files
         )
