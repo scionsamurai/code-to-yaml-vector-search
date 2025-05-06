@@ -1,3 +1,4 @@
+// src/routes/project/delete.rs
 use actix_web::{delete, web, HttpResponse, Responder};
 use crate::models::AppState;
 use std::fs::remove_dir_all;

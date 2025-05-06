@@ -1,3 +1,4 @@
+// static/project.js
 async function regenerate(projectName, yamlPath) {
     const response = await fetch(`/regenerate?project=${projectName}&yamlpath=${yamlPath}`, {
         method: 'POST'

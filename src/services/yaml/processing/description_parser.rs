@@ -1,3 +1,4 @@
+// src/services/yaml/processing/description_parser.rs
 pub fn parse_description(content: &str) -> Option<String> {
     let mut lines = content.lines();
     // 1) Must start with '---'

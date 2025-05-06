@@ -1,4 +1,3 @@
-
 // src/services/yaml/management/embedding.rs
 use crate::models::EmbeddingMetadata;
 use crate::services::embedding_service::EmbeddingService;

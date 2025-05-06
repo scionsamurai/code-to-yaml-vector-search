@@ -1,4 +1,4 @@
-// src/routes/update_project.rs
+// src/routes/project/update.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
 use crate::services::yaml::YamlService;
@@ -17,7 +17,6 @@ pub async fn update(
 
     if let Ok(project_settings_json) = read_to_string(project_settings_path) {
         if let Ok(mut project) = serde_json::from_str::<Project>(&project_settings_json) {
-
 
             project.saved_queries = Some(Vec::new());
 
@@ -40,4 +39,5 @@ pub async fn update(
     } else {
         HttpResponse::NotFound().body("Project not found")
     }
+    
 }

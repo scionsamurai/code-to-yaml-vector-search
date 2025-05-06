@@ -1,3 +1,4 @@
+// src/services/yaml/processing/html_generator.rs
 use super::description_parser;
 use std::path::Path;
 

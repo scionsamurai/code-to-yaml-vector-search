@@ -1,4 +1,4 @@
-// src/routes/regenerate_yaml.rs
+// src/routes/llm/regenerate_yaml.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project, ProjectFile};
 use crate::services::llm_service::LlmService;

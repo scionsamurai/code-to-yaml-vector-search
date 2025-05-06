@@ -1,3 +1,4 @@
+// src/routes/ui/mod.rs
 mod home;
 mod update_env;
 

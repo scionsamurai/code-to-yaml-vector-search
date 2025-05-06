@@ -1,4 +1,4 @@
-
+// static/home.js
 async function deleteProject(projectName) {
     const confirmed = confirm(`Are you sure you want to delete the project '${projectName}'?`);
     if (confirmed) {

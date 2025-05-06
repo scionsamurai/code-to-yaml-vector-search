@@ -1,3 +1,4 @@
+// src/services/yaml/processing/gitignore_handler.rs
 use std::fs::File;
     use std::io::{BufRead, BufReader};
     use std::path::Path;
