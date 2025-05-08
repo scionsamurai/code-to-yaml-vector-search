@@ -1,7 +1,7 @@
 //  static/split-file.js
 import { addMessageToChat } from './analyze-query/chat.js';
 
-function suggestSplit(project, filePath) {
+export function suggestSplit(project, filePath) {
     // Show a loading indicator
     const loadingDiv = document.createElement('div');
     loadingDiv.id = 'loading-overlay';
@@ -33,7 +33,6 @@ function suggestSplit(project, filePath) {
     });
 }
 
-// This will be called after the modal is created
 function initSplitChat() {
     const chatContainer = document.getElementById('chat-container');
     const messageInput = document.getElementById('message-input');

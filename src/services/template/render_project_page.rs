@@ -63,6 +63,12 @@ impl TemplateService {
                 <input type="checkbox" id="trigger-checkbox">
                 <label for="trigger-checkbox">Hide Regen Buttons</label>
                 {}
+                <script type="module">
+                    import {{ suggestSplit }} from '/static/split-file.js';
+
+                    //Make suggestSplit accessible globally by assigning it to window
+                    window.suggestSplit = suggestSplit;
+                </script>
             </body>
         </html>
         "#,

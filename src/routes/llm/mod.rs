@@ -4,7 +4,7 @@ mod suggest_split;
 mod execute_query;
 mod regenerate_yaml;
 mod analyze_query;
-mod chat_analysis;
+pub mod chat_analysis;
 mod update_analysis_context;
 
 pub use chat_split::*;

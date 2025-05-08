@@ -2,8 +2,7 @@
 use actix_files::Files;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
-use routes::llm::{chat_split, regenerate_yaml, suggest_split, update_analysis_context, update_chat_message};
-use routes::project::{create, delete, get_project, update_settings, update_yaml};
+use routes::llm::{chat_split, regenerate_yaml, suggest_split, update_analysis_context};
 use routes::ui::{home, update_env};
 
 mod models;
@@ -24,22 +23,15 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_state.clone())
             .service(home)
-            .service(create::create)
-            .service(get_project::get_project)
-            .service(update_yaml::update)
             .service(regenerate_yaml)
-            .service(delete::delete)
             .service(update_env)
             .service(suggest_split)
             .service(chat_split)
-            .service(routes::llm::chat_analysis)
-            .service(routes::llm::save_analysis_history)
-            .service(routes::llm::reset_analysis_chat)
             .service(routes::llm::analyze_query)
-            .service(update_settings::update_settings)
             .service(update_analysis_context)
-            .service(update_chat_message)
             .service(Files::new("/static", "./static"))
+            .configure(routes::project::configure)
+            .configure(routes::llm::chat_analysis::configure)
     })
     .bind("127.0.0.1:8080")?
     .run()
