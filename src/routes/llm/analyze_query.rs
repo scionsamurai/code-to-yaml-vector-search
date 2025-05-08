@@ -86,12 +86,16 @@ pub async fn analyze_query(
                     for msg in history_array {
                         if let (Some(role), Some(content)) = (msg.get("role").and_then(Value::as_str), 
                                                           msg.get("content").and_then(Value::as_str)) {
+                            // let formatted_content = format_message(content);
                             html.push_str(&format!(
                                 r#"<div class="chat-message {}-message">
                                     <div class="message-content">{}</div>
+                                    <div class="message-controls">
+                                        <button class="edit-message-btn" title="Edit message">Edit</button>
+                                    </div>
                                 </div>"#,
                                 role,
-                                content.replace("\n", "<br>")
+                                content
                             ));
                         }
                     }
@@ -120,4 +124,25 @@ pub async fn analyze_query(
     );
     
     HttpResponse::Ok().body(html)
+}
+
+
+pub fn format_message(content: &str) -> String {
+
+    let unescaped_content = html_escape::decode_html_entities(content).to_string();
+
+    // Create a regex to match triple backtick code blocks
+    let re = regex::Regex::new(r"```([a-zA-Z]*)([\s\S]*?)```").unwrap();
+    
+    // Replace triple backtick code blocks with formatted HTML
+    let formatted_content = re.replace_all(&unescaped_content, |caps: &regex::Captures| {
+        let language = &caps[1];
+        let code = caps[2].trim();
+        format!("<pre><code class=\"language-{}\">{}</code></pre>", language, code)
+    });
+    
+    // Replace newlines with <br> tags for normal text (outside of code blocks)
+    let formatted_content = formatted_content.replace("\n", "<br>");
+    
+    formatted_content.to_string()
 }

@@ -1,4 +1,4 @@
-// static/analyze-query-chat.js
+// static/analyze-query/chat.js
 
 import { formatMessage } from './utils.js';
 
@@ -63,26 +63,117 @@ function getChatHistory() {
     const chatMessages = document.querySelectorAll('#analysis-chat-container .chat-message');
     let history = [];
 
-    chatMessages.forEach(message => {
+    chatMessages.forEach((message, index) => {
         if (message.classList.contains('system-message')) return; // Skip system messages
 
         const role = message.classList.contains('user-message') ? 'user' : 'model';
         const content = message.querySelector('.message-content').textContent;
-        history.push({ role, content });
+        history.push({ role, content, index });
     });
 
     return history;
 }
 
-function addMessageToChat(role, content, chatContainer) {
+export function addMessageToChat(role, content, chatContainer) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${role}-message`;
-
+    
+    // Create message content div
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     messageContent.innerHTML = formatMessage(content);
-
+    
+    // Create message controls
+    const messageControls = document.createElement('div');
+    messageControls.className = 'message-controls';
+    
+    // Add edit button
+    const editButton = document.createElement('button');
+    editButton.className = 'edit-message-btn';
+    editButton.textContent = 'Edit';
+    editButton.title = 'Edit message';
+    editButton.addEventListener('click', () => toggleEditMode(messageDiv));
+    
+    messageControls.appendChild(editButton);
+    
     messageDiv.appendChild(messageContent);
+    messageDiv.appendChild(messageControls);
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+export function toggleEditMode(messageDiv) {
+    const messageContent = messageDiv.querySelector('.message-content');
+    const role = messageDiv.classList.contains('user-message') ? 'user' : 'model';
+    
+    // If already in edit mode, exit it
+    if (messageDiv.classList.contains('editing')) {
+        const editor = messageDiv.querySelector('.message-editor');
+        const editedContent = editor.value;
+        
+        // Update message content
+        messageContent.innerHTML = formatMessage(editedContent);
+        
+        // Exit edit mode
+        messageDiv.classList.remove('editing');
+        editor.remove();
+        
+        // Save the edited message to the server
+        saveEditedMessage(messageDiv, role, editedContent);
+    } else {
+        // Enter edit mode
+        messageDiv.classList.add('editing');
+        
+        // Create textarea for editing with original content
+        const originalContent = messageContent.textContent;
+        const editor = document.createElement('textarea');
+        editor.className = 'message-editor';
+        editor.value = originalContent;
+        
+        // Add controls for saving/canceling
+        const editControls = document.createElement('div');
+        editControls.className = 'edit-controls';
+        
+        const saveButton = document.createElement('button');
+        saveButton.className = 'save-edit-btn';
+        saveButton.textContent = 'Save';
+        saveButton.addEventListener('click', () => toggleEditMode(messageDiv));
+        
+        const cancelButton = document.createElement('button');
+        cancelButton.className = 'cancel-edit-btn';
+        cancelButton.textContent = 'Cancel';
+        cancelButton.addEventListener('click', () => {
+            messageDiv.classList.remove('editing');
+            editor.remove();
+            editControls.remove();
+        });
+        
+        editControls.appendChild(saveButton);
+        editControls.appendChild(cancelButton);
+        
+        // Insert editor and controls
+        messageDiv.insertBefore(editor, messageContent.nextSibling);
+        messageDiv.insertBefore(editControls, editor.nextSibling);
+    }
+}
+
+function saveEditedMessage(messageDiv, role, content) {
+    const projectName = document.getElementById('project-name').value;
+    const updatedHistory = getChatHistory(); // Get all current messages
+    
+    fetch('/update-chat-message', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            project: projectName,
+            role: role,
+            content: content,
+            history: updatedHistory
+        })
+    })
+    .catch(error => {
+        console.error('Error saving edited message:', error);
+    });
 }

@@ -220,3 +220,45 @@ pub async fn save_analysis_history(
     
     HttpResponse::Ok().body("Chat history saved successfully")
 }
+
+#[derive(Deserialize)]
+pub struct UpdateChatMessageRequest {
+    project: String,
+    history: Vec<ChatMessage>,
+}
+
+#[post("/update-chat-message")]
+pub async fn update_chat_message(
+    app_state: web::Data<AppState>,
+    data: web::Json<UpdateChatMessageRequest>,
+) -> HttpResponse {
+    let project_service = ProjectService::new();
+    
+    // Load the project
+    let output_dir = Path::new(&app_state.output_dir);
+    let project_dir = output_dir.join(&data.project);
+    
+    let mut project = match project_service.load_project(&project_dir) {
+        Ok(p) => p,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load project: {}", e)),
+    };
+    
+    // Update the chat history with the edited message content
+    if project.saved_queries.is_none() {
+        project.saved_queries = Some(Vec::new());
+    }
+    
+    if let Some(saved_queries) = &mut project.saved_queries {
+        if let Some(last_query) = saved_queries.last_mut() {
+            // Update the last query with the updated chat history
+            last_query["analysis_chat_history"] = serde_json::to_value(&data.history).unwrap_or_default();
+            
+            // Save the updated project settings
+            if let Err(e) = project_service.save_project(&project, &project_dir) {
+                return HttpResponse::InternalServerError().body(format!("Failed to save project: {}", e));
+            }
+        }
+    }
+    
+    HttpResponse::Ok().body("Message updated successfully")
+}

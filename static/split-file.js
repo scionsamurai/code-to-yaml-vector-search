@@ -1,4 +1,6 @@
 //  static/split-file.js
+import { addMessageToChat } from './analyze-query/chat.js';
+
 function suggestSplit(project, filePath) {
     // Show a loading indicator
     const loadingDiv = document.createElement('div');
@@ -55,7 +57,7 @@ function initSplitChat() {
         const message = messageInput.value.trim();
         if (message) {
             // Add user message to chat
-            addMessageToChat('user', message);
+            addMessageToChat('user', message, chatContainer);
             messageInput.value = '';
             
             // Get project and file path from hidden inputs
@@ -80,12 +82,12 @@ function initSplitChat() {
             })
             .then(response => response.text())
             .then(responseText => {
-                addMessageToChat('model', responseText);
+                addMessageToChat('model', responseText, chatContainer);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             })
             .catch(error => {
                 console.error('Error:', error);
-                addMessageToChat('model', 'Error: Could not get a response.');
+                addMessageToChat('model', 'Error: Could not get a response.', chatContainer);
             });
         }
     }
@@ -111,25 +113,5 @@ function initSplitChat() {
         });
         
         return history;
-    }
-    
-    function addMessageToChat(role, content) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${role}-message`;
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.innerHTML = formatMessage(content);
-        
-        messageDiv.appendChild(messageContent);
-        chatContainer.appendChild(messageDiv);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-    
-    function formatMessage(content) {
-        // Convert markdown code blocks to HTML
-        return content.replace(/```(\w*)([\s\S]*?)```/g, function(match, language, code) {
-            return `<pre><code class="${language}">${code}</code></pre>`;
-        }).replace(/\n/g, '<br>');
     }
 }
