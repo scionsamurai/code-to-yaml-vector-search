@@ -12,8 +12,6 @@ export function sendMessage(chatContainer) {
         const projectName = document.getElementById('project-name').value;
         const queryText = document.getElementById('query-text').value;
 
-        const chatHistory = getChatHistory();
-
         fetch('/chat-analysis', {
             method: 'POST',
             headers: {
@@ -22,8 +20,7 @@ export function sendMessage(chatContainer) {
             body: JSON.stringify({
                 project: projectName,
                 query: queryText,
-                message: message,
-                history: chatHistory
+                message: message
             })
         })
         .then(response => response.text())
@@ -57,21 +54,6 @@ export function resetChat(chatContainer) {
     .catch(error => {
         console.error('Error resetting chat:', error);
     });
-}
-
-function getChatHistory() {
-    const chatMessages = document.querySelectorAll('#analysis-chat-container .chat-message');
-    let history = [];
-
-    chatMessages.forEach((message, index) => {
-        if (message.classList.contains('system-message')) return; // Skip system messages
-
-        const role = message.classList.contains('user-message') ? 'user' : 'model';
-        const content = message.querySelector('.message-content').textContent;
-        history.push({ role, content, index });
-    });
-
-    return history;
 }
 
 export function addMessageToChat(role, content, chatContainer) {
@@ -159,7 +141,8 @@ export function toggleEditMode(messageDiv) {
 
 function saveEditedMessage(messageDiv, role, content) {
     const projectName = document.getElementById('project-name').value;
-    const updatedHistory = getChatHistory(); // Get all current messages
+    const chatContainer = messageDiv.parentElement;
+    const messageIndex = Array.from(chatContainer.children).indexOf(messageDiv);
     
     fetch('/update-chat-message', {
         method: 'POST',
@@ -170,7 +153,7 @@ function saveEditedMessage(messageDiv, role, content) {
             project: projectName,
             role: role,
             content: content,
-            history: updatedHistory
+            index: messageIndex 
         })
     })
     .catch(error => {

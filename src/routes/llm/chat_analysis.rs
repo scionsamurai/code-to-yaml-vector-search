@@ -13,7 +13,6 @@ pub struct ChatAnalysisRequest {
     project: String,
     query: String,
     message: String,
-    history: Vec<ChatMessage>,
 }
 
 #[post("/chat-analysis")]
@@ -77,7 +76,26 @@ pub async fn chat_analysis(
         file_contents
     );
     
-    // Format messages for LLM
+    // Get existing chat history from project structure
+    let mut full_history = if let Some(saved_queries) = &project.saved_queries {
+        if let Some(last_query) = saved_queries.last() {
+            if let Some(history) = last_query.get("analysis_chat_history") {
+                if let Ok(messages) = serde_json::from_value::<Vec<ChatMessage>>(history.clone()) {
+                    messages
+                } else {
+                    Vec::new()
+                }
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
+    
+    // Format messages for LLM with system prompt and existing history
     let mut messages = vec![
         ChatMessage {
             role: "user".to_string(),
@@ -89,11 +107,8 @@ pub async fn chat_analysis(
         }
     ];
     
-    // Add history messages 
-    messages.extend(
-        data.history.iter()
-            .cloned()
-    );
+    // Add history messages from project structure
+    messages.extend(full_history.clone());
     
     // Add the current user message
     messages.push(ChatMessage {
@@ -107,19 +122,18 @@ pub async fn chat_analysis(
     let model = project.model.clone();
     let llm_response = llm_service.send_conversation(&messages, &model).await;
     
-    // Add response to messages for history tracking (without file contents)
-    let assistant_message = ChatMessage {
+     // Create response message
+     let assistant_message = ChatMessage {
         role: "model".to_string(),
         content: llm_response.clone(),
     };
     
+    // Add new message pair to history
+    full_history.push(ChatMessage {
+        role: "user".to_string(),
+        content: data.message.clone(),
+    });
     
-    // Add rest of the conversation
-    let mut full_history = vec![];
-    full_history.extend(
-        data.history.iter()
-            .cloned()
-    );
     full_history.push(assistant_message);
     
     // Save the updated chat history to the project settings
@@ -224,7 +238,9 @@ pub async fn save_analysis_history(
 #[derive(Deserialize)]
 pub struct UpdateChatMessageRequest {
     project: String,
-    history: Vec<ChatMessage>,
+    role: String,
+    content: String,
+    index: usize
 }
 
 #[post("/update-chat-message")]
@@ -243,22 +259,35 @@ pub async fn update_chat_message(
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load project: {}", e)),
     };
     
-    // Update the chat history with the edited message content
-    if project.saved_queries.is_none() {
-        project.saved_queries = Some(Vec::new());
-    }
-    
+    // Update the specific message in the chat history
     if let Some(saved_queries) = &mut project.saved_queries {
         if let Some(last_query) = saved_queries.last_mut() {
-            // Update the last query with the updated chat history
-            last_query["analysis_chat_history"] = serde_json::to_value(&data.history).unwrap_or_default();
-            
-            // Save the updated project settings
-            if let Err(e) = project_service.save_project(&project, &project_dir) {
-                return HttpResponse::InternalServerError().body(format!("Failed to save project: {}", e));
+            if let Some(chat_history) = last_query.get_mut("analysis_chat_history") {
+                if let Some(history_array) = chat_history.as_array_mut() {
+                    // Make sure the index is valid
+                    if data.index < history_array.len() {
+                        // Create the updated message
+                        let updated_message = serde_json::json!({
+                            "role": data.role,
+                            "content": data.content
+                        });
+                        
+                        // Update the message at the specified index
+                        history_array[data.index] = updated_message;
+                        
+                        // Save the updated project settings
+                        if let Err(e) = project_service.save_project(&project, &project_dir) {
+                            return HttpResponse::InternalServerError().body(format!("Failed to save project: {}", e));
+                        }
+                        
+                        return HttpResponse::Ok().body("Message updated successfully");
+                    } else {
+                        return HttpResponse::BadRequest().body("Invalid message index");
+                    }
+                }
             }
         }
     }
     
-    HttpResponse::Ok().body("Message updated successfully")
+    HttpResponse::BadRequest().body("Failed to update message")
 }

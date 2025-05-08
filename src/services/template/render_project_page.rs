@@ -21,7 +21,7 @@ impl TemplateService {
                 <link rel="stylesheet" href="/static/split-chat.css">
                 <link rel="stylesheet" href="/static/split-modal.css">
                 <script src="/static/project.js"></script>
-                <script src="/static/split-file.js"></script>
+                <script src="/static/split-file.js" type="module"></script>
             </head>
             <body>
                 <div class="head">
