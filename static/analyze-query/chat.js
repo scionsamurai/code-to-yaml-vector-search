@@ -1,6 +1,6 @@
 // static/analyze-query/chat.js
-
 import { formatMessage } from './utils.js';
+import { highlightMessage } from './syntax-highlighting.js';
 
 export function sendMessage(chatContainer) {
     const messageInput = document.getElementById('analysis-message-input');
@@ -25,7 +25,8 @@ export function sendMessage(chatContainer) {
         })
         .then(response => response.text())
         .then(responseText => {
-            addMessageToChat('model', responseText, chatContainer);
+            const messageDiv = addMessageToChat('model', responseText, chatContainer);
+            highlightMessage(messageDiv); // Apply syntax highlighting
             chatContainer.scrollTop = chatContainer.scrollHeight;
         })
         .catch(error => {
@@ -64,6 +65,7 @@ export function addMessageToChat(role, content, chatContainer) {
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     messageContent.innerHTML = formatMessage(content);
+    messageDiv.dataset.originalContent = content;
     
     // Create message controls
     const messageControls = document.createElement('div');
@@ -82,6 +84,8 @@ export function addMessageToChat(role, content, chatContainer) {
     messageDiv.appendChild(messageControls);
     chatContainer.appendChild(messageDiv);
     chatContainer.scrollTop = chatContainer.scrollHeight;
+    
+    return messageDiv;
 }
 
 export function toggleEditMode(messageDiv) {
@@ -93,6 +97,9 @@ export function toggleEditMode(messageDiv) {
         const editor = messageDiv.querySelector('.message-editor');
         const editedContent = editor.value;
         
+        // Store the updated content
+        messageDiv.dataset.originalContent = editedContent;
+        
         // Update message content
         messageContent.innerHTML = formatMessage(editedContent);
         
@@ -100,14 +107,17 @@ export function toggleEditMode(messageDiv) {
         messageDiv.classList.remove('editing');
         editor.remove();
         
+        // Reapply syntax highlighting
+        highlightMessage(messageDiv);
+        
         // Save the edited message to the server
         saveEditedMessage(messageDiv, role, editedContent);
     } else {
         // Enter edit mode
         messageDiv.classList.add('editing');
         
-        // Create textarea for editing with original content
-        const originalContent = messageContent.textContent;
+        // Get original content from data attribute instead of HTML
+        const originalContent = messageDiv.dataset.originalContent || messageContent.textContent;
         const editor = document.createElement('textarea');
         editor.className = 'message-editor';
         editor.value = originalContent;

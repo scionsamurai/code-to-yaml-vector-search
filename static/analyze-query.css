@@ -45,7 +45,6 @@ body {
   flex-direction: column;
 }
 
-
 /* CSS for message editing */
 .chat-message {
   position: relative;
@@ -80,7 +79,38 @@ body {
   text-align: right;
 }
 
-.save-edit-btn, .cancel-edit-btn {
+.save-edit-btn,
+.cancel-edit-btn {
   margin-left: 5px;
   padding: 3px 8px;
+}
+
+/* Styling for code blocks */
+.shiki-block {
+  margin: 10px 0;
+  border-radius: 6px;
+  overflow: auto;
+}
+.shiki {
+  width: 100%;
+  overflow-x: auto;
+}
+/* Style for edit mode */
+.message-editor {
+  width: 100%;
+  min-height: 100px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-family: monospace;
+  margin-bottom: 8px;
+}
+.edit-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.edit-controls button {
+  padding: 4px 12px;
+  cursor: pointer;
 }

@@ -23,6 +23,13 @@ impl TemplateService {
                     <link rel="stylesheet" href="/static/project.css">
                     <link rel="stylesheet" href="/static/analyze-query.css">
                     <link rel="stylesheet" href="/static/split-chat.css">
+                    <script type="importmap">
+                    {{
+                        "imports": {{
+                            "shiki": "https://esm.sh/shiki@3.0.0"
+                        }}
+                    }}
+                    </script>
                     <script src="/static/analyze-query.js" type="module"></script>
                 </head>
                 <body>

@@ -2,8 +2,9 @@
 import { initializeElements } from './analyze-query/elements.js';
 import { updateContext } from './analyze-query/context.js';
 import { sendMessage, resetChat, toggleEditMode } from './analyze-query/chat.js';
+import { applySyntaxHighlighting } from './analyze-query/syntax-highlighting.js';
 
-function initAnalysisChat() {
+async function initAnalysisChat() {
     const projectName = document.getElementById('project-name').value;
     const queryText = document.getElementById('query-text').value;
 
@@ -20,6 +21,13 @@ function initAnalysisChat() {
         });
     });
 
+    // Apply syntax highlighting to existing code blocks
+    await applySyntaxHighlighting();
 }
 
-initAnalysisChat();
+// Initialize the chat when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAnalysisChat);
+} else {
+    initAnalysisChat();
+}

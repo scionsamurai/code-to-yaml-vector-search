@@ -38,6 +38,11 @@ function initSplitChat() {
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-button');
     
+    // Apply syntax highlighting to existing messages
+    import('./analyze-query/syntax-highlighting.js').then(module => {
+        module.applySyntaxHighlighting();
+    });
+    
     // Add event listener for the send button
     if (sendButton) {
         sendButton.addEventListener('click', sendMessage);
@@ -56,7 +61,7 @@ function initSplitChat() {
         const message = messageInput.value.trim();
         if (message) {
             // Add user message to chat
-            addMessageToChat('user', message, chatContainer);
+            const messageDiv = addMessageToChat('user', message, chatContainer);
             messageInput.value = '';
             
             // Get project and file path from hidden inputs
@@ -81,7 +86,13 @@ function initSplitChat() {
             })
             .then(response => response.text())
             .then(responseText => {
-                addMessageToChat('model', responseText, chatContainer);
+                const modelMsgDiv = addMessageToChat('model', responseText, chatContainer);
+                
+                // Apply syntax highlighting to the new message
+                import('./analyze-query/syntax-highlighting.js').then(module => {
+                    module.highlightMessage(modelMsgDiv);
+                });
+                
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             })
             .catch(error => {
@@ -107,7 +118,9 @@ function initSplitChat() {
         // Add all visible messages
         chatMessages.forEach(message => {
             const role = message.classList.contains('user-message') ? 'user' : 'model';
-            const content = message.querySelector('.message-content').textContent;
+            // Use the original content if available
+            const content = message.dataset.originalContent || 
+                            message.querySelector('.message-content').textContent;
             history.push({ role, content });
         });
         
