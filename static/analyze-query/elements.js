@@ -1,5 +1,4 @@
 // static/analyze-query/elements.js
-
 export function initializeElements(sendMessage, resetChat, updateContext) {
     const chatContainer = document.getElementById('analysis-chat-container');
     const messageInput = document.getElementById('analysis-message-input');

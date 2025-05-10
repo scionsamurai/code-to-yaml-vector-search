@@ -1,5 +1,4 @@
 // static/analyze-query/context.js
-
 export function updateContext(projectName, queryText) {
     const statusMessage = document.getElementById('context-status');
     if (statusMessage) {

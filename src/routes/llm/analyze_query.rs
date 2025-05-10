@@ -127,9 +127,7 @@ pub async fn analyze_query(
     HttpResponse::Ok().body(html)
 }
 
-pub fn format_message(content: &str) -> String {
-
-    // let unescaped_content = html_escape::decode_html_entities(content).to_string();
+pub fn _format_message(content: &str) -> String {
 
     // Create a regex to match triple backtick code blocks
     let re = regex::Regex::new(r"```([a-zA-Z]*)([\s\S]*?)```").unwrap();
