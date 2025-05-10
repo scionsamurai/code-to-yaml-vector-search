@@ -12,8 +12,9 @@ export function initializeElements(sendMessage, resetChat, updateContext) {
     if (resetButton) resetButton.addEventListener('click', resetChat);
     
     if (messageInput) {
-        messageInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
+        messageInput.addEventListener('keydown', function(e) { 
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { 
+                e.preventDefault(); 
                 sendMessage();
             }
         });

@@ -49,6 +49,9 @@ body {
 .chat-message {
   position: relative;
 }
+.chat-message > * {
+  margin: 0;
+}
 
 .message-controls {
   position: absolute;

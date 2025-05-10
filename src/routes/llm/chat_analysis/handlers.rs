@@ -1,7 +1,6 @@
 // src/routes/llm/chat_analysis/handlers.rs
 use actix_web::{post, web, HttpResponse};
 use crate::models::ChatMessage;
-use serde::Deserialize;
 use crate::models::AppState;
 use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;

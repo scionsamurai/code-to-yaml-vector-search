@@ -31,6 +31,7 @@ impl TemplateService {
                     }}
                     </script>
                     <script src="/static/analyze-query.js" type="module"></script>
+                    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
                 </head>
                 <body>
                 <div class="head">
@@ -80,7 +81,7 @@ impl TemplateService {
                         </div>
                         
                         <div class="chat-input">
-                            <input type="text" id="analysis-message-input" placeholder="Ask a question about the code...">
+                            <textarea id="analysis-message-input" placeholder="Ask a question about the code..."></textarea>
                             <button id="analysis-send-button">Send</button>
                             <button id="analysis-reset-button" class="secondary">Reset Chat</button>
                         </div>

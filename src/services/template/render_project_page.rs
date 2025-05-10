@@ -51,7 +51,7 @@ impl TemplateService {
                     <!-- Search Form -->
                     <div class="search-form">
                         <form action="/projects/{}" method="get">
-                            <input type="text" name="q" placeholder="Enter your query..." value="{}">
+                            <textarea name="q" placeholder="Enter your query..." value="{}"></textarea>
                             <button type="submit">Search</button>
                         </form>
                     </div>

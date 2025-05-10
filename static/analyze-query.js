@@ -1,33 +1,37 @@
 // static/analyze-query.js
-import { initializeElements } from './analyze-query/elements.js';
-import { updateContext } from './analyze-query/context.js';
-import { sendMessage, resetChat, toggleEditMode } from './analyze-query/chat.js';
-import { applySyntaxHighlighting } from './analyze-query/syntax-highlighting.js';
+import { initializeElements } from "./analyze-query/elements.js";
+import { updateContext } from "./analyze-query/context.js";
+import {
+  sendMessage,
+  resetChat,
+  toggleEditMode,
+} from "./analyze-query/chat.js";
+import { applySyntaxHighlighting } from "./analyze-query/syntax-highlighting.js";
 
 async function initAnalysisChat() {
-    const projectName = document.getElementById('project-name').value;
-    const queryText = document.getElementById('query-text').value;
+  const projectName = document.getElementById("project-name").value;
+  const queryText = document.getElementById("query-text").value;
 
-    const { chatContainer } = initializeElements(
-        () => sendMessage(chatContainer),
-        () => resetChat(chatContainer),
-        () => updateContext(projectName, queryText)
-    );
+  const { chatContainer } = initializeElements(
+    () => sendMessage(chatContainer),
+    () => resetChat(chatContainer),
+    () => updateContext(projectName, queryText)
+  );
 
-    document.querySelectorAll('.edit-message-btn').forEach(button => {
-        button.addEventListener('click', function() {
-            const messageDiv = button.closest('.chat-message');
-            toggleEditMode(messageDiv);
-        });
+  document.querySelectorAll(".edit-message-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const messageDiv = button.closest(".chat-message");
+      toggleEditMode(messageDiv);
     });
+  });
 
-    // Apply syntax highlighting to existing code blocks
-    await applySyntaxHighlighting();
+  // Apply syntax highlighting to existing code blocks
+  await applySyntaxHighlighting();
 }
 
 // Initialize the chat when DOM is ready
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAnalysisChat);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initAnalysisChat);
 } else {
-    initAnalysisChat();
+  initAnalysisChat();
 }

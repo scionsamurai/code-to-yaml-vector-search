@@ -84,6 +84,7 @@
 .message-content {
     white-space: pre-wrap;
     word-break: break-word;
+    line-height: 1rem;
 }
 
 .message-content pre {
@@ -96,4 +97,8 @@
 
 .message-content code {
     font-family: monospace;
+}
+.message-content p, .message-content ol, .message-content ul {
+    margin: 0;
+    padding: 0;
 }

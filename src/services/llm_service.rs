@@ -14,7 +14,25 @@ impl LlmService {
     }
 
     async fn escape_html(&self, text: String) -> String {
-        html_escape::encode_text(&text).to_string()
+        // Process text line by line to handle code block markers vs inline triple backticks
+        let processed_text = text.lines()
+            .map(|line| {
+                let trimmed = line.trim();
+                // If the line starts with triple backticks after trimming, leave it as is
+                if trimmed.starts_with("```") {
+                    line.to_string()
+                } else {
+                    // Replace any triple backticks in the middle of the line
+                    line.replace("```", "&grave;&grave;&grave;")
+                }
+            })
+            .collect::<Vec<String>>()
+            .join("\n");
+        
+        // Perform normal HTML escaping on the processed text
+        html_escape::encode_text(&processed_text)
+            .to_string()
+            .replace("\"", "&quot;")
     }
 
     pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {
