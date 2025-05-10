@@ -93,10 +93,10 @@ body {
   margin: 10px 0;
   border-radius: 6px;
   overflow: auto;
+  display: flex;
 }
 .shiki {
   width: 100%;
-  overflow-x: auto;
 }
 /* Style for edit mode */
 .message-editor {
@@ -116,4 +116,12 @@ body {
 .edit-controls button {
   padding: 4px 12px;
   cursor: pointer;
+}
+
+code:not(pre > code) {
+  background-color: #1d212b;
+  color: #B392F0;
+  border-radius: 0.3rem;
+  white-space: pre-wrap;
+  padding: 0 5px 1px 5px;
 }

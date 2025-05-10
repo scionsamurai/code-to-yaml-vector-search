@@ -89,10 +89,10 @@
 
 .message-content pre {
     background-color: #f8f8f8;
-    padding: 10px;
     border-radius: 5px;
     overflow-x: auto;
-    margin: 10px 0;
+    margin: 0;
+    padding: 10px 0 10px 10px;
 }
 
 .message-content code {
