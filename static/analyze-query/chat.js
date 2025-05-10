@@ -1,6 +1,6 @@
 // static/analyze-query/chat.js
 import { formatMessage } from './utils.js';
-import { highlightMessage } from './syntax-highlighting.js';
+import { applySyntaxHighlighting } from './syntax-highlighting.js';
 
 export function sendMessage(chatContainer) {
     const messageInput = document.getElementById('analysis-message-input');
@@ -26,7 +26,7 @@ export function sendMessage(chatContainer) {
         .then(response => response.text())
         .then(responseText => {
             const messageDiv = addMessageToChat('model', responseText, chatContainer);
-            highlightMessage(messageDiv); // Apply syntax highlighting
+            applySyntaxHighlighting(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         })
         .catch(error => {
@@ -107,8 +107,7 @@ export function toggleEditMode(messageDiv) {
         messageDiv.classList.remove('editing');
         editor.remove();
         
-        // Reapply syntax highlighting
-        highlightMessage(messageDiv);
+        applySyntaxHighlighting(messageDiv);
         
         // Save the edited message to the server
         saveEditedMessage(messageDiv, role, editedContent);

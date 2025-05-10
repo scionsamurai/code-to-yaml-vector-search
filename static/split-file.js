@@ -1,6 +1,6 @@
 //  static/split-file.js
 import { addMessageToChat } from './analyze-query/chat.js';
-import { highlightMessage } from './analyze-query/syntax-highlighting.js';
+import { applySyntaxHighlighting } from './analyze-query/syntax-highlighting.js';
 
 export function suggestSplit(project, filePath) {
     // Show a loading indicator
@@ -89,7 +89,7 @@ function initSplitChat() {
             .then(responseText => {
                 console.log('Response:', responseText);
                 const modelMsgDiv = addMessageToChat('model', responseText, chatContainer);
-                highlightMessage(modelMsgDiv);
+                applySyntaxHighlighting(modelMsgDiv);
                 chatContainer.scrollTop = chatContainer.scrollHeight;
             })
             .catch(error => {
