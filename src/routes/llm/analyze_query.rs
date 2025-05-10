@@ -12,6 +12,7 @@ pub struct AnalyzeQueryForm {
     query: String,
 }
 
+
 #[post("/analyze-query")]
 pub async fn analyze_query(
     app_state: web::Data<AppState>,
@@ -86,7 +87,7 @@ pub async fn analyze_query(
                     for msg in history_array {
                         if let (Some(role), Some(content)) = (msg.get("role").and_then(Value::as_str), 
                                                           msg.get("content").and_then(Value::as_str)) {
-                            let formatted_content = format_message(content);
+                            // let formatted_content = format_message(content);
                             html.push_str(&format!(
                                 r#"<div class="chat-message {}-message">
                                     <div class="message-content">{}</div>
@@ -95,7 +96,7 @@ pub async fn analyze_query(
                                     </div>
                                 </div>"#,
                                 role,
-                                formatted_content
+                                content
                             ));
                         }
                     }

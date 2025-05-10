@@ -7,6 +7,7 @@ import {
   toggleEditMode,
 } from "./analyze-query/chat.js";
 import { applySyntaxHighlighting } from "./analyze-query/syntax-highlighting.js";
+import { formatMessage } from "./analyze-query/utils.js";
 
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
@@ -23,6 +24,15 @@ async function initAnalysisChat() {
       const messageDiv = button.closest(".chat-message");
       toggleEditMode(messageDiv);
     });
+  });
+
+  // Format existing messages from Markdown to HTML
+  const chatMessages = chatContainer.querySelectorAll(".chat-message");
+  chatMessages.forEach((messageDiv) => {
+    const messageContent = messageDiv.querySelector(".message-content");
+    const originalContent =
+      messageDiv.dataset.originalContent || messageContent.textContent;
+    messageContent.innerHTML = formatMessage(originalContent);
   });
 
   // Apply syntax highlighting to existing code blocks

@@ -32,7 +32,7 @@ impl LlmService {
         // Perform normal HTML escaping on the processed text
         html_escape::encode_text(&processed_text)
             .to_string()
-            .replace("\"", "&quot;")
+            .replace("\"", "&#34;")
     }
 
     pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {

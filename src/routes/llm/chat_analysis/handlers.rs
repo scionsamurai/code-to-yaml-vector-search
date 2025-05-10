@@ -37,7 +37,7 @@ pub async fn chat_analysis(
     let mut full_history = get_full_history(&project);
 
     // Format messages for LLM with system prompt and existing history
-    let mut messages = format_messages(&system_prompt, &full_history, &data.message);
+    let messages = format_messages(&system_prompt, &full_history, &data.message);
 
     // Send to LLM
     let model = project.model.clone();
