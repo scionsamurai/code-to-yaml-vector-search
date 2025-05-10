@@ -21,7 +21,7 @@ impl std::fmt::Display for EmbeddingMetadata {
         // Define how the struct should be formatted as a string
         write!(f, "EmbeddingMetadata {{ file_path: {}, last_updated: {}, vector_id: {} }}", 
             self.file_path, 
-            self.last_updated, //chrono::DateTime implements Display
+            self.last_updated,
             self.vector_id)
     }
 }

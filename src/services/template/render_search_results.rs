@@ -1,3 +1,4 @@
+// src/services/template/render_search_results.rs
 use super::TemplateService;
 
 impl TemplateService {

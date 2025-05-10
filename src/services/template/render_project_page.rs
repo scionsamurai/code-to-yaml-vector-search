@@ -1,3 +1,4 @@
+// src/services/template/render_project_page.rs
 use crate::models::Project;
 use super::TemplateService;
 use html_escape::encode_text;

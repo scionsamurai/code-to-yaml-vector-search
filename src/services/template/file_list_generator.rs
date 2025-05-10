@@ -1,3 +1,4 @@
+// src/services/template/file_list_generator.rs
 use crate::models::Project;
 use super::TemplateService;
 
