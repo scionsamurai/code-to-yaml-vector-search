@@ -7,7 +7,7 @@ import {
   resetChat,
   toggleEditMode,
 } from "./analyze-query/chat.js";
-import { applySyntaxHighlighting } from "./analyze-query/syntax-highlighting.js";
+import { applySyntaxHighlighting, updateCopyLinks } from "./analyze-query/syntax-highlighting.js";
 import { formatMessage } from "./analyze-query/utils.js";
 
 async function initAnalysisChat() {
@@ -41,6 +41,8 @@ async function initAnalysisChat() {
 
   // Apply syntax highlighting to existing code blocks
   await applySyntaxHighlighting();
+
+  updateCopyLinks();
 }
 
 // Initialize the chat when DOM is ready

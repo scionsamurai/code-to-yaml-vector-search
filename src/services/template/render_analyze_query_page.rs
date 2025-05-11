@@ -24,7 +24,7 @@ impl TemplateService {
                     <link rel="stylesheet" href="/static/project.css">
                     <link rel="stylesheet" href="/static/analyze-query.css">
                     <link rel="stylesheet" href="/static/split-chat.css">
-                    <link rel="stylesheet" href="/static/analyze-query/modal.css">
+                    <link rel="stylesheet" href="/static/modal.css">
                     <script type="importmap">
                     {{
                         "imports": {{
@@ -40,11 +40,9 @@ impl TemplateService {
                     <h1>Code Analysis</h1>
                 </div>
                 
-
                 <div class="analysis-container">
                     <div class="editable-query">
                         <p>Project: {}</p>
-                        <label>Query: </label>
                         <div class="query-display-container">
                             <p id="query-display">{}</p>
                             <button id="edit-query-btn" class="secondary">Edit Query</button>
@@ -118,7 +116,7 @@ impl TemplateService {
             "#,
             project_name,
             project_name,
-            query,
+            "<label>Query: </label>".to_string() + query,
             relevant_files_html,
             other_files_html,
             project_name,

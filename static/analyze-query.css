@@ -105,6 +105,7 @@ body {
 }
 .message-content .shiki-block {
   padding: 0;
+  position: relative;
 }
 .shiki {
   width: 100%;
@@ -147,4 +148,43 @@ strong code:not(pre > code) {
   display: flex;
   flex-direction: column;
   height: 80vh;
+}
+
+
+
+.hljs__link_and_copy {
+	color: white;
+	position: absolute;
+	top: 0.3rem;
+	right: 0.3rem;
+	background: rgba(255,255,255,0.2);
+	padding: 5px;
+	display: flex;
+	font-size: 1rem;
+	border: solid 1px white;
+}
+
+.link_and_copy__text {
+	pointer-events: none;
+}
+.pointer {
+  cursor: pointer;
+}
+
+.link_and_copy__copy_link {
+	display: none;
+	font-size: 1.25rem;
+}
+
+.hljs-pre .hljs {
+	min-height: 1.8rem;
+}
+
+.hljs:hover + .hljs__link_and_copy .link_and_copy__copy_link,
+pre:hover .hljs__link_and_copy .link_and_copy__copy_link {
+	display: block;
+}
+
+.hljs__link_and_copy:hover .link_and_copy__copy_link {
+	display: block;
 }
