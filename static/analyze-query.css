@@ -39,10 +39,15 @@ body {
 }
 .file-snippets {
   max-height: 70vh !important;
+  flex-grow: 1;
+  flex: 1;
+  max-height: 600px;
+  overflow-y: auto;
 }
 .chat-interface {
   display: flex;
   flex-direction: column;
+  flex-grow: 2;
 }
 
 /* CSS for message editing */
@@ -95,6 +100,9 @@ body {
   overflow: auto;
   display: flex;
 }
+.message-content .shiki-block {
+  padding: 0;
+}
 .shiki {
   width: 100%;
 }
@@ -119,9 +127,13 @@ body {
 }
 
 code:not(pre > code) {
-  background-color: #1d212b;
-  color: #B392F0;
+  background-color: #24292e;
+  color: #9ECBFF;
   border-radius: 0.3rem;
   white-space: pre-wrap;
   padding: 0 5px 1px 5px;
+}
+
+strong code:not(pre > code) {
+  color: #B392F0;
 }

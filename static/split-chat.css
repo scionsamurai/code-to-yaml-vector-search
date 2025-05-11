@@ -92,7 +92,7 @@
     border-radius: 5px;
     overflow-x: auto;
     margin: 0;
-    padding: 10px 0 10px 10px;
+    padding: 15px;
 }
 
 .message-content code {
@@ -101,4 +101,14 @@
 .message-content p, .message-content ol, .message-content ul {
     margin: 0;
     padding: 0;
+}
+
+.message-content ol, .message-content ul {
+    padding-left: 20px;
+    line-height: 0.4rem;
+}
+
+.message-content li {
+    margin-bottom: 5px;
+    line-height: 1rem;
 }

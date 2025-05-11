@@ -44,6 +44,9 @@ body {
   background-color: #dcf8c6;
   margin-left: 20%;
 }
+.model-message {
+  background: antiquewhite;
+}
 
 .assistant-message {
   background-color: #f1f0f0;
@@ -101,11 +104,6 @@ body {
   margin: 20px 0;
 }
 
-.file-snippets {
-  flex: 1;
-  max-height: 600px;
-  overflow-y: auto;
-}
 
 .chat-interface {
   flex: 1;
