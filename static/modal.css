@@ -1,0 +1,103 @@
+/* static/analyze-query/modal.css */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 10% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 700px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-footer {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.modal-footer button {
+    margin-left: 10px;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover {
+    color: #555;
+}
+
+#editable-query-text {
+    width: 100%;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+#query-display {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+    margin: 5px 0;
+    white-space: pre-wrap;
+}
+
+.query-display-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.query-display-container button {
+    align-self: flex-end;
+    margin-top: 5px;
+}
+
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #d4edda;
+    color: #155724;
+    padding: 10px 15px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1001;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.notification.show {
+    opacity: 1;
+}

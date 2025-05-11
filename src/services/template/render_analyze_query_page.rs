@@ -24,6 +24,7 @@ impl TemplateService {
                     <link rel="stylesheet" href="/static/project.css">
                     <link rel="stylesheet" href="/static/analyze-query.css">
                     <link rel="stylesheet" href="/static/split-chat.css">
+                    <link rel="stylesheet" href="/static/analyze-query/modal.css">
                     <script type="importmap">
                     {{
                         "imports": {{
@@ -37,39 +38,45 @@ impl TemplateService {
                 <body>
                 <div class="head">
                     <h1>Code Analysis</h1>
-                    <p>Project: {}</p>
-                    <p>Query: {}</p>
                 </div>
                 
 
                 <div class="analysis-container">
-                    <div class="file-snippets">
-                        <h2>Files for Analysis</h2>
-                        
-                        <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
-                            background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s;">
+                    <div class="editable-query">
+                        <p>Project: {}</p>
+                        <label>Query: </label>
+                        <div class="query-display-container">
+                            <p id="query-display">{}</p>
+                            <button id="edit-query-btn" class="secondary">Edit Query</button>
                         </div>
-                        
-                        <div class="file-list">
-                            <h3>
-                                Relevant Files 
-                                <button id="toggle-relevant-files" class="toggle-button">Toggle All</button>
-                            </h3>
-                            <div id="relevant-files-list">
-                                {}
+                            <h2>Files for Analysis</h2>
+                        <div class="file-snippets">
+                            
+                            <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
+                                background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s;">
                             </div>
-                        </div>
-                        
-                        <div class="file-list">
-                            <h3>
-                                Other Project Files
-                                <button id="toggle-other-files" class="toggle-button">Toggle All</button>
-                            </h3>
-                            <div id="other-files-list">
-                                {}
+                            
+                            <div class="file-list">
+                                <h3>
+                                    Relevant Files 
+                                    <button id="toggle-relevant-files" class="toggle-button">Toggle All</button>
+                                </h3>
+                                <div id="relevant-files-list">
+                                    {}
+                                </div>
                             </div>
+                            
+                            <div class="file-list">
+                                <h3>
+                                    Other Project Files
+                                    <button id="toggle-other-files" class="toggle-button">Toggle All</button>
+                                </h3>
+                                <div id="other-files-list">
+                                    {}
+                                </div>
+                            </div>
+                            
                         </div>
-                        
                     </div>
                     
                     <div class="chat-interface">
@@ -92,6 +99,20 @@ impl TemplateService {
                 <div class="actions">
                     <a href="/projects/{}" class="button">Back to Project</a>
                 </div>
+                <div id="query-edit-modal" class="modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Edit Query</h3>
+                        <span class="close-modal">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <textarea id="editable-query-text" rows="5" cols="50">{}</textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="update-query-btn" class="primary">Update Query</button>
+                        <button id="cancel-query-btn" class="secondary">Cancel</button>
+                    </div>
+                </div>
                 </body>
             </html>
             "#,
@@ -103,7 +124,8 @@ impl TemplateService {
             project_name,
             query,
             existing_chat_html,
-            project_name
+            project_name,
+            query
         )
     }
 }

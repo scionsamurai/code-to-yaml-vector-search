@@ -6,6 +6,7 @@ use crate::services::template::TemplateService;
 use crate::services::yaml::YamlService;
 use actix_web::{get, web, HttpResponse, Responder};
 use std::path::Path;
+use crate::routes::llm::chat_analysis::utils::escape_html;
 
 #[derive(serde::Deserialize)]
 struct QueryParams {
@@ -43,7 +44,8 @@ pub async fn get_project(
 
     // Check if a new query is provided
     if let Some(query_text) = &query.q {
-        if !query_text.is_empty() {
+        let escaped_query_text = escape_html(query_text.clone()).await;
+        if !escaped_query_text.is_empty() {
             // Check if we already have this query saved
             let existing_query = project.saved_queries.as_ref()
                 .and_then(|queries| queries.iter()
@@ -58,14 +60,14 @@ pub async fn get_project(
                 
                 // Render search results from saved data
                 search_results_html = template_service.render_search_results(
-                    query_text,
+                    &escaped_query_text,
                     &similar_files,
                     llm_analysis,
                     &project.name
                 );
             } else {
                 // No saved query found, execute new search
-                match search_service.search_project(&mut project, query_text).await {
+                match search_service.search_project(&mut project, &query_text).await {
                     Ok((similar_files, llm_analysis)) => {
                         // Save updated project with the new query
                         if let Err(e) = project_service.save_project(&project, &output_dir) {
@@ -74,7 +76,7 @@ pub async fn get_project(
                         
                         // Render search results
                         search_results_html = template_service.render_search_results(
-                            query_text,
+                            &escaped_query_text,
                             &similar_files,
                             &llm_analysis,
                             &project.name

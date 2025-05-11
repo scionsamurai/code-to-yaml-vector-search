@@ -30,6 +30,9 @@ pub async fn chat_analysis(
     // Get selected context files and file contents
     let (context_files, file_contents) = get_context_and_contents(&project, &file_service);
 
+    // Escape the user's message
+    let escaped_message = escape_html(data.message.clone()).await;
+
     // Create context prompt with the loaded file contents
     let system_prompt = create_system_prompt(&data.query, &context_files, &file_contents);
 
@@ -37,7 +40,7 @@ pub async fn chat_analysis(
     let mut full_history = get_full_history(&project);
 
     // Format messages for LLM with system prompt and existing history
-    let messages = format_messages(&system_prompt, &full_history, &data.message);
+    let messages = format_messages(&system_prompt, &full_history, &escaped_message);
 
     // Send to LLM
     let model = project.model.clone();
@@ -52,7 +55,7 @@ pub async fn chat_analysis(
     // Add new message pair to history
     full_history.push(ChatMessage {
         role: "user".to_string(),
-        content: data.message.clone(),
+        content: escaped_message.clone(),
     });
 
     full_history.push(assistant_message);

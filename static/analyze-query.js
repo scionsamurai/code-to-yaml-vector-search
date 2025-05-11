@@ -1,6 +1,7 @@
 // static/analyze-query.js
 import { initializeElements } from "./analyze-query/elements.js";
 import { updateContext } from "./analyze-query/context.js";
+import { setupQueryEditor } from "./analyze-query/query.js";
 import {
   sendMessage,
   resetChat,
@@ -12,6 +13,9 @@ import { formatMessage } from "./analyze-query/utils.js";
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
   const queryText = document.getElementById("query-text").value;
+
+  // Setup query editor functionality
+  setupQueryEditor(projectName);
 
   const { chatContainer } = initializeElements(
     () => sendMessage(chatContainer),

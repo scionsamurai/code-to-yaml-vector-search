@@ -4,35 +4,13 @@ use llm_api_access::structs::Message;
 use llm_api_access::{Access, LLM};
 use std::fs::read_to_string;
 use std::path::Path;
+use crate::routes::llm::chat_analysis::utils::escape_html;
 
 pub struct LlmService;
-// src/services/llm_service.rs
 
 impl LlmService {
     pub fn new() -> Self {
         LlmService {}
-    }
-
-    async fn escape_html(&self, text: String) -> String {
-        // Process text line by line to handle code block markers vs inline triple backticks
-        let processed_text = text.lines()
-            .map(|line| {
-                let trimmed = line.trim();
-                // If the line starts with triple backticks after trimming, leave it as is
-                if trimmed.starts_with("```") {
-                    line.to_string()
-                } else {
-                    // Replace any triple backticks in the middle of the line
-                    line.replace("```", "&grave;&grave;&grave;")
-                }
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-        
-        // Perform normal HTML escaping on the processed text
-        html_escape::encode_text(&processed_text)
-            .to_string()
-            .replace("\"", "&#34;")
     }
 
     pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {
@@ -48,7 +26,7 @@ impl LlmService {
 
         match llm_response {
             Ok(content) => {
-                let escaped_content = self.escape_html(content).await;
+                let escaped_content = escape_html(content).await;
                 escaped_content
             },
             Err(e) => format!("Error during analysis: {}", e),
@@ -77,7 +55,7 @@ impl LlmService {
         
         match llm_response {
             Ok(content) => {
-                let escaped_content = self.escape_html(content).await;
+                let escaped_content = escape_html(content).await;
                 escaped_content
             },
             Err(e) => format!("Error during conversation: {}", e),
@@ -133,7 +111,7 @@ impl LlmService {
                 }
 
                 let trimmed = cleaned.trim().to_string();
-                let escaped_content = self.escape_html(trimmed).await;
+                let escaped_content = escape_html(trimmed).await;
                 escaped_content
             }
             Err(e) => format!("Error during conversion: {}", e),

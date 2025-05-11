@@ -39,10 +39,13 @@ body {
 }
 .file-snippets {
   max-height: 70vh !important;
-  flex-grow: 1;
   flex: 1;
   max-height: 600px;
   overflow-y: auto;
+  min-width: 25%;
+
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px dashed #ccc;
 }
 .chat-interface {
   display: flex;
@@ -136,4 +139,12 @@ code:not(pre > code) {
 
 strong code:not(pre > code) {
   color: #B392F0;
+}
+
+.editable-query {
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
 }

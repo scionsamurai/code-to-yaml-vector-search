@@ -22,7 +22,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(app_state.clone())
             .configure(routes::ui::configure)
             .configure(routes::project::configure)
-            .configure(routes::llm::chat_analysis::configure)
             .configure(routes::llm::configure) 
             .service(Files::new("/static", "./static"))
             
