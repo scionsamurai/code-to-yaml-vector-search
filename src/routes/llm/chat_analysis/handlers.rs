@@ -33,23 +33,7 @@ pub async fn chat_analysis(
     // Escape the user's message
     let escaped_message = escape_html(data.message.clone()).await;
     
-    let last_query_text = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(query_text) = last_query.get("query") {
-                if let Some(text) = query_text.as_str() {
-                    Some(text.to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-     } else {
-        None
-     }.unwrap_or_else(|| String::from("No previous query found"));
+    let last_query_text = project.get_query_text().unwrap_or_else(|| "No previous query found".to_string());
      
     // Create context prompt with the loaded file contents
     let system_prompt = create_system_prompt(&last_query_text, &context_files, &file_contents);

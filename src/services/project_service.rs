@@ -63,4 +63,5 @@ impl ProjectService {
         
         Ok(format!("{}<h2 style='text-align: center;'>YAML Representations</h2>{}", graph_html, yaml_html))
     }
+    
 }

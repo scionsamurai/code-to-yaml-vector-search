@@ -29,23 +29,7 @@ pub async fn update_analysis_context(
             "error": format!("Failed to load project: {}", e)
         })),
     };
-    let last_query_text = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(query_text) = last_query.get("query") {
-                if let Some(text) = query_text.as_str() {
-                    Some(text.to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-     } else {
-        None
-     }.unwrap_or_else(|| String::from("No previous query found"));
+    let last_query_text = project.get_query_text().unwrap_or_else(|| "No previous query found".to_string());
     
     // Generate a reference prompt without including file contents
     let updated_prompt = format!(

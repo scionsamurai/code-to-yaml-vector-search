@@ -1,6 +1,6 @@
 // static/analyze-query/chat.js
 import { formatMessage } from './utils.js';
-import { applySyntaxHighlighting } from './syntax-highlighting.js';
+import { applySyntaxHighlighting, updateCopyLinks } from './syntax-highlighting.js';
 
 export function sendMessage(chatContainer) {
     const messageInput = document.getElementById('analysis-message-input');
@@ -23,9 +23,10 @@ export function sendMessage(chatContainer) {
             })
         })
         .then(response => response.text())
-        .then(responseText => {
+        .then(async responseText => {
             const messageDiv = addMessageToChat('model', responseText, chatContainer);
-            applySyntaxHighlighting(messageDiv);
+            await applySyntaxHighlighting(messageDiv);
+            updateCopyLinks(messageDiv);
         })
         .catch(error => {
             console.error('Error:', error);

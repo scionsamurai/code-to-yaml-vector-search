@@ -4,7 +4,6 @@ use crate::models::AppState;
 use crate::services::project_service::ProjectService;
 use crate::services::template::TemplateService;
 use std::path::Path;
-use serde_json::Value;
 
 #[derive(serde::Deserialize)]
 pub struct AnalyzeQueryForm {
@@ -28,108 +27,12 @@ pub async fn analyze_query(
         Ok(p) => p,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load project: {}", e)),
     };
-    
-    // Get relevant files from the latest saved query
-    let relevant_files = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(vector_results) = last_query.get("vector_results") {
-                if let Some(results_array) = vector_results.as_array() {
-                    results_array.iter()
-                        .filter_map(|result| {
-                            if let Some(file_path) = result.get(0)?.as_str() {
-                                Some(file_path.to_string())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<String>>()
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
-    };
-    
-    // Get saved context files from the project if available
-    let saved_context_files = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(files) = last_query.get("context_files") {
-                if let Some(files_array) = files.as_array() {
-                    files_array.iter()
-                        .filter_map(|f| f.as_str().map(String::from))
-                        .collect::<Vec<String>>()
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
-    };
 
-    // Extract existing chat messages if any
-    let existing_chat_html = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(chat_history) = last_query.get("analysis_chat_history") {
-                if let Some(history_array) = chat_history.as_array() {
-                    let mut html = String::new();
-                    for msg in history_array {
-                        if let (Some(role), Some(content)) = (msg.get("role").and_then(Value::as_str), 
-                                                          msg.get("content").and_then(Value::as_str)) {
-                            // let formatted_content = format_message(content);
-                            html.push_str(&format!(
-                                r#"<div class="chat-message {}-message">
-                                    <div class="message-content">{}</div>
-                                    <div class="message-controls">
-                                        <button class="edit-message-btn" title="Edit message">Edit</button>
-                                    </div>
-                                </div>"#,
-                                role,
-                                content
-                            ));
-                        }
-                    }
-                    html
-                } else {
-                    String::new()
-                }
-            } else {
-                String::new()
-            }
-        } else {
-            String::new()
-        }
-    } else {
-        String::new()
-    };
-
-    let last_query_text = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(query_text) = last_query.get("query") {
-                if let Some(text) = query_text.as_str() {
-                    Some(text.to_string())
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        } else {
-            None
-        }
-     } else {
-        None
-     }.unwrap_or_else(|| String::from("No previous query found"));
+    // Use the new methods to get the data
+    let relevant_files = project.get_vector_results();
+    let saved_context_files = project.get_context_files();
+    let existing_chat_html = project.get_analysis_chat_history();
+    let last_query_text = project.get_query_text().unwrap_or_else(|| "No previous query found".to_string());
     
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(
@@ -142,6 +45,7 @@ pub async fn analyze_query(
     );
     
     HttpResponse::Ok().body(html)
+
 }
 
 pub fn _format_message(content: &str) -> String {

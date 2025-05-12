@@ -4,9 +4,9 @@ use qdrant_client::config::QdrantConfig;
 use qdrant_client::qdrant::{
     Distance, VectorParams, PointStruct, Value, 
     CreateCollection, VectorsConfig, Vectors,
-    Condition, DeletePointsBuilder, Filter, // <-- Import Condition, DeletePointsBuilder, Filter
-    UpsertPoints, // Keep this import
-    SearchPoints, WithPayloadSelector // Keep these imports for the search function
+    Condition, DeletePointsBuilder, Filter,
+    UpsertPoints,
+    SearchPoints, WithPayloadSelector
 };
 use qdrant_client::qdrant::vectors_config::Config; 
 use std::collections::HashMap;
@@ -32,13 +32,10 @@ impl QdrantService {
         let collection_name = format!("project_{}", project_name);
         
         let collections = self.client.list_collections().await?;
-        println!("collection_name: {:?}", &collection_name); // Keep for debugging if needed
         if collections.collections.iter().any(|c| &c.name == &collection_name) {
-            println!("Collection '{}' already exists.", &collection_name); // Added log
             return Ok(());
         }
         
-        println!("Creating collection '{}'", &collection_name); // Added log
         self.client.create_collection(CreateCollection {
             collection_name: collection_name.clone(),
             vectors_config: Some(VectorsConfig {
@@ -50,7 +47,6 @@ impl QdrantService {
             }),
             ..Default::default()
         }).await?;
-        println!("Collection '{}' created successfully.", collection_name); // Added log
         
         Ok(())
     }
@@ -127,9 +123,7 @@ impl QdrantService {
             ..Default::default()
         };
         
-        println!("Searching in collection '{}'", collection_name); // Added log
         let search_result = self.client.search_points(search_request).await?;
-        println!("Search completed, found {} results", search_result.result.len()); // Added log
         
         // Extract results - return (file_path, file_content, score)
         // **Important:** Changed "yaml_content" to "file_content" to match what's stored
