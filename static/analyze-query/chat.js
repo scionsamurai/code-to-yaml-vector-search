@@ -19,7 +19,6 @@ export function sendMessage(chatContainer) {
             },
             body: JSON.stringify({
                 project: projectName,
-                query: queryText,
                 message: message
             })
         })
@@ -27,7 +26,6 @@ export function sendMessage(chatContainer) {
         .then(responseText => {
             const messageDiv = addMessageToChat('model', responseText, chatContainer);
             applySyntaxHighlighting(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
         })
         .catch(error => {
             console.error('Error:', error);
@@ -83,7 +81,6 @@ export function addMessageToChat(role, content, chatContainer) {
     messageDiv.appendChild(messageContent);
     messageDiv.appendChild(messageControls);
     chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
     
     return messageDiv;
 }

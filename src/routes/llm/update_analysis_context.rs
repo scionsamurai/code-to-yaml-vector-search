@@ -8,7 +8,6 @@ use std::path::Path;
 #[derive(Deserialize)]
 pub struct UpdateContextRequest {
     project: String,
-    query: String,
     files: Vec<String>,
 }
 
@@ -30,15 +29,33 @@ pub async fn update_analysis_context(
             "error": format!("Failed to load project: {}", e)
         })),
     };
+    let last_query_text = if let Some(saved_queries) = &project.saved_queries {
+        if let Some(last_query) = saved_queries.last() {
+            if let Some(query_text) = last_query.get("query") {
+                if let Some(text) = query_text.as_str() {
+                    Some(text.to_string())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+     } else {
+        None
+     }.unwrap_or_else(|| String::from("No previous query found"));
     
     // Generate a reference prompt without including file contents
     let updated_prompt = format!(
         "You are an AI assistant helping with code analysis for a project. \
         The user's query is: \"{}\"\n\n\
         You have access to the following files:\n{}",
-        data.query,
+        last_query_text,
         data.files.join("\n")
     );
+
     
     // Update the saved context in the project - only store file references
     if let Some(saved_queries) = &mut project.saved_queries {

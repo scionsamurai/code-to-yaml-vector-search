@@ -42,16 +42,19 @@ pub fn get_context_and_contents(project: &Project, file_service: &FileService) -
 }
 
 pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_contents: &str) -> String {
-    format!(
-        "You are an AI assistant helping with code analysis for a project. \
-        The user's original query was: \"{}\"\n\n\
-        You have access to the following files:\n{}\n\n\
-        Here are the contents of these files:\n\n{}",
-        query,
-        context_files.join("\n"),
-        file_contents
-    )
-}
+    let mut prompt = format!("You are an AI assistant helping with code analysis for a project. \
+        The user's original query was: \"{}\"", query);
+    
+    if !context_files.is_empty() {
+        prompt.push_str(&format!("\n\nYou have access to the following files:\n{}", context_files.join("\n")));
+    }
+    
+    if !file_contents.is_empty() {
+        prompt.push_str(&format!("\n\nHere are the contents of these files:\n\n{}", file_contents));
+    }
+    
+    prompt
+ }
 
 pub fn get_full_history(project: &Project) -> Vec<ChatMessage> {
     if let Some(saved_queries) = &project.saved_queries {

@@ -24,6 +24,13 @@ impl TemplateService {
                 <script src="/static/split-file.js" type="module"></script>
             </head>
             <body>
+                <div id="validationModal" class="path-comment-modal">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h2>Validation Results</h2>
+                        <ul id="validationList"></ul>
+                    </div>
+                </div>
                 <div class="head">
                     <h1>{}</h1>
                     

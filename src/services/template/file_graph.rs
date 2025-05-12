@@ -2,7 +2,7 @@
 use super::TemplateService;
 
 impl TemplateService {
-    pub fn generate_file_graph_html(&self, file_descriptions: &[(String, String)]) -> String {
+    pub fn generate_file_graph_html(&self, project_name: &str, file_descriptions: &[(String, String)]) -> String {
         // Sort the files
         let mut sorted_descriptions = file_descriptions.to_vec();
         sorted_descriptions.sort_by_key(|(path, _)| path.clone());
@@ -41,7 +41,8 @@ impl TemplateService {
             padding: 1rem;
         }}
     </style>
-    <pre>{}</pre></div>"#,
+    <pre><button onclick="validateFilePaths('{}')">Validate File Path Comments</button><br>{}</pre></div>"#,
+            project_name,
             indented_lines.join("\n")
         )
     }
@@ -52,6 +53,6 @@ impl TemplateService {
             .take_while(|(x, y)| x == y)
             .map(|(x, _)| x)
             .collect::<Vec<_>>()
-            .join("/")
+            .join("/") + "/"
     }
 }

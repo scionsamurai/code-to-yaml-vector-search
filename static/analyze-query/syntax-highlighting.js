@@ -29,16 +29,15 @@ export async function applySyntaxHighlighting(div=document) {
 }
 
 
-export async function updateCopyLinks() {
+export async function updateCopyLinks(el=document) {
 	// Select all pre elements
-	const codeBlocks = document.querySelectorAll('pre')
+	const codeBlocks = el.querySelectorAll('pre')
 
 	// Loop through each pre element
 	for (const codeBlock of codeBlocks) {
 		// Get the language from the data-lang attribute
 		const lang = codeBlock.getAttribute('data-language')
 		if (lang !== null) {
-            console.log('lang', lang);
 			// Create the new span element
 			const linkAndCopySpan = document.createElement('span')
 			linkAndCopySpan.className = 'hljs__link_and_copy'

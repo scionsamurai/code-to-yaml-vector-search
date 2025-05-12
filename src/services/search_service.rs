@@ -74,14 +74,20 @@ impl SearchService {
                 }
             }
         }
-        
+        let file_descriptions = project.file_descriptions.iter()
+        .map(|(path, desc)| format!("{}: {}", path, desc))
+        .collect::<Vec<String>>()
+        .join("\n");
         // Create the prompt for the LLM
         let prompt = format!(
             "User Query: \"{}\"\n\n\
+            File Descriptions:\n\
+            ```\n{}\n```\n\n\
             Related code from vector search:\n\
             ```\n{}\n```\n\n\
-            Based on the user query and the provided code: What other files or components would be needed to fully answer this query, and which files were not needed? Consider the relationship between files for your answer.",
-            query_text, 
+            Based on the user query and the provided code: Were the vector results accurate? What other files or components would be needed to fully answer this query? DO NOT RESPOND WITH ANY CODE SNIPPETS. The purpose of this step is to identify files important to the update and suggest a few query alternatives. On that note, please suggest a few alternative queries that would be useful to explore the codebase more precisely for the desired outcome. Remember that i am saying query, but it is more of a user request about code and doesn't always have the form of a question. And remember the query should be the same but more verbose and potentially more grammatically correct.",
+            query_text,
+            file_descriptions,
             file_code
         );
         
@@ -90,4 +96,5 @@ impl SearchService {
         
         Ok(llm_response)
     }
+
 }

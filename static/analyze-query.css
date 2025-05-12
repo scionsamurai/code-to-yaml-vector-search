@@ -51,6 +51,7 @@ body {
   display: flex;
   flex-direction: column;
   flex-grow: 2;
+  min-width: 55%;
 }
 
 /* CSS for message editing */
@@ -140,6 +141,7 @@ code:not(pre > code) {
 
 strong code:not(pre > code) {
   color: #B392F0;
+  font-size: 0.85rem;
 }
 
 .editable-query {

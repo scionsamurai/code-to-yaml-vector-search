@@ -9,7 +9,6 @@ use serde_json::Value;
 #[derive(serde::Deserialize)]
 pub struct AnalyzeQueryForm {
     project: String,
-    query: String,
 }
 
 
@@ -113,11 +112,29 @@ pub async fn analyze_query(
     } else {
         String::new()
     };
+
+    let last_query_text = if let Some(saved_queries) = &project.saved_queries {
+        if let Some(last_query) = saved_queries.last() {
+            if let Some(query_text) = last_query.get("query") {
+                if let Some(text) = query_text.as_str() {
+                    Some(text.to_string())
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+     } else {
+        None
+     }.unwrap_or_else(|| String::from("No previous query found"));
     
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(
         &form.project,
-        &form.query,
+        &last_query_text,
         &relevant_files,
         &saved_context_files,
         &project,

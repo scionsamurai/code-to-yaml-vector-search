@@ -4,7 +4,6 @@ use serde::Deserialize;
 #[derive(Deserialize)]
 pub struct ChatAnalysisRequest {
     pub project: String,
-    pub query: String,
     pub message: String,
 }
 

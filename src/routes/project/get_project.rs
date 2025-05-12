@@ -67,7 +67,7 @@ pub async fn get_project(
                 );
             } else {
                 // No saved query found, execute new search
-                match search_service.search_project(&mut project, &query_text).await {
+                match search_service.search_project(&mut project, &escaped_query_text).await {
                     Ok((similar_files, llm_analysis)) => {
                         // Save updated project with the new query
                         if let Err(e) = project_service.save_project(&project, &output_dir) {
