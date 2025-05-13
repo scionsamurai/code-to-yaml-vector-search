@@ -1,0 +1,295 @@
+body {
+    height: 100%;
+    padding: 0;
+    margin: 0;
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-container {
+    height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+    flex-grow: 2;
+}
+
+.chat-message {
+    margin-bottom: 10px;
+    padding: 10px 15px;
+    border-radius: 10px;
+    position: relative;
+    max-width: 1200px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.user-message {
+    background-color: #dcf8c6;
+    margin-left: 20%;
+    align-self: flex-end;
+    border-bottom-right-radius: 2px;
+}
+
+.model-message {
+    background: antiquewhite;
+}
+
+.message-content {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    word-break: break-word;
+    line-height: 1rem;
+}
+
+.chat-input {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background-color: #f5f5f5;
+}
+
+.analysis-container {
+    display: flex;
+    gap: 20px;
+    margin: 20px 0;
+    flex-grow: 2;
+}
+
+.chat-interface {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 2;
+    min-width: 55%;
+}
+
+.file-list {
+    margin-bottom: 20px;
+}
+
+.file-list h3 {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.file-item {
+    margin: 5px 0;
+    padding: 5px;
+    border-bottom: 1px solid #eee;
+}
+
+.file-checkbox {
+    margin-right: 10px;
+}
+
+.toggle-button {
+    font-size: 0.8em;
+    padding: 2px 8px;
+    cursor: pointer;
+}
+
+.file-snippets {
+    max-height: 600px;
+    flex: 1;
+    overflow-y: auto;
+    min-width: 25%;
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px dashed #ccc;
+}
+
+.chat-message > * {
+    margin: 0;
+}
+
+.message-controls {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-message:hover .message-controls {
+    opacity: 1;
+}
+
+.edit-message-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.shiki-block {
+    margin: 10px 0;
+    border-radius: 6px;
+    overflow: auto;
+    display: flex;
+}
+
+.message-content .shiki-block {
+    padding: 0;
+    position: relative;
+}
+
+.shiki {
+    width: 100%;
+}
+
+.edit-controls button {
+    padding: 4px 12px;
+    cursor: pointer;
+}
+
+code:not(pre > code) {
+    background-color: #24292e;
+    color: #9ECBFF;
+    border-radius: 0.3rem;
+    white-space: pre-wrap;
+    padding: 0 5px 1px 5px;
+}
+
+strong code:not(pre > code) {
+    color: #B392F0;
+    font-size: 0.85rem;
+}
+
+.editable-query {
+    padding: 4px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    height: 80vh;
+}
+
+.hljs__link_and_copy {
+    color: white;
+    position: absolute;
+    top: 0.3rem;
+    right: 0.3rem;
+    background: rgba(255,255,255,0.2);
+    padding: 5px;
+    display: flex;
+    font-size: 1rem;
+    border: solid 1px white;
+}
+
+.link_and_copy__text {
+    pointer-events: none;
+}
+
+.pointer {
+    cursor: pointer;
+}
+
+.link_and_copy__copy_link {
+    display: none;
+    font-size: 1.25rem;
+}
+
+pre:hover .hljs__link_and_copy .link_and_copy__copy_link {
+    display: block;
+}
+
+.hljs__link_and_copy:hover .link_and_copy__copy_link {
+    display: block;
+}
+
+.message-content code {
+    font-family: monospace;
+}
+
+.message-content ol {
+    margin: 0;
+    padding: 0;
+    padding-left: 20px;
+    line-height: 0.4rem;
+}
+
+.message-content li {
+    margin-bottom: 5px;
+    line-height: 1rem;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    margin: 10% auto;
+    border-radius: 8px;
+    max-width: 700px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+.modal-header h3 {
+    margin: 0;
+}
+
+.modal-footer {
+    margin-top: 20px;
+    text-align: right;
+}
+
+.modal-footer button {
+    margin-left: 10px;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-modal:hover {
+    color: #555;
+}
+
+#editable-query-text {
+    width: 100%;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}
+
+#query-display {
+    padding: 10px;
+    border-radius: 4px;
+    border-left: 3px solid #007bff;
+    margin: 5px 0;
+    white-space: pre-wrap;
+}
+
+.query-display-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.query-display-container button {
+    align-self: flex-end;
+    margin-top: 5px;
+}
+

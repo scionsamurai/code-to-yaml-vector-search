@@ -10,7 +10,6 @@ export function sendMessage(chatContainer) {
         messageInput.value = '';
 
         const projectName = document.getElementById('project-name').value;
-        const queryText = document.getElementById('query-text').value;
 
         fetch('/chat-analysis', {
             method: 'POST',

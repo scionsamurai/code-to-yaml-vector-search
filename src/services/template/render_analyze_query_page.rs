@@ -21,10 +21,8 @@ impl TemplateService {
             <html>
                 <head>
                     <title>Code Analysis - {}</title>
-                    <link rel="stylesheet" href="/static/project.css">
-                    <link rel="stylesheet" href="/static/analyze-query.css">
-                    <link rel="stylesheet" href="/static/split-chat.css">
-                    <link rel="stylesheet" href="/static/modal.css">
+                    <link rel="stylesheet" href="/static/analysis.css">
+                    <link rel="stylesheet" href="/static/global.css">
                     <script type="importmap">
                     {{
                         "imports": {{

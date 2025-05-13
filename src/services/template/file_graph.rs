@@ -24,23 +24,6 @@ impl TemplateService {
         format!(
             r#"<div id="graphDiv"><input type="checkbox" id="fileGraph">
     <label for="fileGraph" style="cursor: pointer; font-weight: bold;">Show File Graph</label>
-    <style>
-        #graphDiv {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }}
-        #fileGraph ~ pre {{
-            display: none;
-        }}
-        #fileGraph:checked ~ pre {{
-            display: block;
-            background: white;
-            overflow: scroll;
-            width: 80%;
-            padding: 1rem;
-        }}
-    </style>
     <pre><button onclick="validateFilePaths('{}')">Validate File Path Comments</button><br>{}</pre></div>"#,
             project_name,
             indented_lines.join("\n")
