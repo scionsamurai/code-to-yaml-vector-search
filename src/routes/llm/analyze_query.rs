@@ -29,10 +29,10 @@ pub async fn analyze_query(
     };
 
     // Use the new methods to get the data
-    let relevant_files = project.get_vector_results();
-    let saved_context_files = project.get_context_files();
-    let existing_chat_html = project.get_analysis_chat_history();
-    let last_query_text = project.get_query_text().unwrap_or_else(|| "No previous query found".to_string());
+    let relevant_files = project.get_vector_results(&app_state);
+    let saved_context_files = project.get_context_files(&app_state);
+    let existing_chat_html = project.get_analysis_chat_history(&app_state);
+    let last_query_text = project.get_query_text(&app_state).unwrap_or_else(|| "No previous query found".to_string());
     
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(

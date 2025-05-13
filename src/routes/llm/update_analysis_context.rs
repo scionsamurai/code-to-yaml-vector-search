@@ -22,14 +22,14 @@ pub async fn update_analysis_context(
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(&data.project);
     
-    let mut project = match project_service.load_project(&project_dir) {
+    let project = match project_service.load_project(&project_dir) {
         Ok(p) => p,
         Err(e) => return HttpResponse::InternalServerError().json(serde_json::json!({
             "success": false,
             "error": format!("Failed to load project: {}", e)
         })),
     };
-    let last_query_text = project.get_query_text().unwrap_or_else(|| "No previous query found".to_string());
+    let last_query_text = project.get_query_text(&app_state).unwrap_or_else(|| "No previous query found".to_string());
     
     // Generate a reference prompt without including file contents
     let updated_prompt = format!(
@@ -41,24 +41,46 @@ pub async fn update_analysis_context(
     );
 
     
-    // Update the saved context in the project - only store file references
-    if let Some(saved_queries) = &mut project.saved_queries {
-        if let Some(last_query) = saved_queries.last_mut() {
-            // Store only the file references
-            last_query["context_files"] = serde_json::to_value(&data.files).unwrap_or_default();
+    // Load the most recent query data
+    match project_service.get_most_recent_query_file(&project_dir) {
+        Ok(Some(file_path)) => {
+            let filename = file_path.file_name().unwrap().to_str().unwrap().to_string();
+            match project_service.load_query_data(&project_dir, &filename) {
+                Ok(mut query_data) => {
+                    // Update the context files
+                    query_data.context_files = data.files.clone();
+
+                    // Save the updated QueryData
+                    match project_service.save_query_data(&project_dir, &query_data, &filename) {
+                        Ok(_) => {
+                            return HttpResponse::Ok().json(serde_json::json!({
+                                "success": true,
+                                "prompt": updated_prompt
+                            }));
+                        }
+                        Err(e) => {
+                            eprintln!("Failed to save query data: {}", e);
+                            return HttpResponse::InternalServerError().json(serde_json::json!({
+                                "success": false,
+                                "error": format!("Failed to save query data: {}", e)
+                            }));
+                        }
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Failed to load query data: {}", e);
+                    return HttpResponse::InternalServerError().json(serde_json::json!({
+                        "success": false,
+                        "error": format!("Failed to load query data: {}", e)
+                    }));
+                }
+            }
+        }
+        _ => {
+            return HttpResponse::InternalServerError().json(serde_json::json!({
+                "success": false,
+                "error": "No query data found"
+            }));
         }
     }
-    
-    // Save the updated project settings
-    if let Err(e) = project_service.save_project(&project, &project_dir) {
-        return HttpResponse::InternalServerError().json(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to save project: {}", e)
-        }));
-    }
-    
-    HttpResponse::Ok().json(serde_json::json!({
-        "success": true,
-        "prompt": updated_prompt
-    }))
 }

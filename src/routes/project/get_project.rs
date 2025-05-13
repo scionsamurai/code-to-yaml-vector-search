@@ -46,74 +46,69 @@ pub async fn get_project(
     if let Some(query_text) = &query.q {
         let escaped_query_text = escape_html(query_text.clone()).await;
         if !escaped_query_text.is_empty() {
-            // Check if we already have this query saved
-            let existing_query = project.saved_queries.as_ref()
-                .and_then(|queries| queries.iter()
-                    .find(|q| q.get("query").and_then(|q_text| q_text.as_str()) == Some(query_text)));
-    
-            if let Some(saved_query) = existing_query {
-                // Use existing saved query results
-                let similar_files = extract_vector_results(saved_query);
-                let llm_analysis = saved_query.get("llm_analysis")
-                    .and_then(|a| a.as_str())
-                    .unwrap_or("No analysis available");
-                
-                // Render search results from saved data
-                search_results_html = template_service.render_search_results(
-                    &escaped_query_text,
-                    &similar_files,
-                    llm_analysis,
-                    &project.name
-                );
-            } else {
-                // No saved query found, execute new search
-                match search_service.search_project(&mut project, &escaped_query_text).await {
-                    Ok((similar_files, llm_analysis)) => {
-                        // Save updated project with the new query
-                        if let Err(e) = project_service.save_project(&project, &output_dir) {
-                            eprintln!("Failed to save project: {}", e);
-                        }
-                        
-                        // Render search results
-                        search_results_html = template_service.render_search_results(
-                            &escaped_query_text,
-                            &similar_files,
-                            &llm_analysis,
-                            &project.name
-                        );
-                    },
-                    Err(e) => {
-                        search_results_html = format!(
-                            r#"<div class="search-results">
-                                <h2>Error searching: {}</h2>
-                            </div>"#,
-                            e
-                        );
+            // Execute new search
+            match search_service.search_project(&mut project, &escaped_query_text, &output_dir).await {
+                Ok((similar_files, llm_analysis)) => {
+                    // Save updated project with the new query
+                    if let Err(e) = project_service.save_project(&project, &output_dir) {
+                        eprintln!("Failed to save project: {}", e);
                     }
-                }
-            }
-        }
-    } else if let Some(saved_queries) = &project.saved_queries {
-        // Show most recent saved query if no new query
-        if !saved_queries.is_empty() {
-            if let Some(latest_query) = saved_queries.last() {
-                if let Some(query_text) = latest_query.get("query").and_then(|q| q.as_str()) {
-                    let similar_files = extract_vector_results(latest_query);
-                    let llm_analysis = latest_query.get("llm_analysis")
-                        .and_then(|a| a.as_str())
-                        .unwrap_or("No analysis available");
-                    
-                    // Render search results for previous query
+
+                    // Render search results
                     search_results_html = template_service.render_search_results(
-                        query_text,
+                        &escaped_query_text,
                         &similar_files,
-                        llm_analysis,
+                        &llm_analysis,
                         &project.name
+                    );
+                },
+                Err(e) => {
+                    search_results_html = format!(
+                        r#"<div class=&"search-results&">;
+                            <h2>;Error searching: {}</h2>;
+                        </div>;"#,
+                        e
                     );
                 }
             }
         }
+    } else {
+        // Load most recent query data
+        let most_recent_query = project.load_most_recent_query_data(&app_state);
+        match most_recent_query {
+            Ok(Some(latest_query)) => {
+                let query_text = latest_query.query.clone();
+                let similar_files: Vec<(String, String, f32)> = latest_query.vector_results
+                    .iter()
+                    .map(|(path, score)| (path.clone(), "".to_string(), *score))
+                    .collect();
+
+                let llm_analysis = latest_query.llm_analysis.clone();
+
+                // Render search results for previous query
+                search_results_html = template_service.render_search_results(
+                    &query_text,
+                    &similar_files,
+                    &llm_analysis,
+                    &project.name
+                );
+            }
+            Ok(None) => {
+                // No saved query found, display a default message
+                search_results_html = r#"<div class="search-results"><p>No previous queries found.</p></div>"#.to_string();
+            }
+            Err(e) => {
+                // Error loading query data, display an error message
+                search_results_html = format!(
+                    r#"<div class="search-results">
+                        <h2>Error loading previous query: {}</h2>
+                    </div>"#,
+                    e
+                );
+            }
+        }
     }
+
 
     // Get YAML files HTML
     let yaml_files = match project_service.get_yaml_files_html(&output_dir, &project.name) {
@@ -135,29 +130,3 @@ pub async fn get_project(
     HttpResponse::Ok().body(html)
 }
 
-// Helper function to extract vector results from a saved query
-fn extract_vector_results(query: &serde_json::Value) -> Vec<(String, String, f32)> {
-    let mut similar_files = Vec::new();
-    
-    if let Some(results) = query.get("vector_results").and_then(|r| r.as_array()) {
-        for result in results {
-            if let Some(result_array) = result.as_array() {
-                if result_array.len() >= 3 {
-                    if let (Some(file_path), Some(yaml_content), Some(score)) = (
-                        result_array[0].as_str(),
-                        result_array[1].as_str(),
-                        result_array[2].as_f64()
-                    ) {
-                        similar_files.push((
-                            file_path.to_string(),
-                            yaml_content.to_string(),
-                            score as f32
-                        ));
-                    }
-                }
-            }
-        }
-    }
-    
-    similar_files
-}

@@ -18,8 +18,6 @@ pub async fn update(
     if let Ok(project_settings_json) = read_to_string(project_settings_path) {
         if let Ok(mut project) = serde_json::from_str::<Project>(&project_settings_json) {
 
-            project.saved_queries = Some(Vec::new());
-
             let project_service = ProjectService::new();
             if let Err(e) = project_service.save_project(&project, &output_dir) {
                 eprintln!("Failed to save project settings after clearing queries: {}", e);

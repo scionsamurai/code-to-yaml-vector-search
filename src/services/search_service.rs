@@ -4,6 +4,8 @@ use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
 use crate::services::llm_service::LlmService;
 use crate::services::file_service::FileService;
+use crate::services::project_service::ProjectService;
+use crate::models::QueryData;
 use std::env;
 
 pub struct SearchService;
@@ -13,7 +15,7 @@ impl SearchService {
         Self {}
     }
 
-    pub async fn search_project(&self, project: &mut Project, query_text: &str) -> Result<(Vec<(String, String, f32)>, String), String> {
+    pub async fn search_project(&self, project: &mut Project, query_text: &str, output_dir: &std::path::PathBuf) -> Result<(Vec<(String, String, f32)>, String), String> {
         // Generate embedding for query
         let embedding_service = EmbeddingService::new();
         let query_embedding = match embedding_service.generate_embedding(query_text, None).await {
@@ -36,21 +38,29 @@ impl SearchService {
         // Get LLM recommendations based on search results
         let llm_analysis = self.get_llm_analysis(query_text, &similar_files, project).await?;
         
-        // Update project with query, vector results, and LLM analysis
-        if project.saved_queries.is_none() {
-            project.saved_queries = Some(Vec::new());
+        // In search_service.rs, modify the section after "Save to the most recent query file"
+        let project_service = ProjectService::new();
+
+        // Always create a new file for each query
+        let filename = project_service.generate_query_filename();
+        let mut query_data = QueryData::default();
+
+        // Update the QueryData with search results and LLM analysis
+        query_data.query = query_text.to_string();
+        query_data.vector_results = similar_files.iter().map(|(path, _, score)| (path.clone(), *score)).collect();
+        query_data.llm_analysis = llm_analysis.clone();
+
+        // Save the updated QueryData
+        match project_service.save_query_data(&output_dir, &query_data, &filename) {
+            Ok(_) => {
+                println!("Query data saved successfully.");
+            }
+            Err(e) => {
+                eprintln!("Failed to save query data: {}", e);
+                return Err(format!("Failed to save query data: {}", e));
+            }
         }
-        
-        let query_result = serde_json::json!({
-            "query": query_text,
-            "vector_results": similar_files,
-            "llm_analysis": llm_analysis
-        });
-        
-        if let Some(saved_queries) = &mut project.saved_queries {
-            saved_queries.push(query_result);
-        }
-        
+
         Ok((similar_files, llm_analysis))
     }
 

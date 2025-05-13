@@ -13,12 +13,6 @@ pub struct ResetAnalysisChatRequest {
 }
 
 #[derive(Deserialize)]
-pub struct SaveAnalysisHistoryRequest {
-    pub project: String,
-    pub history: Vec<crate::models::ChatMessage>,
-}
-
-#[derive(Deserialize)]
 pub struct UpdateChatMessageRequest {
     pub project: String,
     pub role: String,

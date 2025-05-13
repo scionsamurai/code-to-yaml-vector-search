@@ -1,36 +1,18 @@
 // src/routes/llm/chat_analysis/utils.rs
-use crate::models::{Project, ChatMessage};
-use crate::services::project_service::ProjectService;
+use crate::models::{Project, ChatMessage, AppState};
 use crate::services::file_service::FileService;
-use actix_web::Result;
-use super::models::*;
+use actix_web::web;
 
-pub fn get_context_and_contents(project: &Project, file_service: &FileService) -> (Vec<String>, String) {
-    // Get selected context files from project settings
-    let context_files = if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(files) = last_query.get("context_files") {
-                if let Some(files_array) = files.as_array() {
-                    files_array.iter()
-                        .filter_map(|f| f.as_str().map(String::from))
-                        .collect::<Vec<String>>()
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
-    };
+pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>) -> (Vec<String>, String) {
+    // Get selected context files from project 
+    let context_files = project.get_context_files(app_state);
+    
+    let file_service = FileService {};
 
     // Load file contents for the selected files
     let file_contents = context_files.iter()
         .filter_map(|file_path| {
-            if let Some(content) = file_service.read_specific_file(&project, file_path) {
+            if let Some(content) = file_service.read_specific_file(project, file_path) {
                 Some(format!("--- FILE: {} ---\n{}\n\n", file_path, content))
             } else {
                 None
@@ -56,27 +38,14 @@ pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_conte
     prompt
  }
 
-pub fn get_full_history(project: &Project) -> Vec<ChatMessage> {
-    if let Some(saved_queries) = &project.saved_queries {
-        if let Some(last_query) = saved_queries.last() {
-            if let Some(history) = last_query.get("analysis_chat_history") {
-                if let Ok(messages) = serde_json::from_value::<Vec<ChatMessage>>(history.clone()) {
-                    messages
-                } else {
-                    Vec::new()
-                }
-            } else {
-                Vec::new()
-            }
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
+ pub fn get_full_history(project: &Project, app_state: &web::Data<AppState>) -> Vec<ChatMessage> {
+    match project.load_most_recent_query_data(app_state) {
+        Ok(Some(query_data)) => query_data.analysis_chat_history,
+        _ => Vec::new()
     }
 }
 
-pub fn format_messages(system_prompt: &str, full_history: &Vec<ChatMessage>, user_message: &str) -> Vec<ChatMessage> {
+pub fn format_messages(system_prompt: &str, full_history: &Vec<ChatMessage>, user_message: &ChatMessage) -> Vec<ChatMessage> {
     let mut messages = vec![
         ChatMessage {
             role: "user".to_string(),
@@ -90,80 +59,9 @@ pub fn format_messages(system_prompt: &str, full_history: &Vec<ChatMessage>, use
 
     messages.extend(full_history.clone());
 
-    messages.push(ChatMessage {
-        role: "user".to_string(),
-        content: user_message.to_string(),
-    });
+    messages.push(user_message.clone());
 
     messages
-}
-
-pub fn update_and_save_history(project: &mut Project, project_dir: &std::path::PathBuf, full_history: Vec<ChatMessage>, project_service: ProjectService) {
-    if project.saved_queries.is_none() {
-        project.saved_queries = Some(Vec::new());
-    }
-
-    if let Some(saved_queries) = &mut project.saved_queries {
-        if let Some(last_query) = saved_queries.last_mut() {
-            // Update the last query with the analysis chat history
-            last_query["analysis_chat_history"] = serde_json::to_value(&full_history).unwrap_or_default();
-
-            // Save the updated project settings
-            if let Err(e) = project_service.save_project(&project, &project_dir) {
-                eprintln!("Failed to save project: {}", e);
-            }
-        }
-    }
-}
-
-pub fn reset_chat_history(project: &mut Project) {
-    if let Some(saved_queries) = &mut project.saved_queries {
-        if let Some(last_query) = saved_queries.last_mut() {
-            // Remove the analysis chat history
-            last_query.as_object_mut().unwrap().remove("analysis_chat_history");
-        }
-    }
-}
-
-pub fn save_chat_history(project: &mut Project, history: &Vec<ChatMessage>) {
-    if project.saved_queries.is_none() {
-        project.saved_queries = Some(Vec::new());
-    }
-
-    if let Some(saved_queries) = &mut project.saved_queries {
-        if let Some(last_query) = saved_queries.last_mut() {
-            // Update the last query with the analysis chat history
-            last_query["analysis_chat_history"] = serde_json::to_value(&history).unwrap_or_default();
-        }
-    }
-}
-
-pub fn update_message_in_history(project: &mut Project, data: &UpdateChatMessageRequest) -> Result<String, String> {
-    if let Some(saved_queries) = &mut project.saved_queries {
-        if let Some(last_query) = saved_queries.last_mut() {
-            if let Some(chat_history) = last_query.get_mut("analysis_chat_history") {
-                if let Some(history_array) = chat_history.as_array_mut() {
-                    // Make sure the index is valid
-                    if data.index < history_array.len() {
-                        // Create the updated message
-                        let updated_message = serde_json::json!({
-                            "role": data.role.clone(),
-                            "content": data.content.clone()
-                        });
-
-                        // Update the message at the specified index
-                        history_array[data.index] = updated_message;
-
-                        return Ok("Message updated successfully".to_string());
-                    } else {
-                        return Err("Invalid message index".to_string());
-                    }
-                }
-            }
-        }
-    }
-
-    Err("Failed to update message".to_string())
 }
 
 pub async fn escape_html(text: String) -> String {

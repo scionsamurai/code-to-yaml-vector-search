@@ -2,7 +2,7 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
 use crate::services::yaml::YamlService;
-use std::fs::write;
+use crate::services::project_service::ProjectService;
 use std::path::Path;
 
 #[derive(serde::Deserialize)]
@@ -31,11 +31,13 @@ pub async fn create(
     let output_dir = Path::new(&app_state.output_dir).join(&project_name);
     std::fs::create_dir_all(&output_dir).unwrap();
 
-    let project_settings_path = output_dir.join("project_settings.json");
-    let project_settings_json = serde_json::to_string_pretty(&project).unwrap();
-    write(project_settings_path, project_settings_json).unwrap();
-
-    // Use the YamlService instead of direct utils call
+    // Use ProjectService instead of direct manipulation
+    let project_service = ProjectService::new();
+    
+    // Save the project settings using the service
+    project_service.save_project(&project, &output_dir)
+        .unwrap_or_else(|e| eprintln!("Failed to save project: {}", e));
+    
     let yaml_service = YamlService::new();
     yaml_service.save_yaml_files(&mut project, &app_state.output_dir).await;
     

@@ -126,7 +126,6 @@ impl FileService {
                         languages: project.languages.clone(),
                         source_dir: path_str.clone(),
                         model: project.model.clone(),
-                        saved_queries: project.saved_queries.clone(),
                         embeddings: project.embeddings.clone(),
                         file_descriptions: project.file_descriptions.clone(),
                     },

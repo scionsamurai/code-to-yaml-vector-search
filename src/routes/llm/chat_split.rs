@@ -1,8 +1,8 @@
 // src/routes/llm/chat_split.rs
 use actix_web::{post, web, HttpResponse, Responder};
-use crate::models::{AppState, Project};
+use crate::models::AppState;
 use crate::services::llm_service::LlmService;
-use std::fs::read_to_string;
+use crate::services::project_service::ProjectService;
 use std::path::Path;
 use serde::Deserialize;
 
@@ -25,18 +25,12 @@ pub async fn chat_split(
     message: web::Json<ChatMessage>,
 ) -> impl Responder {
     let project_name = &message.project;
+    let project_path = Path::new(&app_state.output_dir).join(project_name);
     
-    // Get project details
-    let project_settings_path = Path::new(&app_state.output_dir)
-        .join(project_name)
-        .join("project_settings.json");
-    
-    let project = match read_to_string(&project_settings_path) {
-        Ok(json) => match serde_json::from_str::<Project>(&json) {
-            Ok(project) => project,
-            Err(e) => return HttpResponse::BadRequest().body(format!("Invalid project settings: {}", e)),
-        },
-        Err(e) => return HttpResponse::NotFound().body(format!("Project settings not found: {}", e)),
+    let project_service = ProjectService::new();
+    let project = match project_service.load_project(&project_path) {
+        Ok(project) => project,
+        Err(e) => return HttpResponse::NotFound().body(format!("Error loading project: {}", e)),
     };
     
     // Construct the prompt with history context
