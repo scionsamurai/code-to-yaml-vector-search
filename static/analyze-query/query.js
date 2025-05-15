@@ -57,7 +57,8 @@ export function setupQueryEditor(projectName) {
                     },
                     body: JSON.stringify({
                         project: projectName,
-                        query: newQuery
+                        query: newQuery,
+                        query_id: document.getElementById('query-id').value, 
                     })
                 });
                 
@@ -106,4 +107,92 @@ function showNotification(message) {
             document.body.removeChild(notification);
         }, 300);
     }, 3000);
+}
+
+// static/analyze-query/query.js
+
+export function setupTitleEditor(projectName) {
+
+    const editTitleBtn = document.getElementById('edit-title-btn');
+    const titleEditModal = document.getElementById('title-edit-modal');
+    const cancelTitleBtn = document.getElementById('cancel-title-btn');
+    const updateTitleBtn = document.getElementById('update-title-btn');
+    const editableTitleText = document.getElementById('editable-title-text');
+    const querySelector = document.getElementById('query-selector');
+
+    // Open title modal
+    if (editTitleBtn && titleEditModal) {
+        editTitleBtn.addEventListener('click', () => {
+            titleEditModal.style.display = 'block';
+            //set title to the current one
+            editableTitleText.value = querySelector.options[querySelector.selectedIndex].text;
+            editableTitleText.focus();
+        });
+    }
+
+    // Close title modal functions
+    function closeTitleModal() {
+        if (titleEditModal) {
+            titleEditModal.style.display = 'none';
+        }
+    }
+
+    if (cancelTitleBtn) {
+        cancelTitleBtn.addEventListener('click', closeTitleModal);
+    }
+
+    // Close title modal when clicking outside
+    window.addEventListener('click', (event) => {
+        if (event.target === titleEditModal) {
+            closeTitleModal();
+        }
+    });
+
+    // Update title functionality
+    if (updateTitleBtn && editableTitleText && querySelector) {
+        updateTitleBtn.addEventListener('click', async () => {
+            const newTitle = editableTitleText.value.trim();
+            if (!newTitle) return;
+
+            try {
+                // Show loading state
+                updateTitleBtn.textContent = 'Updating...';
+                updateTitleBtn.disabled = true;
+
+                const queryId = document.getElementById('query-id').value;
+
+                const response = await fetch('/update-analysis-title', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project: projectName,
+                        title: newTitle,
+                        query_id: queryId,
+                    })
+                });
+
+                if (response.ok) {
+                    // Update the title in the dropdown
+                    const selectedOption = querySelector.options[querySelector.selectedIndex];
+                    selectedOption.text = newTitle;
+                    // Close the modal
+                    closeTitleModal();
+                    // Show notification
+                    showNotification('Title updated successfully!');
+                } else {
+                    const errorData = await response.text();
+                    console.error('Failed to update title:', errorData);
+                    alert('Failed to update title. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error updating title:', error);
+                alert('An error occurred while updating the title.');
+            } finally {
+                updateTitleBtn.textContent = 'Update Title';
+                updateTitleBtn.disabled = false;
+            }
+        });
+    }
 }

@@ -5,7 +5,7 @@ use actix_web::web;
 
 pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
     // Get selected context files from project 
-    let context_files = project.get_context_files(app_state, query_id);
+    let context_files = project.get_query_vec_field(app_state, query_id, "context_files").unwrap();
     
     let file_service = FileService {};
 

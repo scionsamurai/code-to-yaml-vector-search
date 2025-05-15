@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub mod query_management;
 pub mod chat_management;
 pub mod utils;
+pub mod query;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Project {
@@ -61,4 +62,5 @@ pub struct QueryData {
     pub context_files: Vec<String>,
     pub analysis_chat_history: Vec<ChatMessage>,
     pub llm_analysis: String,
+    pub title: Option<String>,
 }

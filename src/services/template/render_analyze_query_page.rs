@@ -11,10 +11,10 @@ impl TemplateService {
         saved_context_files: &[String],
         project: &Project,
         existing_chat_html: &str,
-        available_queries: &[(String, String)], // Filename, Timestamp
+        available_queries: &[(String, String)], // Timestamp and filename
         current_query_id: &str, // Currently selected query
     ) -> String {
-        // Generate file lists
+        
         let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
@@ -45,6 +45,7 @@ impl TemplateService {
                         <p>Project: {}</p>
                         <div class="query-selector">
                             {}
+                            <button id="edit-title-btn" class="secondary">Edit Title</button>
                         </div>
                         <div class="query-display-container">
                             <p id="query-display">{}</p>
@@ -102,17 +103,34 @@ impl TemplateService {
                     <a href="/projects/{}" class="button">Back to Project</a>
                 </div>
                 <div id="query-edit-modal" class="modal">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h3>Edit Query</h3>
-                        <span class="close-modal">&times;</span>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Edit Query</h3>
+                            <span class="close-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <textarea id="editable-query-text" rows="5" cols="50">{}</textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="update-query-btn" class="primary">Update Query</button>
+                            <button id="cancel-query-btn" class="secondary">Cancel</button>
+                        </div>
                     </div>
-                    <div class="modal-body">
-                        <textarea id="editable-query-text" rows="5" cols="50">{}</textarea>
-                    </div>
-                    <div class="modal-footer">
-                        <button id="update-query-btn" class="primary">Update Query</button>
-                        <button id="cancel-query-btn" class="secondary">Cancel</button>
+                </div>
+
+                <div id="title-edit-modal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Edit Title</h3>
+                            <span class="close-modal">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <input type="text" id="editable-title-text" value="">
+                        </div>
+                        <div class="modal-footer">
+                            <button id="update-title-btn" class="primary">Update Title</button>
+                            <button id="cancel-title-btn" class="secondary">Cancel</button>
+                        </div>
                     </div>
                 </div>
                 </body>
@@ -135,14 +153,14 @@ impl TemplateService {
 
     fn generate_query_selector(&self, available_queries: &[(String, String)], current_query_id: &str) -> String {
         let mut options_html = String::new();
-        for (filename, timestamp) in available_queries {
+        for (timestamp, display_title) in available_queries {
             let selected = match current_query_id {
-                id => filename == id
+                id => timestamp == id
             };
             let selected_attr = if selected { "selected" } else { "" };
             options_html.push_str(&format!(
                 r#"<option value="{}" {}>{}</option>"#,
-                filename, selected_attr, timestamp // Use timestamp for display
+                timestamp, selected_attr, display_title
             ));
         }
 

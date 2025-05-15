@@ -24,8 +24,9 @@ impl TemplateService {
         format!(
             r#"<div id="graphDiv"><input type="checkbox" id="fileGraph">
     <label for="fileGraph" style="cursor: pointer; font-weight: bold;">Show File Graph</label>
-    <pre><button onclick="validateFilePaths('{}')">Validate File Path Comments</button><br>{}</pre></div>"#,
+    <pre><button onclick="validateFilePaths('{}')">Validate File Path Comments</button> for {} files<br>{}</pre></div>"#,
             project_name,
+            sorted_descriptions.len().to_string(),
             indented_lines.join("\n")
         )
     }

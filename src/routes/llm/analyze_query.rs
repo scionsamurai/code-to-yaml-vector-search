@@ -32,11 +32,11 @@ pub async fn analyze_query(
     };
 
     let query_id = form.query_id.clone();
-    let relevant_files = project.get_vector_results(&app_state, &query_id);
-    let saved_context_files = project.get_context_files(&app_state, &query_id);
+    let relevant_files = project.get_query_vec_field(&app_state, &query_id, "vector_results").unwrap();
+    let saved_context_files = project.get_query_vec_field(&app_state, &query_id, "context_files").unwrap();
     let existing_chat_html = project.get_analysis_chat_history(&app_state, &query_id);
     let last_query_text = project
-        .get_query_text(&app_state, &query_id)
+        .get_query_data_field(&app_state, &query_id, "query")
         .unwrap_or_else(|| "No previous query found".to_string());
     
     // Get the list of available queries

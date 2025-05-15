@@ -33,7 +33,7 @@ pub async fn chat_analysis(
     // Escape the user's message
     let escaped_message = escape_html(data.message.clone()).await;
     
-    let query_text = project.get_query_text(&app_state, query_id).unwrap_or_else(|| "No previous query found".to_string());
+    let query_text = project.get_query_data_field(&app_state, query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
      
     // Create context prompt with the loaded file contents
     let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents);
@@ -48,9 +48,6 @@ pub async fn chat_analysis(
 
     // Format messages for LLM with system prompt and existing history
     let messages = format_messages(&system_prompt, &full_history, &user_message);
-
-    // log messages in a human-readable format
-    println!("Sending messages to LLM: {}", messages.iter().map(|m| format!("{}: {}", m.role, m.content)).collect::<Vec<_>>().join("\n"));
 
     // Send to LLM
     let llm_response = llm_service.send_conversation(&messages, &project.model.clone()).await;

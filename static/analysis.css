@@ -293,3 +293,20 @@ pre:hover .hljs__link_and_copy .link_and_copy__copy_link {
     margin-top: 5px;
 }
 
+/* static/global.css */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 15px 30px;
+    border-radius: 5px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+.notification.show {
+    opacity: 1;
+}

@@ -4,11 +4,13 @@ use crate::models::{AppState, QueryData};
 use crate::services::project_service::ProjectService;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct UpdateQueryRequest {
     project: String,
     query: String,
+    query_id: String,
 }
 
 #[derive(Serialize)]
@@ -30,50 +32,43 @@ pub async fn update_analysis_query(
 
     match project_service.load_project(&project_dir) {
         Ok(project) => {
-            // Try to get the most recent query file
-            let most_recent_file = project_service.get_most_recent_query_file(&project_dir);
-            let mut query_data: QueryData = QueryData::default();
-            let mut filename: Option<String> = None;
 
-            match most_recent_file {
-                Ok(most_recent_file) => {
-                    match most_recent_file {
-                        Some(file_path) => {
-                            let file_name = file_path.file_name().unwrap().to_str().unwrap().to_string();
+            let query_filename = match Uuid::parse_str(&req_body.query_id.trim_end_matches(".json")) {
+                Ok(_) => req_body.query_id.clone(), // It's a valid UUID, assume it's filename
+                Err(_) => {
+                    // It's not a UUID, try to match with title
+                    let available_queries = project.get_query_filenames(&app_state).unwrap_or_default();
+                    let mut matched_filename: Option<String> = None;
 
-                            // Load the query data from the most recent file
-                            match project_service.load_query_data(&project_dir, &file_name) {
-                                Ok(qd) => {
-                                    query_data = qd;
-                                    filename = Some(file_name);
-                                },
-                                Err(e) => {
-                                    eprintln!("Failed to load query data: {}", e);
-                                    // If loading fails, start with default QueryData
-                                }
-                            }
-                        },
-                        None => {
-                            // No recent file, so start with default QueryData
+                    for (filename, _) in available_queries {
+                        if filename == req_body.query_id {
+                            matched_filename = Some(filename);
+                            break; // Assuming titles are unique, break on first match
                         }
                     }
+
+                    match matched_filename {
+                        Some(filename) => filename,
+                        None => project_service.generate_query_filename(), // If title not found, create new query
+                    }
                 }
-                Err(e) => {
-                    eprintln!("Failed to get most recent query file: {}", e);
-                    // If getting the most recent file fails, start with default QueryData
-                }
-            }
+            };
+
+            // Try to load existing query data or create new
+            let (mut query_data, filename) =
+                match project.load_query_data_by_filename(&app_state, &query_filename) {
+                    Ok(Some(qd)) => (qd, query_filename.to_string()),
+                    _ => (
+                        QueryData::default(),
+                        project_service.generate_query_filename(),
+                    ),
+                };
+
             // Update the query in the QueryData
             query_data.query = req_body.query.clone();
 
-            // Get filename or generate new one if it doesn't exist
-            let query_filename = match filename {
-                Some(s) => s,
-                None => project_service.generate_query_filename(),
-            };
-
             // Save the updated QueryData
-            match project_service.save_query_data(&project_dir, &query_data, &query_filename) {
+            match project_service.save_query_data(&project_dir, &query_data, &filename) {
                 Ok(_) => {
                     // Save the updated project - we don't need to track filenames anymore.
                     match project_service.save_project(&project, &project_dir) {
@@ -82,7 +77,7 @@ pub async fn update_analysis_query(
                                 success: true,
                                 message: "Query updated successfully".to_string(),
                             })
-                        },
+                        }
                         Err(e) => {
                             HttpResponse::InternalServerError().json(UpdateQueryResponse {
                                 success: false,
@@ -90,7 +85,7 @@ pub async fn update_analysis_query(
                             })
                         }
                     }
-                },
+                }
                 Err(e) => {
                     HttpResponse::InternalServerError().json(UpdateQueryResponse {
                         success: false,
@@ -98,7 +93,7 @@ pub async fn update_analysis_query(
                     })
                 }
             }
-        },
+        }
         Err(e) => {
             HttpResponse::NotFound().json(UpdateQueryResponse {
                 success: false,
