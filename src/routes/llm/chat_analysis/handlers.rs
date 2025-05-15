@@ -25,19 +25,21 @@ pub async fn chat_analysis(
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load project: {}", e)),
     };
 
+    let query_id = data.query_id.as_deref().unwrap_or_default();
+
     // Get selected context files and file contents
-    let (context_files, file_contents) = get_context_and_contents(&project, &app_state);
+    let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
 
     // Escape the user's message
     let escaped_message = escape_html(data.message.clone()).await;
     
-    let last_query_text = project.get_query_text(&app_state).unwrap_or_else(|| "No previous query found".to_string());
+    let query_text = project.get_query_text(&app_state, query_id).unwrap_or_else(|| "No previous query found".to_string());
      
     // Create context prompt with the loaded file contents
-    let system_prompt = create_system_prompt(&last_query_text, &context_files, &file_contents);
+    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents);
 
     // Get existing chat history from project structure
-    let full_history = get_full_history(&project, &app_state);
+    let full_history = get_full_history(&project, &app_state, &query_id);
 
     let user_message = ChatMessage {
         role: "user".to_string(),
@@ -46,6 +48,9 @@ pub async fn chat_analysis(
 
     // Format messages for LLM with system prompt and existing history
     let messages = format_messages(&system_prompt, &full_history, &user_message);
+
+    // log messages in a human-readable format
+    println!("Sending messages to LLM: {}", messages.iter().map(|m| format!("{}: {}", m.role, m.content)).collect::<Vec<_>>().join("\n"));
 
     // Send to LLM
     let llm_response = llm_service.send_conversation(&messages, &project.model.clone()).await;
@@ -56,8 +61,8 @@ pub async fn chat_analysis(
         content: llm_response.clone(),
     };
     // Add messages to chat
-    project.add_chat_message(&app_state, user_message).unwrap();
-    project.add_chat_message(&app_state, assistant_message).unwrap();
+    project.add_chat_message(&app_state, user_message, query_id).unwrap();
+    project.add_chat_message(&app_state, assistant_message, query_id).unwrap();
 
     HttpResponse::Ok().body(llm_response)
 }
@@ -79,14 +84,14 @@ pub async fn reset_analysis_chat(
     };
 
     // Reset the chat history
-    project.reset_chat_history(&app_state).unwrap();
+    let new_file_name = project.reset_chat_history(&app_state, data.query_id.as_deref().unwrap());
 
     // Save the updated project settings
     if let Err(e) = project_service.save_project(&project, &project_dir) {
         return HttpResponse::InternalServerError().body(format!("Failed to save project: {}", e));
     }
 
-    HttpResponse::Ok().body("Chat history reset successfully")
+    HttpResponse::Ok().body(new_file_name)
 }
 
 #[post("/update-chat-message")]
@@ -111,7 +116,7 @@ pub async fn update_chat_message(
     };
 
     // Update the specific message in the chat history
-    let result = project.update_message_in_history(&app_state, data.index, message);
+    let result = project.update_message_in_history(&app_state, data.index, message, data.query_id.as_deref().unwrap());
 
     match result {
         Ok(message) => HttpResponse::Ok().body(message),

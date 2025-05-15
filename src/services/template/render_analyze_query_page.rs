@@ -10,12 +10,14 @@ impl TemplateService {
         relevant_files: &[String],
         saved_context_files: &[String],
         project: &Project,
-        existing_chat_html: &str
+        existing_chat_html: &str,
+        available_queries: &[(String, String)], // Filename, Timestamp
+        current_query_id: &str, // Currently selected query
     ) -> String {
         // Generate file lists
         let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
-        
+        let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
         format!(
             r#"
             <html>
@@ -41,6 +43,9 @@ impl TemplateService {
                 <div class="analysis-container">
                     <div class="editable-query">
                         <p>Project: {}</p>
+                        <div class="query-selector">
+                            {}
+                        </div>
                         <div class="query-display-container">
                             <p id="query-display">{}</p>
                             <button id="edit-query-btn" class="secondary">Edit Query</button>
@@ -77,6 +82,7 @@ impl TemplateService {
                     
                     <div class="chat-interface">
                         <h2>Analysis Chat</h2>
+                        <input type="hidden" id="query-id" value="{}">
                         <input type="hidden" id="project-name" value="{}">
                         <input type="hidden" id="query-text" value="{}">
                         
@@ -114,14 +120,40 @@ impl TemplateService {
             "#,
             project_name,
             project_name,
+            query_selector_html,
             "<label>Query: </label>".to_string() + query,
             relevant_files_html,
             other_files_html,
+            current_query_id,
             project_name,
             query,
             existing_chat_html,
             project_name,
             query
+        )
+    }
+
+    fn generate_query_selector(&self, available_queries: &[(String, String)], current_query_id: &str) -> String {
+        let mut options_html = String::new();
+        for (filename, timestamp) in available_queries {
+            let selected = match current_query_id {
+                id => filename == id
+            };
+            let selected_attr = if selected { "selected" } else { "" };
+            options_html.push_str(&format!(
+                r#"<option value="{}" {}>{}</option>"#,
+                filename, selected_attr, timestamp // Use timestamp for display
+            ));
+        }
+
+        format!(
+            r#"
+            <label for="query-selector">Select Query:</label>
+            <select id="query-selector" name="query_id">
+                {}
+            </select>
+            "#,
+            options_html
         )
     }
 }

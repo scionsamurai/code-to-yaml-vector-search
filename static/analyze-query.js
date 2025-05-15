@@ -7,8 +7,12 @@ import {
   resetChat,
   toggleEditMode,
 } from "./analyze-query/chat.js";
-import { applySyntaxHighlighting, updateCopyLinks } from "./analyze-query/syntax-highlighting.js";
+import {
+  applySyntaxHighlighting,
+  updateCopyLinks,
+} from "./analyze-query/syntax-highlighting.js";
 import { formatMessage } from "./analyze-query/utils.js";
+
 
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
@@ -22,6 +26,41 @@ async function initAnalysisChat() {
     () => resetChat(chatContainer),
     () => updateContext(projectName, queryText)
   );
+
+  // Add event listener to the query selector
+  const querySelector = document.getElementById("query-selector");
+  if (querySelector) {
+    querySelector.addEventListener("change", function () {
+      const selectedQueryId = this.value;
+
+      // **Clear the chat history container before submitting**
+      const chatContainer = document.getElementById("analysis-chat-container"); // Get the chat container element
+      if (chatContainer) {
+        chatContainer.innerHTML = ""; // Clear the chat container's content
+      }
+
+      // Submit the form to load the selected query
+      const form = document.createElement("form");
+      form.method = "post";
+      form.action = "/analyze-query";
+
+      // Add the project
+      const projectInput = document.createElement("input");
+      projectInput.type = "hidden";
+      projectInput.name = "project";
+      projectInput.value = projectName;
+      form.appendChild(projectInput);
+
+      const queryIdInput = document.createElement("input");
+      queryIdInput.type = "hidden";
+      queryIdInput.name = "query_id";
+      queryIdInput.value = selectedQueryId;
+      form.appendChild(queryIdInput);
+
+      document.body.appendChild(form);
+      form.submit();
+    });
+  }
 
   document.querySelectorAll(".edit-message-btn").forEach((button) => {
     button.addEventListener("click", function () {

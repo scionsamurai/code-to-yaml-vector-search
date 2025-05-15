@@ -1,10 +1,14 @@
 // src/models/chat_management.rs
-use crate::models::{AppState, Project, ChatMessage};
+use crate::models::{AppState, ChatMessage, Project};
 use actix_web::web;
 
 impl Project {
-    pub fn get_analysis_chat_history(&self, app_state: &web::Data<AppState>) -> String {
-        match self.load_most_recent_query_data(app_state) {
+    pub fn get_analysis_chat_history(
+        &self,
+        app_state: &web::Data<AppState>,
+        query_filename: &str,
+    ) -> String {
+        match self.load_query_data_by_filename(app_state, query_filename) {
             Ok(Some(query_data)) => {
                 let mut html = String::new();
                 for msg in query_data.analysis_chat_history {
@@ -30,8 +34,9 @@ impl Project {
         &self,
         app_state: &web::Data<AppState>,
         message: ChatMessage,
+        query_filename: &str,
     ) -> Result<(), String> {
-        self.update_query_data(app_state, |qd| {
+        self.update_query_data(app_state, query_filename, |qd| {
             qd.analysis_chat_history.push(message);
         })
     }
@@ -42,8 +47,9 @@ impl Project {
         app_state: &web::Data<AppState>,
         index: usize,
         updated_message: ChatMessage,
+        query_filename: &str,
     ) -> Result<(), String> {
-        self.update_query_data(app_state, |qd| {
+        self.update_query_data(app_state, query_filename, |qd| {
             if index < qd.analysis_chat_history.len() {
                 qd.analysis_chat_history[index] = updated_message;
             }
@@ -51,14 +57,18 @@ impl Project {
     }
 
     // Reset chat history
-    pub fn reset_chat_history(&self, app_state: &web::Data<AppState>) -> Result<(), String> {
+    pub fn reset_chat_history(
+        &self,
+        app_state: &web::Data<AppState>,
+        query_filename: &str,
+    ) -> String {
         // Create a new query data with empty history but preserve other data
-        match self.load_most_recent_query_data(app_state) {
+        match self.load_query_data_by_filename(app_state, query_filename) {
             Ok(Some(mut query_data)) => {
                 query_data.analysis_chat_history = Vec::new();
-                self.save_query_data(app_state, query_data)
+                self.save_new_query_data(app_state, query_data)
             }
-            _ => Ok(()), // Nothing to reset
+            _ => "Nothing to reset".to_string(),
         }
     }
 }

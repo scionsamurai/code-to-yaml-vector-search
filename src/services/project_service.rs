@@ -71,7 +71,7 @@ impl ProjectService {
     }
 
     // Helper function to get the queries directory path
-    fn get_queries_dir(&self, project_dir: &Path) -> PathBuf {
+    pub fn get_queries_dir(&self, project_dir: &Path) -> PathBuf {
         project_dir.join("queries")
     }
 

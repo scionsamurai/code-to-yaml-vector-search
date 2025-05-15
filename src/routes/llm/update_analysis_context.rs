@@ -9,6 +9,7 @@ use std::path::Path;
 pub struct UpdateContextRequest {
     project: String,
     files: Vec<String>,
+    query_id: Option<String>,
 }
 
 #[post("/update-analysis-context")]
@@ -29,7 +30,8 @@ pub async fn update_analysis_context(
             "error": format!("Failed to load project: {}", e)
         })),
     };
-    let last_query_text = project.get_query_text(&app_state).unwrap_or_else(|| "No previous query found".to_string());
+    let query_id = data.query_id.as_deref().unwrap_or_default();
+    let last_query_text = project.get_query_text(&app_state, query_id).unwrap_or_else(|| "No previous query found".to_string());
     
     // Generate a reference prompt without including file contents
     let updated_prompt = format!(

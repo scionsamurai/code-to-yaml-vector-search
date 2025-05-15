@@ -11,6 +11,7 @@ use crate::routes::llm::chat_analysis::utils::escape_html;
 #[derive(serde::Deserialize)]
 struct QueryParams {
     q: Option<String>,
+    id: Option<String>,
 }
 
 #[get("/projects/{name}")]
@@ -42,6 +43,15 @@ pub async fn get_project(
     // Initialize HTML for search results
     let mut search_results_html = String::new();
 
+    // if query.id is None, load the most recent query
+    let q_id = if let Some(id) = &query.id {
+        id.clone()
+    } else {
+        project
+            .get_recent_query_id(&app_state)
+            .unwrap_or_default()
+    };
+
     // Check if a new query is provided
     if let Some(query_text) = &query.q {
         let escaped_query_text = escape_html(query_text.clone()).await;
@@ -59,7 +69,8 @@ pub async fn get_project(
                         &escaped_query_text,
                         &similar_files,
                         &llm_analysis,
-                        &project.name
+                        &project.name,
+                        &q_id
                     );
                 },
                 Err(e) => {
@@ -90,7 +101,8 @@ pub async fn get_project(
                     &query_text,
                     &similar_files,
                     &llm_analysis,
-                    &project.name
+                    &project.name,
+                    &q_id
                 );
             }
             Ok(None) => {
@@ -125,6 +137,7 @@ pub async fn get_project(
         &search_results_html,
         &yaml_files,
         query.q.as_deref().unwrap_or(""),
+        q_id.as_str(),
     );
 
     HttpResponse::Ok().body(html)

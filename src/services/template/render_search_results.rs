@@ -8,6 +8,7 @@ impl TemplateService {
         similar_files: &[(String, String, f32)],
         llm_analysis: &str,
         project_name: &str,
+        query_id: &str,
     ) -> String {
         let mut search_results_html = format!(
             r#"<div class="search-results">
@@ -40,12 +41,13 @@ impl TemplateService {
         // Update the analyze button to use the new endpoint
         search_results_html.push_str(&format!(
             r#"<form action="/analyze-query" method="post">
+            <input type="hidden" name="query_id" id="query-id" value="{}">
             <input type="hidden" name="project" value="{}">
             <input type="hidden" name="query" value="{}">
             <button type="submit" class="analyze-button">Chat with Analysis</button>
         </form>
         </div>"#,
-            project_name, query_text
+        query_id, project_name, query_text
         ));
         search_results_html
     }

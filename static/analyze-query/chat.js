@@ -10,6 +10,7 @@ export function sendMessage(chatContainer) {
         messageInput.value = '';
 
         const projectName = document.getElementById('project-name').value;
+        const queryId = document.getElementById('query-id').value; // Get query_id
 
         fetch('/chat-analysis', {
             method: 'POST',
@@ -18,7 +19,8 @@ export function sendMessage(chatContainer) {
             },
             body: JSON.stringify({
                 project: projectName,
-                message: message
+                message: message,
+                query_id: queryId
             })
         })
         .then(response => response.text())
@@ -40,6 +42,7 @@ export function resetChat(chatContainer) {
     }
 
     const projectName = document.getElementById('project-name').value;
+    const queryId = document.getElementById('query-id');
 
     fetch('/reset-analysis-chat', {
         method: 'POST',
@@ -47,8 +50,23 @@ export function resetChat(chatContainer) {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            project: projectName
+            project: projectName,
+            query_id: queryId.value
         })
+    })
+    .then(response => response.text())
+    .then(async responseText => {
+        console.log('Chat reset successfully:', responseText);
+        const query_selct = document.getElementById('query-selector');
+        // add option to select html tag
+        const option = document.createElement('option');
+        option.value = responseText;
+        option.text = responseText.replace(".json", "");
+        query_selct.appendChild(option);
+        // set the query-selectors to equal new option
+        query_selct.value = responseText;
+        queryId.value = responseText;
+        
     })
     .catch(error => {
         console.error('Error resetting chat:', error);
@@ -159,7 +177,8 @@ function saveEditedMessage(messageDiv, role, content) {
             project: projectName,
             role: role,
             content: content,
-            index: messageIndex 
+            index: messageIndex,
+            query_id: document.getElementById('query-id').value
         })
     })
     .catch(error => {

@@ -10,8 +10,8 @@ impl TemplateService {
         search_results_html: &str,
         yaml_files: &str,
         query_value: &str,
+        query_id: &str,
     ) -> String {
-
         format!(
             r#"
         <html>
@@ -57,6 +57,7 @@ impl TemplateService {
                     <!-- Search Form -->
                     <div class="search-form">
                         <form action="/projects/{}" method="get">
+                            <input type="hidden" name="id" id="id" value="{}">
                             <textarea name="q" placeholder="Enter your query..." value="{}"></textarea>
                             <button type="submit">Search</button>
                         </form>
@@ -87,6 +88,7 @@ impl TemplateService {
             if project.model == "anthropic" { "selected" } else { "" },
             project.source_dir,
             project.name,
+            query_id,
             query_value,
             search_results_html,
             yaml_files

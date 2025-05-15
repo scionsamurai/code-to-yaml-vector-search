@@ -19,7 +19,8 @@ export function updateContext(projectName, queryText) {
         body: JSON.stringify({
             project: projectName,
             query: queryText,
-            files: selectedFiles
+            files: selectedFiles,
+            query_id: document.getElementById('query-id').value,
         })
     })
     .then(response => response.json())

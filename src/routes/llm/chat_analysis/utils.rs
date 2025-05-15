@@ -3,9 +3,9 @@ use crate::models::{Project, ChatMessage, AppState};
 use crate::services::file_service::FileService;
 use actix_web::web;
 
-pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>) -> (Vec<String>, String) {
+pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
     // Get selected context files from project 
-    let context_files = project.get_context_files(app_state);
+    let context_files = project.get_context_files(app_state, query_id);
     
     let file_service = FileService {};
 
@@ -28,6 +28,7 @@ pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_conte
         The user's original query was: \"{}\"", query);
     
     if !context_files.is_empty() {
+        prompt.push_str("\n\nPlease note: The files provided within this message context are live and updated with every message. They represent the user's current code state, which often incorporates their attempts to implement previous suggestions or fix bugs. Always refer to these files for the latest version for all requests. The user may also change which files are included.");
         prompt.push_str(&format!("\n\nYou have access to the following files:\n{}", context_files.join("\n")));
     }
     
@@ -38,8 +39,8 @@ pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_conte
     prompt
  }
 
- pub fn get_full_history(project: &Project, app_state: &web::Data<AppState>) -> Vec<ChatMessage> {
-    match project.load_most_recent_query_data(app_state) {
+ pub fn get_full_history(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> Vec<ChatMessage> {
+    match project.load_query_data_by_filename(app_state, query_id) {
         Ok(Some(query_data)) => query_data.analysis_chat_history,
         _ => Vec::new()
     }
@@ -53,7 +54,7 @@ pub fn format_messages(system_prompt: &str, full_history: &Vec<ChatMessage>, use
         },
         ChatMessage {
             role: "model".to_string(),
-            content: "I understand.".to_string(),
+            content: "I confirm that I'll follow your instructions carefully throughout our conversation. I'm here to assist you according to your specific requirements and will respond to your future requests for code analysis appropriately when needed.\n\nPlease feel free to share your next request when you're ready, and I'll provide the analysis or other assistance you're looking for.".to_string(),
         }
     ];
 
