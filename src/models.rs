@@ -20,6 +20,17 @@ pub struct Project {
     pub file_descriptions: HashMap<String, String>,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct QueryData {
+    pub query: String,
+    pub vector_results: Vec<(String, f32)>,
+    pub context_files: Vec<String>,
+    pub analysis_chat_history: Vec<ChatMessage>,
+    pub llm_analysis: String,
+    pub title: Option<String>,
+}
+
+
 impl std::fmt::Display for EmbeddingMetadata {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Define how the struct should be formatted as a string
@@ -53,14 +64,4 @@ pub struct EmbeddingMetadata {
     pub file_path: String,
     pub last_updated: chrono::DateTime<chrono::Utc>,
     pub vector_id: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct QueryData {
-    pub query: String,
-    pub vector_results: Vec<(String, f32)>,
-    pub context_files: Vec<String>,
-    pub analysis_chat_history: Vec<ChatMessage>,
-    pub llm_analysis: String,
-    pub title: Option<String>,
 }

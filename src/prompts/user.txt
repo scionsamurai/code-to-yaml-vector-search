@@ -7,7 +7,7 @@ To create universal guidelines for converting code from any language to YAML, we
 description: This file contains utility functions for data processing.
 ```
 
-2. **Function/Method Definitions**: For each function or method definition, include the name, parameters, return type (if applicable), and a brief description of its purpose. Never include actual code implementation lines.
+2.  **Function/Method Definitions**: For each function or method definition, include the name, parameters, return type (if applicable), and a brief description of its purpose. Include a new `calls` section listing functions or methods called from *outside* the current scope's immediate definition (excluding standard library, inline functions, and ternary operators). Never include actual code implementation lines.
 
 ```yaml
 functions:
@@ -21,6 +21,13 @@ functions:
         description: The threshold value for filtering data
     return_type: list
     description: Filters and processes the input data based on the specified threshold.
+    calls:
+      - name: validateUserInput
+        source: module:validation
+      - name: formatUserName
+        source: self
+      - name: process # Assuming this is a method on 'this' or a similar instance
+        source: instance # Or 'this' or similar indicator
 ```
 
 3. **Class Definitions**: For each class definition, include the class name, inheritance information (if applicable), and a brief description of its purpose. Then, list the class methods and properties following the same guidelines as for functions. Never include implementation details or actual code lines.
