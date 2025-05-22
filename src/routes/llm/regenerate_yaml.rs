@@ -1,7 +1,7 @@
 // src/routes/llm/regenerate_yaml.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project, ProjectFile};
-use crate::services::llm_service::LlmService;
+use crate::services::yaml::management::YamlManagement;
 use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
 
@@ -23,20 +23,20 @@ pub async fn regenerate_yaml(
             let project_file = ProjectFile {
                 path: source_file_path.to_string_lossy().to_string(),
                 content: file_content,
-                last_modified: 0, // this shouldn't be zero but a specific time in ?millis?
+                last_modified: 0,
             };
             
-            // Use the LlmService instead of direct utils call
-            let llm_service = LlmService::new();
-            let yaml_content = llm_service.convert_to_yaml(&project_file, &project.model).await;
+            let yaml_management = YamlManagement::new();
+            let combined_content = yaml_management.create_yaml_with_imports(&project_file, &project.model).await;
             
-            write(&yaml_path, yaml_content.as_bytes()).unwrap();
-            return HttpResponse::Ok().body(yaml_content);
+            write(&yaml_path, &combined_content).unwrap();
+            return HttpResponse::Ok().body(combined_content);
         }
     }
 
     HttpResponse::InternalServerError().body("Failed to regenerate YAML")
 }
+
 
 fn construct_source_path(source_dir: &str, yaml_path: &str) -> PathBuf {
     let yaml_file_name = Path::new(yaml_path)

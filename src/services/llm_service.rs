@@ -1,7 +1,7 @@
 // src/services/llm_service.rs
 use crate::models::{ProjectFile, ChatMessage};
-use llm_api_access::structs::Message;
-use llm_api_access::{Access, LLM};
+use llm_api_access::structs::general::Message;
+use llm_api_access::llm::{Access, LLM};
 use std::fs::read_to_string;
 use std::path::Path;
 use crate::routes::llm::chat_analysis::utils::escape_html;
@@ -96,22 +96,66 @@ impl LlmService {
         // Send the conversation to the LLM
         let llm_response = target_model.send_convo_message(messages).await;
 
+        // remove backticks and extract the YAML content
         let yaml_content = match llm_response {
             Ok(content) => {
-                // Clean up the response
-                let mut cleaned = content;
-                if cleaned.starts_with("```yaml") {
-                    cleaned = cleaned.replacen("```yaml", "", 1);
-                } else if cleaned.starts_with("```") {
-                    cleaned = cleaned.replacen("```", "", 1);
+                let lines: Vec<&str> = content.lines().collect();
+                let mut start_index: Option<usize> = None;
+                let mut end_index: Option<usize> = None;
+                let mut delimiter_line_indices: Vec<usize> = Vec::new();
+
+                // Find all delimiter lines
+                for (i, line) in lines.iter().enumerate() {
+                    let trimmed_line = line.trim();
+                    if trimmed_line == "```" || trimmed_line == "```yaml" || trimmed_line == "```yml" {
+                        delimiter_line_indices.push(i);
+                    }
                 }
 
-                if cleaned.ends_with("```") {
-                    cleaned = cleaned.replacen("```", "", 1);
+                // Determine start and end based on number of delimiters found
+                if delimiter_line_indices.len() >= 2 {
+                    // Case 1: Two or more delimiters found (assume block)
+                    start_index = Some(delimiter_line_indices[0]);
+                    // Find the last delimiter as the end (in case there are multiple blocks or extra ```)
+                    end_index = Some(delimiter_line_indices[delimiter_line_indices.len() - 1]);
                 }
 
-                let trimmed = cleaned.trim().to_string();
-                let escaped_content = escape_html(trimmed).await;
+                let final_content_lines: Vec<&str> = if let (Some(s_idx), Some(e_idx)) = (start_index, end_index) {
+                    // Block found: content between the first and last delimiters
+                    if s_idx == e_idx {
+                        // This case should not be hit if `delimiter_line_indices.len() >= 2`
+                        // is properly handled, but as a safeguard.
+                        lines.iter().enumerate()
+                            .filter(|&(i, _)| i != s_idx) // Remove the single delimiter line
+                            .map(|(_, line)| *line) // Dereference here
+                            .collect()
+                    } else {
+                        lines[s_idx + 1..e_idx].to_vec()
+                    }
+                } else if delimiter_line_indices.len() == 1 {
+                    // Exactly one delimiter found, remove that line and keep the rest
+                    let single_delimiter_idx = delimiter_line_indices[0];
+                    lines.iter().enumerate()
+                         .filter(|&(i, _)| i != single_delimiter_idx) // Keep all lines except the delimiter
+                         .map(|(_, line)| *line) // Dereference here
+                         .collect()
+                } else {
+                    // No delimiters found, assume the entire content is the YAML
+                    lines.to_vec()
+                };
+
+                let mut cleaned_content = final_content_lines.join("\n");
+
+                // If the first line of the extracted content is "yml" or "yaml", remove it.
+                if let Some(first_line) = cleaned_content.lines().next() {
+                    let trimmed_first_line = first_line.trim();
+                    if trimmed_first_line == "yml" || trimmed_first_line == "yaml" {
+                        cleaned_content = cleaned_content.lines().skip(1).collect::<Vec<&str>>().join("\n");
+                    }
+                }
+
+                let trimmed_final = cleaned_content.trim().to_string();
+                let escaped_content = escape_html(trimmed_final).await;
                 escaped_content
             }
             Err(e) => format!("Error during conversion: {}", e),

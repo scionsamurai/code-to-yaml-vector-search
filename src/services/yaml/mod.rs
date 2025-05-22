@@ -1,5 +1,5 @@
 // src/services/yaml/mod.rs
-mod management;
+pub mod management;
 mod processing;
 
 pub use management::YamlManagement;
@@ -22,8 +22,8 @@ impl YamlService {
     }
 
     // Methods that delegate to appropriate modules
-    pub async fn save_yaml_files(&self, project: &mut Project, output_dir: &str) {
-        self.management.generate_yaml_files(project, output_dir).await;
+    pub async fn save_yaml_files(&self, project: &mut Project, output_dir: &str, force: bool) {
+        self.management.generate_yaml_files(project, output_dir, force).await;
     }
 
     pub async fn check_and_update_yaml_files(&self, project: &mut Project, output_dir: &str) {
@@ -39,4 +39,5 @@ impl YamlService {
     {
         self.processing.process_yaml_files(output_dir, project_name, project)
     }
+    
 }

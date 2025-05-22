@@ -39,7 +39,7 @@ pub async fn create(
         .unwrap_or_else(|e| eprintln!("Failed to save project: {}", e));
     
     let yaml_service = YamlService::new();
-    yaml_service.save_yaml_files(&mut project, &app_state.output_dir).await;
+    yaml_service.save_yaml_files(&mut project, &app_state.output_dir, false).await;
     
     HttpResponse::SeeOther()
         .append_header(("Location", "/"))

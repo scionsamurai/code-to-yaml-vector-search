@@ -7,7 +7,7 @@ To create universal guidelines for converting code from any language to YAML, we
 description: This file contains utility functions for data processing.
 ```
 
-2.  **Function/Method Definitions**: For each function or method definition, include the name, parameters, return type (if applicable), and a brief description of its purpose. Include a new `calls` section listing functions or methods called from *outside* the current scope's immediate definition (excluding standard library, inline functions, and ternary operators). Never include actual code implementation lines.
+2.  **Function/Method Definitions**: For each function or method definition, include the **name**, **parameters**, **calls**, **return type**, and a brief **description** of its purpose **when applicable**. **Exclude** standard library calls, 'new' calls, inline functions, and in-block functions from this list. Crucially, **never include actual code implementation lines**.
 
 ```yaml
 functions:
@@ -22,12 +22,9 @@ functions:
     return_type: list
     description: Filters and processes the input data based on the specified threshold.
     calls:
-      - name: validateUserInput
-        source: module:validation
-      - name: formatUserName
-        source: self
-      - name: process # Assuming this is a method on 'this' or a similar instance
-        source: instance # Or 'this' or similar indicator
+      - std::fs::create_dir_all
+      - std::fs::write
+      
 ```
 
 3. **Class Definitions**: For each class definition, include the class name, inheritance information (if applicable), and a brief description of its purpose. Then, list the class methods and properties following the same guidelines as for functions. Never include implementation details or actual code lines.
@@ -43,26 +40,11 @@ classes:
       # Property definitions here (no implementation code)
 ```
 
-4. **Type Annotations**: If the language supports type annotations, include them for variables, function parameters, and return values. Focus on types and descriptions only, not implementation.
+4. **Code Comments**: Include relevant code comments as descriptions for functions, classes, variables, and other code elements, but never include the actual code lines these comments were attached to.
 
-```yaml
-variables:
-  - name: data_filter
-    type: Callable[[float], bool]
-    description: A function that filters data based on a given threshold.
-```
+5. **Import Statements**: Do not include import statements in the YAML output. These are manually extracted and added separately when storing the output.
 
-5. **Code Comments**: Include relevant code comments as descriptions for functions, classes, variables, and other code elements, but never include the actual code lines these comments were attached to.
-
-6. **Import Statements**: For languages that use import statements, include a list of imported modules or packages. Do not generate a description for the file's imports.
-
-```yaml
-imports:
-  - module: numpy
-  - module: pandas
-```
-
-7. **Data Structures**: For complex data structures like dictionaries, lists, or custom objects, include their structure and a brief description of their purpose. Focus on structure definition, not initialization or usage code.
+6. **Data Structures**: For complex data structures like dictionaries, lists, or custom objects, include their structure and a brief description of their purpose. Focus on structure definition, not initialization or usage code.
 
 ```yaml
 data_structures:
@@ -77,9 +59,9 @@ data_structures:
         email: str
 ```
 
-8. **Language-Specific Features**: If a particular language has unique features or constructs (e.g., decorators in Python, traits in Scala), include guidelines for representing them in the YAML representation without including the actual implementation code.
+7. **Language-Specific Features**: If a particular language has unique features or constructs (e.g., decorators in Python, traits in Scala), include guidelines for representing them in the YAML representation without including the actual implementation code.
 
-9. **Important Rule**: Never include actual source code lines, implementation details, or executable statements in the YAML output. The YAML should only contain metadata, descriptions, and structural information about the code, not the code itself.
+8. **Important Rule**: Never include actual source code lines, implementation details, or executable statements in the YAML output. The YAML should only contain metadata, descriptions, and structural information about the code, not the code itself.
 
-These guidelines provide a solid foundation for converting code from any language to a consistent YAML format that focuses exclusively on code structure and documentation without including any actual implementation code lines. You can adjust and extend them as needed based on the specific requirements of your project and the languages involved.
+These guidelines provide a solid foundation for converting code from any language to a consistent YAML format that focuses exclusively on code structure and documentation without including any actual implementation code lines. You can adjust and extend them as needed based on the specific requirements of the project presented and the languages involved, we want brevity but also completeness.
 Do you understand?

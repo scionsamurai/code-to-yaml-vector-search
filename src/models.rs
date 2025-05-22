@@ -65,3 +65,8 @@ pub struct EmbeddingMetadata {
     pub last_updated: chrono::DateTime<chrono::Utc>,
     pub vector_id: String,
 }
+
+#[derive(Deserialize)]
+pub struct UpdateQuery {
+    pub force: Option<bool>,
+}

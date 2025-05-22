@@ -1,5 +1,5 @@
 // src/services/mod.rs
-pub mod file_service;
+pub mod file;
 pub mod llm_service;
 pub mod qdrant_service;
 pub mod embedding_service;

@@ -1,6 +1,6 @@
 // src/routes/llm/chat_analysis/utils.rs
 use crate::models::{Project, ChatMessage, AppState};
-use crate::services::file_service::FileService;
+use crate::services::file::FileService;
 use actix_web::web;
 
 pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
@@ -85,4 +85,18 @@ pub async fn escape_html(text: String) -> String {
     html_escape::encode_text(&processed_text)
         .to_string()
         .replace("\"", "&#34;")
+}
+
+pub fn unescape_html(text: String) -> String {
+    let mut unescaped_text = text.replace("&#96;&#96;&#96;", "```");
+
+    unescaped_text = unescaped_text.replace("&lt;", "<");
+    unescaped_text = unescaped_text.replace("&gt;", ">");
+    unescaped_text = unescaped_text.replace("&quot;", "\"");
+    unescaped_text = unescaped_text.replace("&#34;", "\""); // For &#34; (double quote)
+    unescaped_text = unescaped_text.replace("&#39;", "'");  // For &#39; (single quote/apostrophe)
+    unescaped_text = unescaped_text.replace("&apos;", "'"); // For &apos; (named entity for apostrophe, though less common)
+    unescaped_text = unescaped_text.replace("&amp;", "&"); // This MUST be last
+
+    unescaped_text
 }

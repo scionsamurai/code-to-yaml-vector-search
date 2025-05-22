@@ -1,7 +1,7 @@
 // src/routes/ui/home.rs
 use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::AppState;
-use crate::services::file_service::FileService;
+use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
 use std::path::Path;
 
@@ -75,7 +75,10 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
             } else {
                 "".to_string()
             },
-            format!(r#" <button onclick="deleteProject('{}')" style="background-color: red; color: white;">Delete</button>"#, project.name)
+            format!(r#"
+                <button onclick="window.location.href='/update/{}/yaml?force=true'" style="background-color: darkred; color: white;">reset</button>
+                <button onclick="deleteProject('{}')" style="background-color: red; color: white;">Delete</button>
+            "#, project.name, project.name)
         ))
         .collect::<Vec<_>>()
         .join("")

@@ -7,8 +7,7 @@ use std::path::Path;
 use std::fs::write;
 use std::env;
 
-
-pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut Project, output_dir: &str) {
+pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut Project, output_dir: &str, force: bool) {
     let output_path = Path::new(output_dir).join(&project.name);
     std::fs::create_dir_all(&output_path).unwrap();
 
@@ -25,16 +24,15 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
         println!("Checking if yaml update needed for {}", &file.path);
         let source_path = &file.path;
         let yaml_path = output_path.join(format!("{}.yml", file.path.replace("/", "*")));
-        if yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string()) {
-            // Convert to YAML
-            let yaml_content = yaml_management.llm_service.convert_to_yaml(&file, &project.model).await;
+        if force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string()) {
+
+            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.model).await;
 
             // Write YAML to file
-            write(&yaml_path, &yaml_content).unwrap();
+            write(&yaml_path, &combined_content).unwrap();
 
             // Generate and store embedding
-            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &yaml_content).await;
-
+            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &combined_content).await;
         }
     }
 

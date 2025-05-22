@@ -3,7 +3,7 @@ use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::AppState;
 use std::path::Path;
 use crate::services::project_service::ProjectService;
-use crate::services::file_service::FileService;
+use crate::services::file::FileService;
 
 #[post("/projects/{name}/validate_paths")]
 pub async fn validate_paths(

@@ -3,7 +3,7 @@ use crate::models::Project;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
 use crate::services::llm_service::LlmService;
-use crate::services::file_service::FileService;
+use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
 use crate::models::QueryData;
 use std::env;

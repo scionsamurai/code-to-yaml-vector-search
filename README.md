@@ -1,74 +1,80 @@
-# Project YAML Generator
+# Project AI Code Assistant (or similar name)
 
-Project YAML Generator is a Rust web application that allows users to generate and manage YAML representations of their source code projects. It provides a convenient way to convert source code files into a structured format, which can be useful for documentation, analysis, or other use cases involving structured code representations.
+## Intelligent Code Management Powered by AI
+
+Project AI Code Assistant is a powerful Rust web application designed to help developers effortlessly understand, manage, and evolve their source code projects using cutting-edge AI. By converting your codebase into a structured YAML format and leveraging advanced vector embeddings and Large Language Models (LLMs), it provides unparalleled capabilities for code exploration, analysis, and modification.
+
+## **Why Use Project AI Code Assistant?**
+
+In large codebases, finding relevant information, understanding complex interactions, and making informed changes can be a significant challenge. This tool solves that by:
+
+  * **Breaking Down Complexity:** Transforms raw code into a clean, structural YAML representation, making code intent clear.
+  * **Unlocking Semantic Search:** Go beyond keyword searches to find code based on *what it does*, not just what it says.
+  * **Empowering AI Assistants:** Chat with LLMs about your specific code, getting intelligent suggestions and analysis in real-time.
+  * **Streamlining Code Updates:** Iteratively refine code with AI guidance, always ensuring the LLM understands the current state of your files.
 
 ## Features
 
-- **YAML Management**: Create, retrieve, update, and delete YAML generations through API endpoints.
-- **Source Code Conversion**: Read source code files from specified directories and convert their contents to YAML format using selected language models.
-- **YAML Generation**: Generate YAML files for each project and store them in a dedicated folder within the application's centralized output directory.
-- **YAML Viewing**: Dedicated page for each project to view the generated YAML representations of all converted files.
-- **Selective Regeneration**: Ability to selectively regenerate the YAML for individual files within a project.
-- **Semantic Search**: Search through project files using natural language queries via vector embeddings.
-- **Code Analysis**: Use LLMs to analyze and answer questions about your code.
-- **Query History**: Save previous queries and their results for future reference.
+  * **Automated YAML Generation:** Converts your source code files into a structured, language-agnostic YAML format, focusing on code structure, documentation, and intent (no implementation details included\!).
+  * **Centralized YAML Management:** Create, retrieve, update, and delete YAML representations for your projects via intuitive API endpoints.
+  * **Intelligent Code Search (Semantic Search):**
+      * Leverages **vector embeddings** and a **Qdrant vector database** for highly accurate semantic search.
+      * Find relevant code files across your project using natural language queries – discover code based on its purpose, not just keywords.
+  * **AI-Powered Code Analysis & Chat:**
+      * **Context-Aware LLM Interactions:** Engage in interactive chats with LLMs (e.g., Anthropic, OpenAI, Gemini) to analyze and discuss your code.
+      * **Smart File Selection:** Vector search results provide a starting point, and the LLM can further recommend additional relevant files.
+      * **Dynamic Context Control:** You have full control over which files are shown to the LLM at any point in the conversation, ensuring the LLM always has the precise context you need.
+      * **Live Code Updates:** The LLM is explicitly informed that the code context can be updated with each message, enabling seamless, iterative code modification discussions.
+      * **Syntax-Highlighted Responses:** LLM code suggestions are automatically parsed from Markdown and rendered with beautiful syntax highlighting for optimal readability.
+  * **Project & File Management:**
+      * Dedicated project pages to view generated YAML representations.
+      * Selective regeneration of YAML for individual files.
+      * Save and resume previous analysis chats and query histories.
+  * **User-Friendly Web Interface:** Access all features through a modern web application.
 
 ## Installation
 
-1. Clone the repository: `git clone https://github.com/scionsamurai/code-to-yaml-vector-search.git`
-2. Navigate to the project directory: `cd code-to-yaml-vector-search`
-3. Install Qdrant for vector search functionality. You can use Docker:
-   ```
-   docker run -p 6334:6334 -p 6333:6333 qdrant/qdrant
-   ```
-
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/scionsamurai/code-to-yaml-vector-search.git
+    cd code-to-yaml-vector-search
+    ```
+2.  **Start Qdrant Vector Database:** Project AI Code Assistant uses Qdrant for blazing-fast vector search. The easiest way to run it is with Docker:
+    ```bash
+    docker run -p 6334:6334 -p 6333:6333 qdrant/qdrant
+    ```
 ## Usage
 
-1. Add API keys to ".env" file now or add them with webpage in step 4. See [llm_api_access](https://crates.io/crates/llm_api_access) for example ".env" file structure.
-2. Run the application: `cargo run`
-3. Access the web interface at `http://localhost:8080`
-4. Add API keys by clicking "Update Environment Variables" button on home page (if keys weren't already added in step 2).
-5. Create a new project by providing the project name, source directory path, and programming languages used.
-6. The application will convert the source code files with specified extensions to YAML format and generate YAML files in the output directory.
-7. View the generated YAML representations for each project on the dedicated project page.
-8. Regenerate YAML for individual files as needed.
-9. Use the search functionality to find relevant code files based on natural language queries.
-10. Execute queries against specific code files to get detailed analysis from LLMs.
+1.  **Configure API Keys:**
+      * **Option 1 (Recommended):** Create a `.env` file in the project root and add your API keys (e.g., `OPENAI_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`). See the `llm_api_access` crate documentation for example `.env` structure.
+      * **Option 2:** Add/update keys directly through the web interface (see step 4).
+2.  **Run the Application:**
+    ```bash
+    cargo run
+    ```
+3.  **Access the Web Interface:** Open your browser and navigate to `http://localhost:8080`.
+4.  **(Optional) Update Environment Variables:** If you skipped step 1, click the "Update Environment Variables" button on the home page.
+5.  **Create a New Project:** Provide a project name, the path to your source code directory, and the programming languages used. The application will automatically generate YAML files and their embeddings.
+6.  **Explore & Analyze:**
+      * View the generated YAML representations on the dedicated project page.
+      * Use the **semantic search** bar to find relevant code files.
+      * Initiate a **code analysis chat** to discuss and modify your codebase with the LLM.
+      * Dynamically select which files are visible to the LLM within the chat interface.
 
 ## Configuration
 
-The application can be configured through environment variables or a `.env` file in the project root directory. The following variables are available:
+The application can be configured using environment variables or a `.env` file in the project's root directory.
 
-- `OPENAI_API_KEY`: The API key for the OpenAI language model (used for embeddings and optionally for analysis).
-- `OPEN_AI_ORG`: The organization ID for the OpenAI API (if used).
-- `GEMINI_API_KEY`: The API key for the Gemini language model (if used).
-- `ANTHROPIC_API_KEY`: The API key for the Anthropic language model (if used).
-- `QDRANT_SERVER_URL`: The URL for the Qdrant vector database (defaults to "http://localhost:6334" if not specified).
-
-## Advanced Features
-
-### Semantic Search
-
-The application uses OpenAI embeddings and Qdrant vector database to provide powerful semantic search capabilities:
-
-1. Enter a natural language query on a project page
-2. The system generates embeddings for your query
-3. The query embeddings are compared against the embeddings of your code files
-4. The most semantically similar files are returned as results
-
-### Code Analysis
-
-You can analyze specific code files with LLMs:
-
-1. Search for relevant files using the semantic search feature
-2. Select code files to analyze
-3. Enter your query about the selected code
-4. The system will use an LLM (Anthropic by default) to analyze the code and provide a detailed response
+  * `OPENAI_API_KEY`: API key for OpenAI models (embeddings, chat).
+  * `OPEN_AI_ORG`: Organization ID for OpenAI API (if applicable).
+  * `GEMINI_API_KEY`: API key for Google Gemini models.
+  * `ANTHROPIC_API_KEY`: API key for Anthropic models (default for chat analysis).
+  * `QDRANT_SERVER_URL`: URL for the Qdrant vector database (defaults to `http://localhost:6334`).
 
 ## Contributing
 
-Contributions are welcome! Please open an issue or submit a pull request for any bug fixes, improvements, or new features.
+Contributions are highly welcome\! Whether it's bug fixes, feature enhancements, or new language support, please feel free to open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE).

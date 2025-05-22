@@ -1,6 +1,6 @@
 // src/routes/project/update_yaml.rs
 use actix_web::{get, web, HttpResponse, Responder};
-use crate::models::{AppState, Project};
+use crate::models::{AppState, Project, UpdateQuery};
 use crate::services::yaml::YamlService;
 use crate::services::project_service::ProjectService;
 use std::fs::read_to_string;
@@ -9,6 +9,7 @@ use std::path::Path;
 #[get("/update/{name}/yaml")]
 pub async fn update(
     app_state: web::Data<AppState>,
+    query: web::Query<UpdateQuery>,
     name: web::Path<String>,
 ) -> impl Responder {
     let name = name.into_inner();
@@ -25,7 +26,7 @@ pub async fn update(
             }
 
             let yaml_service = YamlService::new();
-            yaml_service.save_yaml_files(&mut project, &app_state.output_dir).await;
+            yaml_service.save_yaml_files(&mut project, &app_state.output_dir, query.force.unwrap_or(false)).await;
 
             // Redirect back to the project page
             HttpResponse::SeeOther()
