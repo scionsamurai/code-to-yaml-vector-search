@@ -6,22 +6,33 @@ impl TemplateService {
     pub fn generate_file_list(&self, files: &[String], selected_files: &[String], project: &Project) -> String {
         files.iter()
             .map(|file| {
-                let use_yaml = project.file_yaml_override.get(file).map(|&b| b).unwrap_or(project.default_use_yaml);
+                let file_path = std::path::Path::new(file);
+                let file_extension = file_path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                
+                let yaml_checkbox = if file_extension != "md" {
+                    let use_yaml = project.file_yaml_override.get(file).map(|&b| b).unwrap_or(project.default_use_yaml);
+                    format!(
+                        r#"<span class="right">
+                            <input type="checkbox" class="yaml-checkbox" value="{}" {}> YAML
+                        </span>"#,
+                        file,
+                        if use_yaml { "checked" } else { "" },
+                    )
+                } else {
+                    "".to_string()
+                };
                 format!(
                     r#"<div class="file-item">
                         <span class="left">
                             <input type="checkbox" class="file-checkbox" value="{}" {}> 
                             <span>{}</span>
                         </span>
-                        <span class="right">
-                            <input type="checkbox" class="yaml-checkbox" value="{}" {}> YAML
-                        </span>
+                        {}
                     </div>"#,
                     file,
                     if selected_files.contains(file) { "checked" } else { "" },
                     file,
-                    file,
-                    if use_yaml { "checked" } else { "" },
+                    yaml_checkbox
                 )
             })
             .collect::<Vec<String>>()

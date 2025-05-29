@@ -26,9 +26,19 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
         let yaml_path = output_path.join(format!("{}.yml", file.path.replace("/", "*")));
         let use_yaml = project.file_yaml_override.get(&source_path.clone()).map(|&b| b).unwrap_or(project.default_use_yaml);
 
-        if use_yaml && (force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string())) {
+        let file_extension = Path::new(&file.path)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .unwrap_or("");
 
-            let combined_content = yaml_management.create_yaml_with_imports(project, &file, &project.model).await;
+        if file_extension == "md" {
+            // Handle Markdown files: read content and generate embedding
+            println!("Processing Markdown file: {}", &file.path);
+            let markdown_content = std::fs::read_to_string(&file.path).unwrap();
+            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &markdown_content).await;
+        } else if use_yaml && (force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string())) {
+
+            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.model).await;
 
             // Write YAML to file
             write(&yaml_path, combined_content.clone().unwrap()).unwrap();

@@ -29,16 +29,9 @@ impl YamlManagement {
 
     pub async fn create_yaml_with_imports(
         &self, // Added self
-        project: &Project,
         project_file: &ProjectFile,
         model: &str,
     ) -> Option<String> {
-
-        let use_yaml = project.file_yaml_override.get(&project_file.path).map(|&b| b).unwrap_or(project.default_use_yaml);
-
-        if !use_yaml {
-            return Some(project_file.content.clone())
-        }
 
         let yaml_content = self.llm_service.convert_to_yaml(&project_file, model).await;
 

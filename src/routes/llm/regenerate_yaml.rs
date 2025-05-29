@@ -27,7 +27,7 @@ pub async fn regenerate_yaml(
             };
             
             let yaml_management = YamlManagement::new();
-            let combined_content = yaml_management.create_yaml_with_imports(&project, &project_file, &project.model).await;
+            let combined_content = yaml_management.create_yaml_with_imports(&project_file, &project.model).await;
             
             write(&yaml_path, &combined_content.clone().unwrap()).unwrap();
             return HttpResponse::Ok().body(combined_content.unwrap());
