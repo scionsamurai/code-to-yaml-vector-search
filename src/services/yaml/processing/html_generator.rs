@@ -40,17 +40,27 @@ pub fn generate_html(
     } else {
         String::new()
     };
+    // Add the YAML checkbox
+    let yaml_checkbox = format!(
+        r#"<label>
+            <input type="checkbox" class="yaml-checkbox" value="{}" {}> Use YAML
+        </label>"#,
+        source_path,
+        if use_yaml { "checked" } else { "" }
+    );
+
 
     // Return HTML for this file
     format!(
-            "<div class=\"page\"><p>---</p><h3 data-lines=\"{}\">path: {}</h3>{}<pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}</div>",
+            "<div class=\"page\"><p>---</p><h3 data-lines=\"{}\">path: {}</h3>{}<pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}{}</div>",
             line_count,
             source_path,
             override_message,
             content.replace("---\n", "").replace("```", ""),
             project_name,
             yaml_path.display(),
-            split_button
+            split_button,
+            yaml_checkbox
         )
 }
 

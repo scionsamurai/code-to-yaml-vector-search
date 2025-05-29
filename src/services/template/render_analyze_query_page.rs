@@ -33,6 +33,7 @@ impl TemplateService {
                     }}
                     </script>
                     <script src="/static/analyze-query.js" type="module"></script>
+                    <script src="/static/yaml-checkbox-logic.js"></script>
                     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
                 </head>
                 <body>

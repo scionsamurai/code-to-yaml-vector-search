@@ -20,9 +20,14 @@ impl TemplateService {
                 <link rel="stylesheet" href="/static/project.css">
                 <link rel="stylesheet" href="/static/global.css">
                 <script src="/static/project.js"></script>
+                <script src="/static/yaml-checkbox-logic.js"></script>
                 <script src="/static/split-file.js" type="module"></script>
             </head>
             <body>
+                <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
+                    background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s; position: fixed;">
+                </div>
+                <input type="hidden" id="project-name" value="{}">
                 <div id="validationModal" class="path-comment-modal">
                     <div class="modal-content">
                         <span class="close">&times;</span>
@@ -83,6 +88,7 @@ impl TemplateService {
             </body>
         </html>
         "#,
+            project.name,
             project.name,
             project.name,
             project.name,
