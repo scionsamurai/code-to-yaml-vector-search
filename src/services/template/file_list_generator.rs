@@ -3,16 +3,25 @@ use crate::models::Project;
 use super::TemplateService;
 
 impl TemplateService {
-    pub fn generate_file_list(&self, files: &[String], selected_files: &[String]) -> String {
+    pub fn generate_file_list(&self, files: &[String], selected_files: &[String], project: &Project) -> String {
         files.iter()
             .map(|file| {
+                let use_yaml = project.file_yaml_override.get(file).map(|&b| b).unwrap_or(project.default_use_yaml);
                 format!(
                     r#"<div class="file-item">
-                        <input type="checkbox" class="file-checkbox" value="{}" {}> {}
+                        <span class="left">
+                            <input type="checkbox" class="file-checkbox" value="{}" {}> 
+                            <span>{}</span>
+                        </span>
+                        <span class="right">
+                            <input type="checkbox" class="yaml-checkbox" value="{}" {}> YAML
+                        </span>
                     </div>"#,
                     file,
                     if selected_files.contains(file) { "checked" } else { "" },
-                    file
+                    file,
+                    file,
+                    if use_yaml { "checked" } else { "" },
                 )
             })
             .collect::<Vec<String>>()
@@ -30,6 +39,6 @@ impl TemplateService {
             .filter(|file| !exclude_files.contains(file))
             .collect();
         
-        self.generate_file_list(&other_files, selected_files)
+        self.generate_file_list(&other_files, selected_files, project)
     }
 }

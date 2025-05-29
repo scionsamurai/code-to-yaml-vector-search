@@ -24,15 +24,17 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
         println!("Checking if yaml update needed for {}", &file.path);
         let source_path = &file.path;
         let yaml_path = output_path.join(format!("{}.yml", file.path.replace("/", "*")));
-        if force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string()) {
+        let use_yaml = project.file_yaml_override.get(&source_path.clone()).map(|&b| b).unwrap_or(project.default_use_yaml);
 
-            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.model).await;
+        if use_yaml && (force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string())) {
+
+            let combined_content = yaml_management.create_yaml_with_imports(project, &file, &project.model).await;
 
             // Write YAML to file
-            write(&yaml_path, &combined_content).unwrap();
+            write(&yaml_path, combined_content.clone().unwrap()).unwrap();
 
             // Generate and store embedding
-            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &combined_content).await;
+            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &combined_content.unwrap()).await;
         }
     }
 

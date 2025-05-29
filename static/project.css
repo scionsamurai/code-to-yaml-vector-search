@@ -90,3 +90,11 @@
     padding: 1rem;
 }
 
+.yaml-override-message {
+    color: firebrick;
+    font-style: italic;
+    margin-bottom: 10px;
+    border: 1px solid;
+    padding: 5px;
+    text-align: center;
+}

@@ -85,6 +85,7 @@ fn process_yaml_entry(
         &source_path,
         file_descriptions,
         project_name,
+        project
     ) {
         Ok(html) => Some(Ok(html)),
         Err(e) => Some(Err(e)),
@@ -96,6 +97,7 @@ fn process_yaml_file(
     source_path: &str,
     file_descriptions: &mut Vec<(String, String)>,
     project_name: &str,
+    project: &Project,
 ) -> Result<String, String> {
     // Read file content
     let content =
@@ -108,6 +110,7 @@ fn process_yaml_file(
         content,
         project_name,
         file_descriptions,
+        project
     );
     Ok(html)
 }

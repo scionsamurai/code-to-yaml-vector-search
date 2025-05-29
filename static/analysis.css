@@ -79,6 +79,15 @@ body {
     margin: 5px 0;
     padding: 5px;
     border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    padding-right: 5px;
+}
+
+.file-item .left span {
+    overflow: scroll;
+    
+
 }
 
 .file-checkbox {

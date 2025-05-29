@@ -48,6 +48,10 @@ impl TemplateService {
                                     <option value="anthropic" {}> Anthropic</option>
                                 </select>
                             </div>
+                            <div class="form-group">
+                                <label for="default_use_yaml">Default Use YAML:</label>
+                                <input type="checkbox" id="default_use_yaml" name="default_use_yaml" {} value="true">
+                            </div>
                             <button type="submit">Update Settings</button>
                         </form>
                     </div>
@@ -86,6 +90,7 @@ impl TemplateService {
             if project.model == "gemini" { "selected" } else { "" },
             if project.model == "openai" { "selected" } else { "" },
             if project.model == "anthropic" { "selected" } else { "" },
+            if project.default_use_yaml { "checked" } else { "" },
             project.source_dir,
             project.name,
             query_id,

@@ -10,6 +10,9 @@ pub mod generation;
 pub mod embedding;
 pub mod cleanup;
 use crate::routes::llm::chat_analysis::utils::unescape_html;
+use crate::services::embedding_service::EmbeddingService;
+use crate::services::qdrant_service::QdrantService;
+use std::env;
 
 pub struct YamlManagement {
     pub file_service: FileService,
@@ -26,9 +29,17 @@ impl YamlManagement {
 
     pub async fn create_yaml_with_imports(
         &self, // Added self
+        project: &Project,
         project_file: &ProjectFile,
         model: &str,
-    ) -> String {
+    ) -> Option<String> {
+
+        let use_yaml = project.file_yaml_override.get(&project_file.path).map(|&b| b).unwrap_or(project.default_use_yaml);
+
+        if !use_yaml {
+            return Some(project_file.content.clone())
+        }
+
         let yaml_content = self.llm_service.convert_to_yaml(&project_file, model).await;
 
         let language = Path::new(&project_file.path)
@@ -42,9 +53,9 @@ impl YamlManagement {
 
         if !imports.is_empty() {
             let imports_string = imports.join("\n\t- ");
-            format!("{}\n\nimports:\n\t- {}", yaml_content, imports_string)
+            Some(format!("{}\n\nimports:\n\t- {}", yaml_content, imports_string))
         } else {
-            yaml_content
+            Some(yaml_content)
         }
     }
     
@@ -59,6 +70,55 @@ impl YamlManagement {
 
     pub fn clean_up_orphaned_files(&self, project_name: &str, orphaned_files: Vec<String>) {
         cleanup::clean_up_orphaned_files(project_name, orphaned_files);
+    }
+
+    pub async fn regenerate_embedding(&self, project: &mut Project, file_path: &str, output_dir: &str) {
+        let embedding_service = EmbeddingService::new();
+        let qdrant_server_url = env::var("QDRANT_SERVER_URL").unwrap_or_else(|_| "http://localhost:6334".to_string());
+
+        let qdrant_service = match QdrantService::new(&qdrant_server_url, 1536).await {
+            Ok(service) => service,
+            Err(e) => {
+                eprintln!("Failed to connect to Qdrant: {}", e);
+                return;
+            }
+        };
+
+        // **Delete existing embedding**
+        if let Err(e) = qdrant_service.delete_file_vectors(&project.name, file_path).await {
+            eprintln!("Failed to delete existing vectors: {}", e);
+            // Consider whether to return early here, depending on your error handling policy
+            // If deleting the old embedding fails, it might be best to avoid creating a new one
+            return;
+        }
+
+        let output_path = Path::new(output_dir).join(&project.name);
+        let yaml_path = output_path.join(format!("{}.yml", file_path.replace("/", "*")));
+        let use_yaml = project.file_yaml_override.get(file_path).map(|&b| b).unwrap_or(project.default_use_yaml);
+
+        let content_to_embed: String;
+        if use_yaml {
+            // Read the YAML content
+            content_to_embed = match std::fs::read_to_string(&yaml_path) {
+                Ok(yaml_content) => yaml_content,
+                Err(e) => {
+                    eprintln!("Error reading YAML file: {}", e);
+                    return;
+                }
+            };
+        } else {
+            // Read the original source file content
+            content_to_embed = match std::fs::read_to_string(file_path) {
+                Ok(source_content) => source_content,
+                Err(e) => {
+                    eprintln!("Error reading original source file: {}", e);
+                    return;
+                }
+            };
+        }
+
+        // **Generate and store the new embedding**
+        embedding::process_embedding(&embedding_service, &qdrant_service, project, file_path, &content_to_embed).await;
     }
 
 }

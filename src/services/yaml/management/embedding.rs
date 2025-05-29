@@ -75,20 +75,31 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
                 if file_path.is_empty() || file_path == "project_settings" {
                     continue;
                 }
-                
-                // Check if this YAML needs to be re-embedded
+
+                // **Check use_yaml setting**
+                let use_yaml = project.file_yaml_override.get(&file_path).map(|&b| b).unwrap_or(project.default_use_yaml);
+
+
                 let needs_update = match project.embeddings.get(&file_path) {
                     Some(metadata) => {
-                        // Check if YAML file is newer than our last recorded update
-                        if let Ok(yaml_metadata) = std::fs::metadata(&path) {
-                            if let Ok(modified) = yaml_metadata.modified() {
+                        // Check the appropriate file based on use_yaml
+
+                        let metadata_path = if use_yaml {
+                            path.as_path() // YAML path
+                        } else {
+                            Path::new(&file_path)
+                        };
+                        
+                        if let Ok(file_metadata) = std::fs::metadata(&metadata_path) {
+                            if let Ok(modified) = file_metadata.modified() {
                                 let modified_datetime: chrono::DateTime<chrono::Utc> = modified.into();
                                 modified_datetime > metadata.last_updated
                             } else {
                                 false
                             }
                         } else {
-                            false
+                            // If we cannot get the metadata (file might not exist), force update
+                            true
                         }
                     },
                     None => true, // No embedding record exists
@@ -97,12 +108,30 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
                 if needs_update {
                     println!("Detected manually updated YAML: {}", file_path);
 
-                    // Read the YAML content
-                    if let Ok(yaml_content) = std::fs::read_to_string(&path) {
-                        // Generate and Store embedding
-                        process_embedding(&embedding_service, &qdrant_service, project, &file_path, &yaml_content).await;
-                        any_updates = true;
+                    let content_to_embed: String;
+
+                    if use_yaml {
+                        // Read the YAML content
+                        content_to_embed = match std::fs::read_to_string(&path) {
+                            Ok(yaml_content) => yaml_content,
+                            Err(e) => {
+                                eprintln!("Error reading YAML file: {}", e);
+                                continue; // Skip this file
+                            }
+                        };
+                    } else {
+                        content_to_embed = match std::fs::read_to_string(&file_path) {
+                            Ok(source_content) => source_content,
+                            Err(e) => {
+                                eprintln!("Error reading original source file: {}", e);
+                                continue; // Skip this file
+                            }
+                        };
                     }
+
+                    // Generate and Store embedding
+                    process_embedding(&embedding_service, &qdrant_service, project, &file_path, &content_to_embed).await;
+                    any_updates = true;
                 }
             }
         }

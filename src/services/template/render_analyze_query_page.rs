@@ -15,7 +15,7 @@ impl TemplateService {
         current_query_id: &str, // Currently selected query
     ) -> String {
         
-        let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files);
+        let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
         format!(

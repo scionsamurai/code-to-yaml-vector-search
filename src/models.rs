@@ -8,6 +8,11 @@ pub mod chat_management;
 pub mod utils;
 pub mod query;
 
+
+fn default_use_yaml_default() -> bool {
+    true
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Project {
     pub name: String,
@@ -18,6 +23,10 @@ pub struct Project {
     pub embeddings: HashMap<String, EmbeddingMetadata>,
     #[serde(default)]
     pub file_descriptions: HashMap<String, String>,
+    #[serde(default = "default_use_yaml_default")]
+    pub default_use_yaml: bool,
+    #[serde(default)]
+    pub file_yaml_override: HashMap<String, bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

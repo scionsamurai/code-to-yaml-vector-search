@@ -1,6 +1,7 @@
 // src/services/yaml/processing/html_generator.rs
 use super::description_parser;
 use std::path::Path;
+use crate::models::Project;
 
 pub fn generate_html(
     yaml_path: &Path,
@@ -8,6 +9,7 @@ pub fn generate_html(
     content: String,
     project_name: &str,
     file_descriptions: &mut Vec<(String, String)>,
+    project: &Project,
 ) -> String {
     // Extract description
     let description = description_parser::parse_description(&content)
@@ -32,11 +34,19 @@ pub fn generate_html(
         String::new()
     };
 
+    let use_yaml = project.file_yaml_override.get(source_path).map(|&b| b).unwrap_or(project.default_use_yaml);
+    let override_message = if !use_yaml {
+        "<div class=\"yaml-override-message\">YAML generation is disabled for this file. The YAML displayed may be out of date.</div>".to_string()
+    } else {
+        String::new()
+    };
+
     // Return HTML for this file
     format!(
-            "<div class=\"page\"><p>---</p><h3 data-lines=\"{}\">path: {}</h3><pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}</div>",
+            "<div class=\"page\"><p>---</p><h3 data-lines=\"{}\">path: {}</h3>{}<pre>{}</pre><button onclick=\"regenerate('{}', '{}')\">Regenerate</button>{}</div>",
             line_count,
             source_path,
+            override_message,
             content.replace("---\n", "").replace("```", ""),
             project_name,
             yaml_path.display(),
