@@ -89,9 +89,9 @@ pub async fn get_project(
         match most_recent_query {
             Ok(Some(latest_query)) => {
                 let query_text = latest_query.query.clone();
-                let similar_files: Vec<(String, String, f32)> = latest_query.vector_results
+                let similar_files: Vec<(String, String, f32, std::option::Option<Vec<f32>>)> = latest_query.vector_results
                     .iter()
-                    .map(|(path, score)| (path.clone(), "".to_string(), *score))
+                    .map(|(path, score)| (path.clone(), "".to_string(), *score, None))
                     .collect();
 
                 let llm_analysis = latest_query.llm_analysis.clone();

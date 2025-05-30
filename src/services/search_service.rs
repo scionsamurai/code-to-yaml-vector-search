@@ -15,10 +15,10 @@ impl SearchService {
         Self {}
     }
 
-    pub async fn search_project(&self, project: &mut Project, query_text: &str, output_dir: &std::path::PathBuf) -> Result<(Vec<(String, String, f32)>, String), String> {
+    pub async fn search_project(&self, project: &mut Project, query_text: &str, output_dir: &std::path::PathBuf) -> Result<(Vec<(String, String, f32, std::option::Option<Vec<f32>>)>, String), String> {
         // Generate embedding for query
         let embedding_service = EmbeddingService::new();
-        let query_embedding = match embedding_service.generate_embedding(query_text, None).await {
+        let query_embedding = match embedding_service.generate_embedding(query_text, Some(1536)).await {
             Ok(embedding) => embedding,
             Err(e) => return Err(e.to_string()),
         };
@@ -30,7 +30,7 @@ impl SearchService {
             Err(e) => return Err(format!("Failed to connect to Qdrant: {}", e)),
         };
         
-        let similar_files = match qdrant_service.search_similar_files(&project.name, query_embedding, 5).await {
+        let similar_files = match qdrant_service.search_similar_files(&project.name, query_embedding, 5, false).await {
             Ok(files) => files,
             Err(e) => return Err(e.to_string()),
         };
@@ -47,7 +47,7 @@ impl SearchService {
 
         // Update the QueryData with search results and LLM analysis
         query_data.query = query_text.to_string();
-        query_data.vector_results = similar_files.iter().map(|(path, _, score)| (path.clone(), *score)).collect();
+        query_data.vector_results = similar_files.iter().map(|(path, _, score, _)| (path.clone(), *score)).collect();
         query_data.llm_analysis = llm_analysis.clone();
 
         // Save the updated QueryData
@@ -64,7 +64,7 @@ impl SearchService {
         Ok((similar_files, llm_analysis))
     }
 
-    async fn get_llm_analysis(&self, query_text: &str, similar_files: &[(String, String, f32)], project: &Project) -> Result<String, String> {
+    async fn get_llm_analysis(&self, query_text: &str, similar_files: &[(String, String, f32, std::option::Option<Vec<f32>>)], project: &Project) -> Result<String, String> {
         // Initialize LLM service and file service
         let llm_service = LlmService::new();
         let file_service = FileService {};
@@ -72,7 +72,7 @@ impl SearchService {
         
         // Extract code from similar files
         let mut file_code = String::new();
-        for (file_path, _, _) in similar_files {
+        for (file_path, _, _, _) in similar_files {
             // Use the targeted file reading method
             match file_service.read_specific_file(project, file_path) {
                 Some(content) => {

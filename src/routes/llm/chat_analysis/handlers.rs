@@ -29,9 +29,6 @@ pub async fn chat_analysis(
 
     // Get selected context files and file contents
     let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
-
-    // Escape the user's message
-    let escaped_message = escape_html(data.message.clone()).await;
     
     let query_text = project.get_query_data_field(&app_state, query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
      
@@ -43,14 +40,31 @@ pub async fn chat_analysis(
 
     let user_message = ChatMessage {
         role: "user".to_string(),
-        content: escaped_message.to_string(),
+        content: data.message.clone(),
     };
 
+    let mut unescaped_history: Vec<ChatMessage> = Vec::new();
+    for message in full_history.iter() {
+        let unescaped_content = unescape_html(message.content.clone());
+        unescaped_history.push(ChatMessage {
+            role: message.role.clone(),
+            content: unescaped_content,
+        });
+    }
+
     // Format messages for LLM with system prompt and existing history
-    let messages = format_messages(&system_prompt, &full_history, &user_message);
+    let messages = format_messages(&system_prompt, &unescaped_history, &user_message);
 
     // Send to LLM
     let llm_response = llm_service.send_conversation(&messages, &project.model.clone()).await;
+
+    // Escape the user's message
+    let escaped_message = escape_html(data.message.clone()).await;
+
+    let user_message = ChatMessage {
+        role: "user".to_string(),
+        content: escaped_message.to_string(),
+    };
 
     // Create response message
     let assistant_message = ChatMessage {

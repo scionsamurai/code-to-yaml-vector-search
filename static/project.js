@@ -57,3 +57,28 @@ async function validateFilePaths(projectName) {
     }
   };
 }
+
+async function runClustering() {
+  const projectName = document.getElementById('project-name').value;
+  try {
+      const response = await fetch(`/api/cluster/${projectName}`, { //adjust URL
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json'
+          },
+      });
+
+      if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Display clustering results (modify as needed)
+      alert(JSON.stringify(data));  // Simple alert for now
+
+  } catch (error) {
+      console.error('Error running clustering:', error);
+      alert(`Error running clustering: ${error.message}`);
+  }
+}

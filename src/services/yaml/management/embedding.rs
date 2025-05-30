@@ -24,7 +24,7 @@ pub async fn process_embedding(embedding_service: &EmbeddingService, qdrant_serv
                 last_updated: chrono::Utc::now(),
                 vector_id,
             };
-            project.embeddings.insert(source_path.to_string(), metadata); // Changed to owned string
+            project.embeddings.insert(source_path.to_string(), metadata);
         },
         Err(e) => eprintln!("Failed to generate embedding: {}", e),
     }

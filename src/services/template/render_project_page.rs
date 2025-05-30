@@ -58,6 +58,9 @@ impl TemplateService {
                                 <input type="checkbox" id="default_use_yaml" name="default_use_yaml" {} value="true">
                             </div>
                             <button type="submit">Update Settings</button>
+                            <div class="form-group">
+                                <button type="button" onclick="runClustering()">Run Clustering</button>
+                            </div>
                         </form>
                     </div>
                     

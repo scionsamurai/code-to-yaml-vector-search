@@ -1720,6 +1720,7 @@ dependencies = [
  "html-escape",
  "llm_api_access",
  "qdrant-client",
+ "rand 0.9.1",
  "regex",
  "reqwest 0.11.27",
  "serde",
