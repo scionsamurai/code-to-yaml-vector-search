@@ -38,17 +38,21 @@ impl TemplateService {
             llm_analysis.replace("\n", "<br>")
         ));
 
-        // Update the analyze button to use the new endpoint
-        search_results_html.push_str(&format!(
-            r#"<form action="/analyze-query" method="post">
-            <input type="hidden" name="query_id" id="query-id" value="{}">
-            <input type="hidden" name="project" value="{}">
-            <input type="hidden" name="query" value="{}">
-            <button type="submit" class="analyze-button">Chat with Analysis</button>
-        </form>
-        </div>"#,
-        query_id, project_name, query_text
-        ));
+        if query_id != "transient_query_id" {
+            // Update the analyze button to use the new endpoint
+            search_results_html.push_str(&format!(
+                r#"<div class="query-actions">
+                <form action="/analyze-query" method="post">
+                    <input type="hidden" name="query_id" value="{}">
+                    <input type="hidden" name="project" value="{}">
+                    <input type="hidden" name="query" value="{}">
+                    <button type="submit" class="analyze-button">Chat with Analysis</button>
+                </form>
+            </div>"#,
+                query_id, project_name, query_text
+            ));
+        }
+
         search_results_html
     }
 }

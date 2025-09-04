@@ -57,8 +57,8 @@ pub async fn suggest_split(
     
     // Use the LLM service to get the analysis
     let llm_service = LlmService::new();
-    let analysis = llm_service.get_analysis(&initial_prompt, &project.model).await;
-    
+    let analysis = llm_service.get_analysis(&initial_prompt, &project.provider, project.specific_model.as_deref()).await;
+
     // Create HTML response with chat interface
     let html = format!(
         r#"

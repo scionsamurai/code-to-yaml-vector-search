@@ -30,10 +30,11 @@ impl YamlManagement {
     pub async fn create_yaml_with_imports(
         &self, // Added self
         project_file: &ProjectFile,
-        model: &str,
+        provider: &str,
+        specific_model: Option<&str>,
     ) -> Option<String> {
 
-        let yaml_content = self.llm_service.convert_to_yaml(&project_file, model).await;
+        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, specific_model).await;
 
         let language = Path::new(&project_file.path)
             .extension()

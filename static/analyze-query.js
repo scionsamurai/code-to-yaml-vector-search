@@ -6,13 +6,15 @@ import {
   sendMessage,
   resetChat,
   toggleEditMode,
+  toggleHideMessage,
+  regenerateLastMessage, // Import regenerateLastMessage
+  addMessageToChat // Import addMessageToChat (not strictly needed here but good for consistency)
 } from "./analyze-query/chat.js";
 import {
   applySyntaxHighlighting,
   updateCopyLinks,
 } from "./analyze-query/syntax-highlighting.js";
 import { formatMessage } from "./analyze-query/utils.js";
-
 
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
@@ -62,20 +64,36 @@ async function initAnalysisChat() {
     });
   }
 
+  // Event listeners for existing messages (loaded from HTML)
   document.querySelectorAll(".edit-message-btn").forEach((button) => {
     button.addEventListener("click", function () {
       const messageDiv = button.closest(".chat-message");
       toggleEditMode(messageDiv);
     });
   });
+  document.querySelectorAll(".hide-message-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const messageDiv = button.closest(".chat-message");
+      toggleHideMessage(messageDiv);
+    });
+  });
+  document.querySelectorAll(".regenerate-message-btn").forEach((button) => {
+    button.addEventListener("click", function () {
+      const messageDiv = button.closest(".chat-message");
+      regenerateLastMessage(messageDiv);
+    });
+  });
 
-  // Format existing messages from Markdown to HTML
+  // Format existing messages from Markdown to HTML and store original content
   const chatMessages = chatContainer.querySelectorAll(".chat-message");
   chatMessages.forEach((messageDiv) => {
     const messageContent = messageDiv.querySelector(".message-content");
-    const originalContent =
-      messageDiv.dataset.originalContent || messageContent.textContent;
-    messageContent.innerHTML = formatMessage(originalContent);
+    // Ensure original content is correctly stored if not already from data-original-content attribute
+    // We already added `msg.content` to the div innerHTML in render_analyze_query_page, which is the raw content.
+    // So we can use that for originalContent, and then format it.
+    const rawContent = messageContent.innerHTML;
+    messageDiv.dataset.originalContent = rawContent;
+    messageContent.innerHTML = formatMessage(rawContent);
   });
 
   // Apply syntax highlighting to existing code blocks
@@ -83,6 +101,66 @@ async function initAnalysisChat() {
 
   updateCopyLinks();
 
+  const searchButton = document.createElement("button");
+  searchButton.id = "analysis-search-button";
+  searchButton.textContent = "Search Files";
+  document.querySelector(".chat-input").appendChild(searchButton);
+
+  const modal = document.createElement("div");
+  modal.id = "search-results-analysis-modal";
+  modal.classList.add("analysis-search-modal"); // Use classList
+  modal.style.display = "none"; // Initially hidden
+  modal.innerHTML = `<div class="analysis-search-modal-content">
+                        <div class="modal-header">
+                            <h3>Search Results</h3>
+                            <span class="close-search-modal">&times;</span>
+                        </div>
+                        <div id="search-results-content-files-modal"></div>
+                    </div>`;
+  document.body.appendChild(modal);
+
+  searchButton.addEventListener("click", async () => {
+    const projectName = document.getElementById("project-name").value;
+    const queryText = document.getElementById("analysis-message-input").value;
+
+    const response = await fetch("/search-related-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        project: projectName,
+        query: queryText,
+      }),
+    });
+
+    const data = await response.json();
+
+    let searchResultsContent = document.getElementById(
+      "search-results-content-files-modal"
+    );
+    searchResultsContent.innerHTML = ""; // Clear previous results
+
+    if (data.success) {
+      searchResultsContent.innerHTML = data.html; // Insert the HTML
+    } else {
+      searchResultsContent.textContent = "Error: " + data.error;
+    }
+
+    modal.style.display = "block"; // Show the modal
+  });
+
+  // Close the modal when the close button is clicked
+  modal.querySelector(".close-search-modal").addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  // Close the modal if the user clicks outside of it
+  window.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      modal.style.display = "none";
+    }
+  });
 }
 
 // Initialize the chat when DOM is ready

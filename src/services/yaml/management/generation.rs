@@ -38,7 +38,7 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
             embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &markdown_content).await;
         } else if use_yaml && (force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string())) {
 
-            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.model).await;
+            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.provider, project.specific_model.as_deref()).await;
 
             // Write YAML to file
             write(&yaml_path, combined_content.clone().unwrap()).unwrap();

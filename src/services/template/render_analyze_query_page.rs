@@ -1,6 +1,7 @@
 // src/services/template/render_analyze_query_page.rs
-use crate::models::Project;
+use crate::models::{Project, ChatMessage}; // Import ChatMessage
 use super::TemplateService;
+use crate::shared;
 
 impl TemplateService {
     pub fn render_analyze_query_page(
@@ -10,7 +11,7 @@ impl TemplateService {
         relevant_files: &[String],
         saved_context_files: &[String],
         project: &Project,
-        existing_chat_html: &str,
+        existing_chat_history: &[ChatMessage], // Changed to &[ChatMessage]
         available_queries: &[(String, String)], // Timestamp and filename
         current_query_id: &str, // Currently selected query
     ) -> String {
@@ -18,6 +19,44 @@ impl TemplateService {
         let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
+
+        let mut chat_messages_html = String::new();
+        // Find the last model message to add the regenerate button
+        let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
+
+        for (index, msg) in existing_chat_history.iter().enumerate() {
+            let regenerate_button_html = if let Some(last_idx) = last_model_message_index {
+                if index == last_idx {
+                    // Only add regenerate button to the last model message
+                    r#"<button class="regenerate-message-btn" title="Regenerate response">Regenerate</button>"#.to_string()
+                } else {
+                    "".to_string()
+                }
+            } else {
+                "".to_string()
+            };
+
+            // Dataset originalContent will be set by JS, so we'll leave it as is for now in Rust
+            // It's important that the content here is the raw content, not yet Markdown formatted
+            chat_messages_html.push_str(&format!(
+                r#"<div class="chat-message {}-message" data-message-index="{}">
+                    <div class="message-content">{}</div>
+                    <div class="message-controls">
+                        <button class="edit-message-btn" title="Edit message">Edit</button>
+                        <button class="hide-message-btn" title="{} message" data-hidden="{}">{}</button>
+                        {}
+                    </div>
+                </div>"#,
+                msg.role, 
+                index, // Add index for easy identification in JS
+                msg.content, 
+                if msg.hidden { "Unhide" } else { "Hide" }, 
+                msg.hidden, 
+                if msg.hidden { "Unhide" } else { "Hide" },
+                regenerate_button_html
+            ));
+        }
+
         format!(
             r#"
             <html>
@@ -35,6 +74,7 @@ impl TemplateService {
                     <script src="/static/analyze-query.js" type="module"></script>
                     <script src="/static/yaml-checkbox-logic.js"></script>
                     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+        {}
                 </head>
                 <body>
                 <div class="head">
@@ -99,7 +139,17 @@ impl TemplateService {
                         </div>
                     </div>
                 </div>
-                
+
+                <div id="search-results-analysis-modal" class="analysis-search-modal">
+                    <div class="analysis-search-modal-content">
+                        <div class="modal-header">
+                            <h3>Search Results</h3>
+                            <span class="close-search-modal">&times;</span>
+                        </div>
+                        <div id="search-results-content"></div>
+                    </div>
+                </div>
+
                 <div class="actions">
                     <a href="/projects/{}" class="button">Back to Project</a>
                 </div>
@@ -138,6 +188,7 @@ impl TemplateService {
             </html>
             "#,
             project_name,
+            shared::FAVICON_HTML_STRING,
             project_name,
             query_selector_html,
             "<label>Query: </label>".to_string() + query,
@@ -146,7 +197,7 @@ impl TemplateService {
             current_query_id,
             project_name,
             query,
-            existing_chat_html,
+            chat_messages_html, // Use the generated chat HTML
             project_name,
             query
         )

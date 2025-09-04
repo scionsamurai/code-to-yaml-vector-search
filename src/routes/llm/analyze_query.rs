@@ -11,6 +11,7 @@ pub struct AnalyzeQueryForm {
     query_id: String,
 }
 
+
 #[post("/analyze-query")]
 pub async fn analyze_query(
     app_state: web::Data<AppState>,
@@ -34,7 +35,7 @@ pub async fn analyze_query(
     let query_id = form.query_id.clone();
     let relevant_files = project.get_query_vec_field(&app_state, &query_id, "vector_results").unwrap();
     let saved_context_files = project.get_query_vec_field(&app_state, &query_id, "context_files").unwrap();
-    let existing_chat_html = project.get_analysis_chat_history(&app_state, &query_id);
+    let existing_chat_history = project.get_analysis_chat_history(&app_state, &query_id); // Changed to Vec<ChatMessage>
     let last_query_text = project
         .get_query_data_field(&app_state, &query_id, "query")
         .unwrap_or_else(|| "No previous query found".to_string());
@@ -55,7 +56,7 @@ pub async fn analyze_query(
         &relevant_files,
         &saved_context_files,
         &project,
-        &existing_chat_html,
+        &existing_chat_history, // Pass the Vec<ChatMessage>
         &available_queries,
         &query_id
     );

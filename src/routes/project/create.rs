@@ -23,7 +23,8 @@ pub async fn create(
         name: form_data.name.clone(),
         languages: form_data.languages.clone(),
         source_dir: form_data.source_dir.clone(),
-        model: form_data.llms.clone(),
+        provider: form_data.llms.clone(),
+        specific_model: None,
         ..Default::default()
     };
 

@@ -18,7 +18,7 @@ impl Project {
             Err(e) => {
                 println!("filename: {}", filename);
                 eprintln!("Error loading query data: {}", e);
-                Ok(None) // Return None if loading fails, handle appropriately in caller
+                self.load_most_recent_query_data(app_state) // Fallback to most recent query data
             }
         }
 

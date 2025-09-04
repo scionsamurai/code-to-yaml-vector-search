@@ -15,7 +15,8 @@ impl SearchService {
         Self {}
     }
 
-    pub async fn search_project(&self, project: &mut Project, query_text: &str, output_dir: &std::path::PathBuf) -> Result<(Vec<(String, String, f32, std::option::Option<Vec<f32>>)>, String), String> {
+    pub async fn search_project(&self, project: &mut Project, query_text: &str, output_dir: Option<&std::path::PathBuf>) -> Result<(Vec<(String, String, f32, std::option::Option<Vec<f32>>)>, String), String> {
+
         // Generate embedding for query
         let embedding_service = EmbeddingService::new();
         let query_embedding = match embedding_service.generate_embedding(query_text, Some(1536)).await {
@@ -38,27 +39,29 @@ impl SearchService {
         // Get LLM recommendations based on search results
         let llm_analysis = self.get_llm_analysis(query_text, &similar_files, project).await?;
         
-        // In search_service.rs, modify the section after "Save to the most recent query file"
-        let project_service = ProjectService::new();
+        if output_dir.is_some() {
+            let project_service = ProjectService::new();
 
-        // Always create a new file for each query
-        let filename = project_service.generate_query_filename();
-        let mut query_data = QueryData::default();
+            // Always create a new file for each query
+            let filename = project_service.generate_query_filename();
+            let mut query_data = QueryData::default();
 
-        // Update the QueryData with search results and LLM analysis
-        query_data.query = query_text.to_string();
-        query_data.vector_results = similar_files.iter().map(|(path, _, score, _)| (path.clone(), *score)).collect();
-        query_data.llm_analysis = llm_analysis.clone();
+            // Update the QueryData with search results and LLM analysis
+            query_data.query = query_text.to_string();
+            query_data.vector_results = similar_files.iter().map(|(path, _, score, _)| (path.clone(), *score)).collect();
+            query_data.llm_analysis = llm_analysis.clone();
 
-        // Save the updated QueryData
-        match project_service.save_query_data(&output_dir, &query_data, &filename) {
-            Ok(_) => {
-                println!("Query data saved successfully.");
+            // Save the updated QueryData
+            match project_service.save_query_data(&output_dir.unwrap(), &query_data, &filename) {
+                Ok(_) => {
+                    println!("Query data saved successfully.");
+                }
+                Err(e) => {
+                    eprintln!("Failed to save query data: {}", e);
+                    return Err(format!("Failed to save query data: {}", e));
+                }
             }
-            Err(e) => {
-                eprintln!("Failed to save query data: {}", e);
-                return Err(format!("Failed to save query data: {}", e));
-            }
+
         }
 
         Ok((similar_files, llm_analysis))
@@ -68,7 +71,7 @@ impl SearchService {
         // Initialize LLM service and file service
         let llm_service = LlmService::new();
         let file_service = FileService {};
-        let llm_model = project.model.clone();
+        let llm_provider = project.provider.clone();
         
         // Extract code from similar files
         let mut file_code = String::new();
@@ -102,8 +105,8 @@ impl SearchService {
         );
         
         // Get LLM analysis
-        let llm_response = llm_service.get_analysis(&prompt, &llm_model).await;
-        
+        let llm_response = llm_service.get_analysis(&prompt, &llm_provider, project.specific_model.as_deref()).await;
+
         Ok(llm_response)
     }
 

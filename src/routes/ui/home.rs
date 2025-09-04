@@ -3,6 +3,7 @@ use actix_web::{get, web, HttpResponse, Responder};
 use crate::models::AppState;
 use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
+use crate::shared;
 use std::path::Path;
 
 #[get("/")]
@@ -36,6 +37,7 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
                 <title>Project Manager</title>
                 <link rel="stylesheet" href="/static/home.css">
                 <script src="/static/home.js"></script>
+                {}
             </head>
             <body>
                 <h1>Welcome to the Project-to-YAML converter!</h1>
@@ -64,6 +66,7 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
         </html>
 
     "#,
+        shared::FAVICON_HTML_STRING,
         projects
         .iter()
         .map(|(project, needs_update)| format!(

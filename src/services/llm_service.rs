@@ -13,16 +13,17 @@ impl LlmService {
         LlmService {}
     }
 
-    pub async fn get_analysis(&self, prompt: &str, llm: &str) -> String {
-        // Determine the target model based on llm string
-        let target_model = match llm.to_lowercase().as_str() {
+    // Updated signature: takes provider and specific_model as separate arguments
+    pub async fn get_analysis(&self, prompt: &str, provider: &str, specific_model: Option<&str>) -> String {
+        // Determine the target model based on provider string
+        let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
             "anthropic" => LLM::Anthropic,
             "gemini" | _ => LLM::Gemini,
         };
 
-        // Send single message to the LLM
-        let llm_response = target_model.send_single_message(prompt).await;
+        // Pass specific_model directly to the llm_api_access crate
+        let llm_response = target_model.send_single_message(prompt, specific_model).await;
 
         match llm_response {
             Ok(content) => {
@@ -33,9 +34,10 @@ impl LlmService {
         }
     }
 
-    pub async fn send_conversation(&self, messages: &[ChatMessage], model: &str) -> String {
-        // Determine the target model based on model string
-        let target_model = match model.to_lowercase().as_str() {
+    // Updated signature: takes provider and specific_model as separate arguments
+    pub async fn send_conversation(&self, messages: &[ChatMessage], provider: &str, specific_model: Option<&str>) -> String {
+        // Determine the target model based on provider string
+        let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
             "anthropic" => LLM::Anthropic,
             "gemini" | _ => LLM::Gemini,
@@ -49,10 +51,10 @@ impl LlmService {
                 content: msg.content.clone(),
             })
             .collect();
-        
-        // Send the properly structured conversation to the LLM
-        let llm_response = target_model.send_convo_message(api_messages).await;
-        
+
+        // Pass specific_model directly to the llm_api_access crate
+        let llm_response = target_model.send_convo_message(api_messages, specific_model).await;
+
         match llm_response {
             Ok(content) => {
                 let escaped_content = escape_html(content).await;
@@ -62,9 +64,10 @@ impl LlmService {
         }
     }
 
-    pub async fn convert_to_yaml(&self, file: &ProjectFile, llm: &str) -> String {
-        // Determine the target model based on llm string
-        let target_model = match llm.to_lowercase().as_str() {
+    // Updated signature: takes provider and specific_model as separate arguments
+    pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, specific_model: Option<&str>) -> String {
+        // Determine the target model based on provider string
+        let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
             "anthropic" => LLM::Anthropic,
             "gemini" | _ => LLM::Gemini,
@@ -89,12 +92,12 @@ impl LlmService {
             },
             Message {
                 role: "user".to_string(),
-                content: format!("```\n{}\n```", file.content),
+                content: format!("&grave;&grave;&grave;\n{}\n&grave;&grave;&grave;", file.content),
             },
         ];
 
-        // Send the conversation to the LLM
-        let llm_response = target_model.send_convo_message(messages).await;
+        // Pass specific_model directly to the llm_api_access crate
+        let llm_response = target_model.send_convo_message(messages, specific_model).await;
 
         // remove backticks and extract the YAML content
         let yaml_content = match llm_response {
@@ -107,7 +110,7 @@ impl LlmService {
                 // Find all delimiter lines
                 for (i, line) in lines.iter().enumerate() {
                     let trimmed_line = line.trim();
-                    if trimmed_line == "```" || trimmed_line == "```yaml" || trimmed_line == "```yml" {
+                    if trimmed_line == "&grave;&grave;&grave;" || trimmed_line == "&grave;&grave;&grave;yaml" || trimmed_line == "&grave;&grave;&grave;yml" {
                         delimiter_line_indices.push(i);
                     }
                 }
@@ -116,7 +119,7 @@ impl LlmService {
                 if delimiter_line_indices.len() >= 2 {
                     // Case 1: Two or more delimiters found (assume block)
                     start_index = Some(delimiter_line_indices[0]);
-                    // Find the last delimiter as the end (in case there are multiple blocks or extra ```)
+                    // Find the last delimiter as the end (in case there are multiple blocks or extra &grave;&grave;&grave;)
                     end_index = Some(delimiter_line_indices[delimiter_line_indices.len() - 1]);
                 }
 

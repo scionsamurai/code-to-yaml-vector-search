@@ -6,6 +6,7 @@ use dotenv::dotenv;
 mod models;
 mod routes;
 mod services;
+pub mod shared;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -17,6 +18,7 @@ async fn main() -> std::io::Result<()> {
         output_dir: "output".to_string(),
     });
 
+    println!("Starting server at http://127.0.0.1:8080");
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())

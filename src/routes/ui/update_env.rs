@@ -2,6 +2,7 @@
 use actix_web::{get, post, web, HttpResponse, Responder};
 use std::env;
 use std::fs::{read_to_string, write};
+use crate::shared;
 
 #[get("/update-env")]
 pub async fn update_env() -> impl Responder {
@@ -30,6 +31,7 @@ pub async fn update_env() -> impl Responder {
         <html>
             <head>
                 <title>Update Environment Variables</title>
+                {}
             </head>
             <body>
                 <h1>Update Environment Variables</h1>
@@ -53,6 +55,7 @@ pub async fn update_env() -> impl Responder {
             </body>
         </html>
         "#,
+        shared::FAVICON_HTML_STRING,
         open_ai_org = open_ai_org,
         open_ai_key = open_ai_key,
         gemini_api_key = gemini_api_key,

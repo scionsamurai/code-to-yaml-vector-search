@@ -18,7 +18,9 @@ pub struct Project {
     pub name: String,
     pub languages: String,
     pub source_dir: String,
-    pub model: String,
+    pub provider: String, // Renamed from 'model' to 'provider'
+    #[serde(default)] // Option<String> will default to None
+    pub specific_model: Option<String>, // New field for specific model name (e.g., "gemini-2.5-flash")
     #[serde(default)]
     pub embeddings: HashMap<String, EmbeddingMetadata>,
     #[serde(default)]
@@ -55,6 +57,8 @@ impl std::fmt::Display for EmbeddingMetadata {
 pub struct ChatMessage {
     pub role: String,
     pub content: String,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -63,7 +67,7 @@ pub struct ProjectFile {
     pub content: String,
     pub last_modified: u64,
 }
-
+#[derive(Clone, Debug)]
 pub struct AppState {
     pub output_dir: String,
 }

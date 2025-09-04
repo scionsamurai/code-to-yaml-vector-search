@@ -24,7 +24,7 @@ pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppStat
 }
 
 pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_contents: &str) -> String {
-    let mut prompt = format!("You are an AI assistant helping with code analysis for a project. \
+    let mut prompt = format!("You are an AI assistant helping with code analysis for a project. In this chat the user controls which files you see and which messages you see with every prompt. \
         The user's original query was: \"{}\"", query);
     
     if !context_files.is_empty() {
@@ -46,24 +46,6 @@ pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_conte
     }
 }
 
-pub fn format_messages(system_prompt: &str, full_history: &Vec<ChatMessage>, user_message: &ChatMessage) -> Vec<ChatMessage> {
-    let mut messages = vec![
-        ChatMessage {
-            role: "user".to_string(),
-            content: system_prompt.to_string(),
-        },
-        ChatMessage {
-            role: "model".to_string(),
-            content: "I confirm that I'll follow your instructions carefully throughout our conversation. I'm here to assist you according to your specific requirements and will respond to your future requests for code analysis appropriately when needed.\n\nPlease feel free to share your next request when you're ready, and I'll provide the analysis or other assistance you're looking for.".to_string(),
-        }
-    ];
-
-    messages.extend(full_history.clone());
-
-    messages.push(user_message.clone());
-
-    messages
-}
 
 pub async fn escape_html(text: String) -> String {
     // Process text line by line to handle code block markers vs inline triple backticks
@@ -99,4 +81,39 @@ pub fn unescape_html(text: String) -> String {
     unescaped_text = unescaped_text.replace("&amp;", "&"); // This MUST be last
 
     unescaped_text
+}
+
+
+fn replace_hidden_messages(messages: &mut Vec<ChatMessage>) {
+    for message in messages.iter_mut() {
+        if message.hidden {
+            message.content = "User hid this message due to it no longer being contextually necessary and/or it was redundant info.".to_string();
+        }
+    }
+}
+
+pub fn format_messages_for_llm(system_prompt: &str, full_history: &Vec<ChatMessage>, user_message: &ChatMessage) -> Vec<ChatMessage> {
+    let mut messages = vec![
+        ChatMessage {
+            role: "user".to_string(),
+            content: system_prompt.to_string(),
+            hidden: false,
+        },
+        ChatMessage {
+            role: "model".to_string(),
+            content: "I confirm that I'll follow your instructions carefully throughout our conversation. I'm here to assist you according to your specific requirements and will respond to your future requests for code analysis appropriately when needed.\n\nPlease feel free to share your next request when you're ready, and I'll provide the analysis or other assistance you're looking for.".to_string(),
+            hidden: false,
+        }
+    ];
+
+    messages.extend(full_history.clone());
+
+    messages.push(user_message.clone());
+
+     // Create a mutable copy of the messages
+    let mut llm_messages = messages.clone();
+    // Modify the mutable copy to replace hidden messages
+    replace_hidden_messages(&mut llm_messages);
+
+    llm_messages
 }

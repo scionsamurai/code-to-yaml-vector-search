@@ -6,7 +6,8 @@ export function formatMessage(content) {
   // Override the 'code' method
   renderer.code = (code) => {
     const language = code.lang || "plaintext";
-    return `<pre class="shiki-block" data-language="${language}" data-original-code="${code.text.replaceAll('"', '&#34;')}"><code class="language-${language}">${code.raw}</code></pre>`;
+    const encodedCode = encodeURIComponent(code.text);
+    return `<pre class="shiki-block" data-language="${language}" data-original-code="${encodedCode}"><code class="language-${language}">${code.raw}</code></pre>`;
   };
 
   // Configure marked to use your custom renderer

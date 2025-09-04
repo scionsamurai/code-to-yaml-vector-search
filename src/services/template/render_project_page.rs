@@ -1,7 +1,7 @@
 // src/services/template/render_project_page.rs
 use crate::models::Project;
 use super::TemplateService;
-
+use crate::shared;
 
 impl TemplateService {
     pub fn render_project_page(
@@ -22,6 +22,7 @@ impl TemplateService {
                 <script src="/static/project.js"></script>
                 <script src="/static/yaml-checkbox-logic.js"></script>
                 <script src="/static/split-file.js" type="module"></script>
+                {}
             </head>
             <body>
                 <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
@@ -46,12 +47,16 @@ impl TemplateService {
                                 <input type="text" id="languages" name="languages" value="{}" required>
                             </div>
                             <div class="form-group">
-                                <label for="model">Model:</label>
-                                <select name="model" id="model">
+                                <label for="provider">Provider:</label>
+                                <select name="provider" id="provider">
                                     <option value="gemini" {}> Gemini</option>
                                     <option value="openai" {}> OpenAI</option>
                                     <option value="anthropic" {}> Anthropic</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="specific_model">Specific Model (optional):</label>
+                                <input type="text" id="specific_model" name="specific_model" value="{}">
                             </div>
                             <div class="form-group">
                                 <label for="default_use_yaml">Default Use YAML:</label>
@@ -81,7 +86,9 @@ impl TemplateService {
                 <a href="/" class="center">Go Back</a>
                 <input type="checkbox" id="trigger-checkbox">
                 <label for="trigger-checkbox">Hide Regen Buttons</label>
-                {}
+                <div class="yaml-files-list">
+                    {}
+                </div>
                 <script type="module">
                     import {{ suggestSplit }} from '/static/split-file.js';
 
@@ -92,13 +99,15 @@ impl TemplateService {
         </html>
         "#,
             project.name,
+            shared::FAVICON_HTML_STRING,
             project.name,
             project.name,
             project.name,
             project.languages,
-            if project.model == "gemini" { "selected" } else { "" },
-            if project.model == "openai" { "selected" } else { "" },
-            if project.model == "anthropic" { "selected" } else { "" },
+            if project.provider == "gemini" { "selected" } else { "" }, // Updated from project.model
+            if project.provider == "openai" { "selected" } else { "" }, // Updated from project.model
+            if project.provider == "anthropic" { "selected" } else { "" }, // Updated from project.model
+            project.specific_model.as_deref().unwrap_or(""), // Display specific_model or empty string
             if project.default_use_yaml { "checked" } else { "" },
             project.source_dir,
             project.name,

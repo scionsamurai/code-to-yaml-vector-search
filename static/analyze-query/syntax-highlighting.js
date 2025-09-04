@@ -7,7 +7,8 @@ export async function applySyntaxHighlighting(div=document) {
     
     for (const block of codeBlocks) {
         const language = block.getAttribute('data-language') || 'plaintext';
-        const originalCode = decodeURIComponent(block.getAttribute('data-original-code'));
+        const originalCode2 = decodeURIComponent(block.getAttribute('data-original-code'));
+        const originalCode = decodeHtmlEntities(originalCode2);
         
         if (originalCode) {
             try {
@@ -28,6 +29,11 @@ export async function applySyntaxHighlighting(div=document) {
     }
 }
 
+function decodeHtmlEntities(str) {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = str;
+    return textarea.value;
+}
 
 export async function updateCopyLinks(el=document) {
 	// Select all pre elements

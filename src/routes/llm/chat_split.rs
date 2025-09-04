@@ -51,7 +51,7 @@ pub async fn chat_split(
     
     // Use the LLM service to get the response
     let llm_service = LlmService::new();
-    let response = llm_service.get_analysis(&prompt, &project.model).await;
-    
+    let response = llm_service.get_analysis(&prompt, &project.provider, project.specific_model.as_deref()).await;
+
     HttpResponse::Ok().body(response)
 }

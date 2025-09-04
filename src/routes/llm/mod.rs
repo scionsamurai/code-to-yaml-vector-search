@@ -7,6 +7,7 @@ pub mod chat_analysis;
 mod update_analysis_context;
 mod update_analysis_query;
 mod update_analysis_title;
+mod search_files;
 
 use actix_web::web;
 
@@ -18,5 +19,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_analysis_context::update_analysis_context)
         .service(update_analysis_query::update_analysis_query)
         .service(update_analysis_title::update_analysis_title)
-        .configure(chat_analysis::configure);
+        .configure(chat_analysis::configure)
+        .service(search_files::search_related_files);
 }

@@ -1,100 +1,105 @@
 .page {
-    margin: 0 25vw;
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    overflow: scroll;
-    margin-top: 2px;
+  background: white;
+  border-radius: 1rem;
+  padding: 1rem;
+  overflow: scroll;
+  margin-top: 2px;
+}
+.yaml-files-list {
+  margin: 0 25vw;
+  position: absolute;
+  left: 0;
+  right: 0;
 }
 
 .center {
-    margin: 0 27vw;
-    padding-bottom: 8px;
+  margin: 0 27vw;
+  padding-bottom: 8px;
 }
 
 .project-settings {
-    margin-bottom: 20px;
-    padding: 15px;
-    background: #f5f5f5;
-    border-radius: 5px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 5px;
 }
 
 .project-settings .form-group {
-    margin-bottom: 10px;
-    display: flex;
-    align-items: center;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
 }
 
 .project-settings select {
-    padding: 5px;
-    border: 1px solid #ddd;
-    border-radius: 3px;
-    flex-grow: 1;
+  padding: 5px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  flex-grow: 1;
 }
 
 .search-form form {
-    display: flex;
+  display: flex;
 }
 
 .path-comment-modal {
-    display: none;
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    overflow: auto;
-    background-color: rgba(0, 0, 0, 0.4);
+  display: none;
+  position: fixed;
+  z-index: 1;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.4);
 }
 
 .close {
-    color: #aaa;
-    float: right;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .close:focus {
-    color: black;
-    text-decoration: none;
-    cursor: pointer;
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .modal-content {
-    margin: 5% auto;
-    max-height: 80vh;
-    overflow-y: auto;
+  margin: 5% auto;
+  max-height: 80vh;
+  overflow-y: auto;
 }
 
 .close:hover {
-    color: black;
+  color: black;
 }
 
 #graphDiv {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 #fileGraph ~ pre {
-    display: none;
+  display: none;
 }
 
 #fileGraph:checked ~ pre {
-    display: block;
-    background: white;
-    overflow: scroll;
-    width: 80%;
-    padding: 1rem;
+  display: block;
+  background: white;
+  overflow: scroll;
+  width: 80%;
+  padding: 1rem;
 }
 
 .yaml-override-message {
-    color: firebrick;
-    font-style: italic;
-    margin-bottom: 10px;
-    border: 1px solid;
-    padding: 5px;
-    text-align: center;
+  color: firebrick;
+  font-style: italic;
+  margin-bottom: 10px;
+  border: 1px solid;
+  padding: 5px;
+  text-align: center;
 }

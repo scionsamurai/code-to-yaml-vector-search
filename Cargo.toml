@@ -16,7 +16,7 @@ tokio = { version = "1.28.0", features = ["full"] }
 async-trait = "0.1.68"
 actix-cors = "0.6.4"
 actix-files = "0.6.5"
-llm_api_access = "0.1.18" # my api crate
+llm_api_access = "0.1.27" # my api crate
 qdrant-client = "1.13.0"
 uuid = { version = "1.16.0", features = ["v4", "serde"] }
 chrono = { version = "0.4.40", features = ["serde"] }

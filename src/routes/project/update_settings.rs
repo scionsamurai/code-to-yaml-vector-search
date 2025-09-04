@@ -11,8 +11,9 @@ use std::sync::{Arc, Mutex};
 #[derive(Deserialize, Debug)]
 pub struct ProjectSettings {
     pub languages: String,
-    pub model: String,
+    pub provider: String,
     pub default_use_yaml: Option<bool>,
+    pub specific_model: Option<String>,
 }
 
 #[post("/update/{name}/settings")]
@@ -34,8 +35,9 @@ pub async fn update_settings(
             let old_default_use_yaml = project.default_use_yaml;
             // Update project settings
             project.languages = form.languages.clone();
-            project.model = form.model.clone();
+            project.provider = form.provider.clone();
             project.default_use_yaml = form.default_use_yaml.unwrap_or(false); // Default to true if not provided
+            project.specific_model = form.specific_model.clone();
             let new_default_use_yaml = project.default_use_yaml;
             
             // Save updated project

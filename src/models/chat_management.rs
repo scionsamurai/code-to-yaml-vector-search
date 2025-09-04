@@ -7,25 +7,11 @@ impl Project {
         &self,
         app_state: &web::Data<AppState>,
         query_filename: &str,
-    ) -> String {
+    ) -> Vec<ChatMessage> { // Changed return type to Vec<ChatMessage>
         match self.load_query_data_by_filename(app_state, query_filename) {
-            Ok(Some(query_data)) => {
-                let mut html = String::new();
-                for msg in query_data.analysis_chat_history {
-                    html.push_str(&format!(
-                        r#"<div class="chat-message {}-message">
-                            <div class="message-content">{}</div>
-                            <div class="message-controls">
-                                <button class="edit-message-btn" title="Edit message">Edit</button>
-                            </div>
-                        </div>"#,
-                        msg.role, msg.content
-                    ));
-                }
-                html
-            }
-            Ok(None) => String::new(), // No query data found
-            Err(_e) => String::new(),  // Error occurred, return empty string
+            Ok(Some(query_data)) => query_data.analysis_chat_history,
+            Ok(None) => Vec::new(), // No query data found
+            Err(_e) => Vec::new(),  // Error occurred, return empty vector
         }
     }
 
@@ -52,6 +38,24 @@ impl Project {
         self.update_query_data(app_state, query_filename, |qd| {
             if index < qd.analysis_chat_history.len() {
                 qd.analysis_chat_history[index] = updated_message;
+            } else {
+                eprintln!("Attempted to update message at index {} but history length is {}", index, qd.analysis_chat_history.len());
+            }
+        })
+    }
+
+    pub fn update_message_visibility(
+        &self,
+        app_state: &web::Data<AppState>,
+        index: usize,
+        hidden: bool,
+        query_filename: &str,
+    ) -> Result<(), String> {
+        self.update_query_data(app_state, query_filename, |qd| {
+            if index < qd.analysis_chat_history.len() {
+                qd.analysis_chat_history[index].hidden = hidden;
+            } else {
+                eprintln!("Attempted to update message visibility at index {} but history length is {}", index, qd.analysis_chat_history.len());
             }
         })
     }

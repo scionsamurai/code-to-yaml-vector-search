@@ -57,7 +57,7 @@ pub async fn get_project(
         let escaped_query_text = escape_html(query_text.clone()).await;
         if !escaped_query_text.is_empty() {
             // Execute new search
-            match search_service.search_project(&mut project, &escaped_query_text, &output_dir).await {
+            match search_service.search_project(&mut project, &escaped_query_text, Some(&output_dir)).await {
                 Ok((similar_files, llm_analysis)) => {
                     // Save updated project with the new query
                     if let Err(e) = project_service.save_project(&project, &output_dir) {
