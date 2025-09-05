@@ -92,7 +92,7 @@ impl LlmService {
             },
             Message {
                 role: "user".to_string(),
-                content: format!("&grave;&grave;&grave;\n{}\n&grave;&grave;&grave;", file.content),
+                content: format!("```\n{}\n```", file.content),
             },
         ];
 
@@ -110,7 +110,7 @@ impl LlmService {
                 // Find all delimiter lines
                 for (i, line) in lines.iter().enumerate() {
                     let trimmed_line = line.trim();
-                    if trimmed_line == "&grave;&grave;&grave;" || trimmed_line == "&grave;&grave;&grave;yaml" || trimmed_line == "&grave;&grave;&grave;yml" {
+                    if trimmed_line == "```" || trimmed_line == "```yaml" || trimmed_line == "```yml" {
                         delimiter_line_indices.push(i);
                     }
                 }
@@ -119,7 +119,7 @@ impl LlmService {
                 if delimiter_line_indices.len() >= 2 {
                     // Case 1: Two or more delimiters found (assume block)
                     start_index = Some(delimiter_line_indices[0]);
-                    // Find the last delimiter as the end (in case there are multiple blocks or extra &grave;&grave;&grave;)
+                    // Find the last delimiter as the end (in case there are multiple blocks or extra ```)
                     end_index = Some(delimiter_line_indices[delimiter_line_indices.len() - 1]);
                 }
 

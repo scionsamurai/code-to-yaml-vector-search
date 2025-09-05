@@ -4,14 +4,21 @@ use crate::models::{AppState, Project, ProjectFile};
 use crate::services::yaml::management::YamlManagement;
 use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+pub struct QueryData {
+    pub yaml_path: String,
+}
 
 #[post("/regenerate")]
 pub async fn regenerate_yaml(
     app_state: web::Data<AppState>,
     query: web::Query<RegenParams>,
+    data: web::Json<QueryData>,
 ) -> impl Responder {
     let project_name = &query.project;
-    let yaml_path = &query.yamlpath;
+    let yaml_path = &data.yaml_path;
 
     let output_dir = Path::new(&app_state.output_dir).join(project_name);
     let project_settings_path = output_dir.join("project_settings.json");
@@ -19,6 +26,7 @@ pub async fn regenerate_yaml(
     if let Ok(project_settings_json) = read_to_string(project_settings_path) {
         if let Ok(project) = serde_json::from_str::<Project>(&project_settings_json) {
             let source_file_path = construct_source_path(&project.source_dir, &yaml_path);
+            
             let file_content = read_to_string(&source_file_path).unwrap();
             let project_file = ProjectFile {
                 path: source_file_path.to_string_lossy().to_string(),
@@ -52,6 +60,5 @@ fn construct_source_path(source_dir: &str, yaml_path: &str) -> PathBuf {
 
 #[derive(serde::Deserialize)]
 struct RegenParams {
-    project: String,
-    yamlpath: String
+    project: String
 }

@@ -32,7 +32,7 @@ pub async fn home(app_state: web::Data<AppState>) -> impl Responder {
 
     let html = format!(
         r#"
-        <html>
+        <!DOCTYPE html>
             <head>
                 <title>Project Manager</title>
                 <link rel="stylesheet" href="/static/home.css">

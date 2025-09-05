@@ -2,9 +2,15 @@
 
 async function regenerate(projectName, yamlPath) {
   const response = await fetch(
-    `/regenerate?project=${projectName}&yamlpath=${yamlPath}`,
+    `/regenerate?project=${projectName}`,
     {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        yaml_path: yamlPath,
+      }),
     }
   );
   const newContent = await response.text();
@@ -59,26 +65,26 @@ async function validateFilePaths(projectName) {
 }
 
 async function runClustering() {
-  const projectName = document.getElementById('project-name').value;
+  const projectName = document.getElementById("project-name").value;
   try {
-      const response = await fetch(`/api/cluster/${projectName}`, { //adjust URL
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-      });
+    const response = await fetch(`/api/cluster/${projectName}`, {
+      //adjust URL
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
 
-      if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-      }
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
 
-      const data = await response.json();
+    const data = await response.json();
 
-      // Display clustering results (modify as needed)
-      alert(JSON.stringify(data));  // Simple alert for now
-
+    // Display clustering results (modify as needed)
+    alert(JSON.stringify(data)); // Simple alert for now
   } catch (error) {
-      console.error('Error running clustering:', error);
-      alert(`Error running clustering: ${error.message}`);
+    console.error("Error running clustering:", error);
+    alert(`Error running clustering: ${error.message}`);
   }
 }
