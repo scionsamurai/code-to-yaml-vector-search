@@ -4,7 +4,7 @@ use crate::services::project_service::ProjectService;
 use crate::services::search_service::SearchService;
 use crate::services::template::TemplateService;
 use crate::services::yaml::YamlService;
-use actix_web::{post, web, HttpResponse, Responder, Result};
+use actix_web::{post, web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use crate::routes::llm::chat_analysis::utils::escape_html;
