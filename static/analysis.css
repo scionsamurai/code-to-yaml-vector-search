@@ -204,17 +204,18 @@ strong code:not(pre > code) a {
     cursor: pointer;
 }
 
-.link_and_copy__copy_link {
+.link_and_copy__copy_link, .link_and_copy__apply_link {
     display: none;
     font-size: 1.25rem;
 }
 
-pre:hover .hljs__link_and_copy .link_and_copy__copy_link {
-    display: block;
-}
 
-.hljs__link_and_copy:hover .link_and_copy__copy_link {
+pre:hover .hljs__link_and_copy .link_and_copy__copy_link,
+.hljs__link_and_copy:hover .link_and_copy__copy_link,
+pre:hover .hljs__link_and_copy .link_and_copy__apply_link,
+.hljs__link_and_copy:hover .link_and_copy__apply_link {
     display: block;
+    padding-right: 2px;
 }
 
 .message-content code {
@@ -373,3 +374,4 @@ pre:hover .hljs__link_and_copy .link_and_copy__copy_link {
 #search-results-content {
     padding: 10px;
 }
+

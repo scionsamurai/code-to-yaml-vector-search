@@ -36,64 +36,179 @@ function decodeHtmlEntities(str) {
 }
 
 export async function updateCopyLinks(el=document) {
-	// Select all pre elements
-	const codeBlocks = el.querySelectorAll('pre')
+	const codeBlocks = el.querySelectorAll('pre');
 
-	// Loop through each pre element
 	for (const codeBlock of codeBlocks) {
-		// Get the language from the data-lang attribute
-		const lang = codeBlock.getAttribute('data-language')
-		if (lang !== null) {
-			// Create the new span element
-			const linkAndCopySpan = document.createElement('span')
-			linkAndCopySpan.className = 'hljs__link_and_copy'
-
-			// Create and set up the copy link
-			const copyLink = document.createElement('span')
-			copyLink.className = 'link_and_copy__copy_link pointer'
-			copyLink.innerHTML = '&#x2398;&nbsp;'
-
-			// Create and set up the language text
-			const langText = document.createElement('span')
-			langText.className = 'link_and_copy__text'
-			langText.textContent = lang
-
-			// Append the copy link and language text to the main span
-			linkAndCopySpan.appendChild(copyLink)
-			linkAndCopySpan.appendChild(langText)
-
-			// Append the main span to the pre element
-			codeBlock.appendChild(linkAndCopySpan)
-
-			// Add click event listener to the copy link
-			copyLink.addEventListener('click', function handleClick(event) {
-				event.preventDefault()
-
-				// Get the code content (excluding the newly added span)
-				const codeContent = codeBlock.cloneNode(true)
-				const linkAndCopySpan = codeContent.querySelector('.hljs__link_and_copy')
-				if (linkAndCopySpan) {
-					linkAndCopySpan.remove()
-				}
-				const cleanCodeContent = codeContent.textContent.trim()
-
-				// Copy the content to the clipboard
-				if (navigator.clipboard) {
-					navigator.clipboard.writeText(cleanCodeContent).then(
-						() => console.log('Code copied successfully!'),
-						(error) => {
-							console.error('Error copying code:', error)
-							fallbackCopyTextToClipboard(cleanCodeContent)
-						}
-					)
-				} else {
-					// Fallback for browsers that do not support navigator.clipboard
-					fallbackCopyTextToClipboard(cleanCodeContent)
-				}
-
-				copyLink.innerHTML = '&#x2713;&nbsp;'
-				setTimeout(() => (copyLink.innerHTML = '&#x2398;&nbsp;'), 2000)
-			})
+		// Prevent adding controls multiple times
+		if (codeBlock.querySelector('.hljs__link_and_copy')) {
+			continue;
 		}
+
+		// Get the language
+		const lang = codeBlock.getAttribute('data-language') ||
+                     codeBlock.closest('.shiki-block')?.getAttribute('data-language') ||
+                     'plaintext';
+
+		// Create the main control container (reusing .hljs__link_and_copy)
+		const linkAndCopySpan = document.createElement('div'); // Changed from span to div for better flex behavior if needed
+		linkAndCopySpan.className = 'hljs__link_and_copy';
+
+
+		const copyLinkWrapper = document.createElement('span'); // This will be the new .link_and_copy__copy_link
+		copyLinkWrapper.className = 'link_and_copy__copy_link pointer'; // Reuse existing class
+		copyLinkWrapper.setAttribute('title', 'Copy code to clipboard');
+
+		const copyIcon = document.createElement('span');
+		copyIcon.className = 'action-icon'; // New class for the actual icon
+		copyIcon.innerHTML = '&#x1F4CB;'; 
+		copyLinkWrapper.appendChild(copyIcon);
+
+		
+		linkAndCopySpan.appendChild(copyLinkWrapper);
+
+
+		const applyToFileWrapper = document.createElement('span');
+		applyToFileWrapper.className = 'link_and_copy__apply_link pointer'; // New class for apply button
+		applyToFileWrapper.setAttribute('title', 'Apply code to a file');
+
+		const fileIcon = document.createElement('span');
+		fileIcon.className = 'action-icon';
+		fileIcon.innerHTML = '&#x2398;';
+		applyToFileWrapper.appendChild(fileIcon);
+
+
+		linkAndCopySpan.appendChild(applyToFileWrapper);
+
+		// Create and set up the language text
+		const langText = document.createElement('span');
+		langText.className = 'link_and_copy__text';
+		langText.textContent = lang;
+		linkAndCopySpan.appendChild(langText);
+
+		// Append the main controls container to the pre element
+		codeBlock.appendChild(linkAndCopySpan);
+
+		// Add click event listener to the copy button
+		copyLinkWrapper.addEventListener('click', function handleClick(event) {
+			event.preventDefault();
+			event.stopPropagation(); // Prevent propagation if there are other listeners on parent
+
+			const codeContentElement = codeBlock.querySelector('code');
+			const cleanCodeContent = codeContentElement ? codeContentElement.textContent.trim() : '';
+
+			if (navigator.clipboard) {
+				navigator.clipboard.writeText(cleanCodeContent).then(
+					() => console.log('Code copied successfully!'),
+					(error) => {
+						console.error('Error copying code:', error);
+						fallbackCopyTextToClipboard(cleanCodeContent);
+					}
+				);
+			} else {
+				fallbackCopyTextToClipboard(cleanCodeContent);
+			}
+
+			copyIcon.innerHTML = '&#x2713;'; // Checkmark
+			copyIcon.style.color = 'lightgreen';
+			setTimeout(() => {
+				copyIcon.innerHTML = '&#x2398;'; // Original icon (your chosen one for copy)
+				copyIcon.style.color = ''; // Reset color
+			}, 2000);
+		});
+
+		// Add click event listener to the apply to file button
+		applyToFileWrapper.addEventListener('click', async function handleApplyToFile(event) {
+			event.preventDefault();
+			event.stopPropagation();
+
+			const codeContentElement = codeBlock.querySelector('code');
+			const codeContent = codeContentElement ? codeContentElement.textContent : '';
+
+            // Attempt to derive file path from the first line comment
+            let filePath = '';
+            const firstLine = codeContent.split('\n')[0];
+            // Regex to match // path/to/file.ext or # path/to/file.ext at the start of the line
+            const pathRegex = /^\s*(?:\/\/|#)\s*([a-zA-Z0-9_\-./\\]+(?:\.[a-zA-Z0-9_\-.]+)+)/;
+            const match = firstLine.match(pathRegex);
+
+            let derivedPath = null;
+            if (match && match[1]) {
+                derivedPath = match[1].trim();
+                console.log("Derived path from comment:", derivedPath);
+            } else {
+                console.log("No file path derived from first line comment.");
+            }
+
+            if (derivedPath) {
+                const confirmApply = confirm(`Apply code to '${derivedPath}'? (Click Cancel to enter manually)`);
+                if (confirmApply) {
+                    filePath = derivedPath;
+                } else {
+                    filePath = prompt('Enter the relative file path to apply this code to:', derivedPath);
+                }
+            } else {
+                filePath = prompt('Enter the relative file path to apply this code to (e.g., src/main.rs):');
+            }
+
+			if (!filePath) {
+				console.log('File path not provided. Aborting apply to file.');
+				return;
+			}
+
+			const projectName = document.getElementById('project-name').value;
+
+			try {
+				const response = await fetch('/apply-code-to-file', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						project: projectName,
+						file_path: filePath,
+						content: codeContent,
+					}),
+				});
+
+				if (response.ok) {
+					fileIcon.innerHTML = '&#x2713;'; // Checkmark
+					fileIcon.style.color = 'lightgreen';
+					alert(`Code successfully applied to ${filePath}`);
+				} else {
+					const errorText = await response.text();
+					fileIcon.innerHTML = '&#x2716;'; // X mark
+					fileIcon.style.color = 'red';
+					alert(`Failed to apply code to ${filePath}: ${errorText}`);
+				}
+			} catch (error) {
+				console.error('Error applying code to file:', error);
+				fileIcon.innerHTML = '&#x2716;'; // X mark
+				fileIcon.style.color = 'red';
+				alert(`A network error occurred while applying code to file: ${error.message}`);
+			} finally {
+				setTimeout(() => {
+					fileIcon.innerHTML = '&#x1F4CB;'; // Original icon (your chosen one for apply)
+					fileIcon.style.color = ''; // Reset color
+				}, 2000);
+			}
+		});
 	}
+}
+
+// Fallback for older browsers for copy to clipboard
+function fallbackCopyTextToClipboard(text) {
+	const textarea = document.createElement('textarea');
+	textarea.value = text;
+	textarea.style.position = 'fixed'; // Avoid scrolling to bottom
+	textarea.style.left = '-9999px'; // Move off-screen
+	document.body.appendChild(textarea);
+	textarea.focus();
+	textarea.select();
+	try {
+		document.execCommand('copy');
+		console.log('Fallback: Code copied successfully!');
+	} catch (err) {
+		console.error('Fallback: Error copying code:', err);
+	}
+	document.body.removeChild(textarea);
 }

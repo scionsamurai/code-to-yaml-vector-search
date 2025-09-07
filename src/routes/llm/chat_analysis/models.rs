@@ -37,3 +37,11 @@ pub struct UpdateMessageVisibilityRequest {
     pub query_id: Option<String>,
     pub hidden: bool,
 }
+
+// --- NEW: Request struct for applying code to a file ---
+#[derive(Deserialize)]
+pub struct ApplyCodeToFileRequest {
+    pub project: String,
+    pub file_path: String,
+    pub content: String,
+}

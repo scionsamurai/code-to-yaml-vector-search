@@ -1,10 +1,43 @@
 // src/services/file/mod.rs
-pub mod validation;
+pub mod extract_imports;
 pub mod reading;
 pub mod update_checker;
-pub mod extract_imports;
+pub mod validation;
 
 use crate::models::{Project, ProjectFile};
+use std::error::Error;
+use std::fmt;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+// Define a custom error type for your specific application errors
+#[derive(Debug)]
+pub enum FileServiceError {
+    TraversalAttempt,
+    InvalidPath,
+    Io(std::io::Error),
+}
+
+impl fmt::Display for FileServiceError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            FileServiceError::TraversalAttempt => write!(f, "Attempted directory traversal"),
+            FileServiceError::InvalidPath => write!(f, "Invalid file path"),
+            FileServiceError::Io(err) => write!(f, "IO error: {}", err),
+        }
+    }
+}
+
+impl Error for FileServiceError {}
+
+impl From<std::io::Error> for FileServiceError {
+    fn from(err: std::io::Error) -> Self {
+        FileServiceError::Io(err)
+    }
+}
+
+// Result alias for convenience
+pub type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 pub struct FileService;
 
@@ -32,5 +65,58 @@ impl FileService {
     pub fn needs_yaml_update(&self, source_path: &str, yaml_path: &str) -> bool {
         update_checker::needs_yaml_update(source_path, yaml_path)
     }
-    
+
+    pub fn write_file_content(
+        &self,
+        project: &Project,
+        relative_file_path: &str,
+        content: &str,
+    ) -> Result<()> {
+        let source_dir = PathBuf::from(&project.source_dir);
+        println!(
+            "FileService Debug: Project Source Directory: {:?}",
+            source_dir
+        ); // DEBUG
+        println!(
+            "FileService Debug: Relative File Path provided: {:?}",
+            relative_file_path
+        ); // DEBUG
+
+        let target_path = source_dir.join(relative_file_path);
+        println!(
+            "FileService Debug: Constructed Target Path: {:?}",
+            target_path
+        ); // DEBUG
+
+        if !target_path.starts_with(&source_dir) {
+            println!("FileService Error: Attempted directory traversal detected. Target path: {:?} is not within source directory: {:?}", target_path, source_dir); // DEBUG
+            return Err(Box::new(FileServiceError::TraversalAttempt));
+        }
+
+        let parent_dir = target_path.parent().ok_or_else(|| {
+            println!(
+                "FileService Error: Invalid target path, no parent directory found for {:?}",
+                target_path
+            ); // DEBUG
+            Box::new(FileServiceError::InvalidPath) as Box<dyn Error>
+        })?;
+
+        println!(
+            "FileService Debug: Ensuring parent directories exist for: {:?}",
+            parent_dir
+        ); // DEBUG
+        fs::create_dir_all(parent_dir)?;
+        println!("FileService Debug: Parent directories created or already exist."); // DEBUG
+
+        println!(
+            "FileService Debug: Writing content to file: {:?}",
+            target_path
+        ); // DEBUG
+        fs::write(&target_path, content)?;
+        println!(
+            "FileService Debug: Content written successfully to: {:?}",
+            target_path
+        ); // DEBUG
+        Ok(())
+    }
 }
