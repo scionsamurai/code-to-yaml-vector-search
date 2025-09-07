@@ -1,5 +1,5 @@
 // static/analyze-query/chat.js
-import { formatMessage } from './utils.js';
+import { formatMessage, linkFilePathsInElement } from './utils.js'; // Import linkFilePathsInElement
 import { applySyntaxHighlighting, updateCopyLinks } from './syntax-highlighting.js';
 
 export function sendMessage(chatContainer) {
@@ -10,7 +10,7 @@ export function sendMessage(chatContainer) {
         messageInput.value = '';
 
         const projectName = document.getElementById('project-name').value;
-        const queryId = document.getElementById('query-id').value; // Get query_id
+        const queryId = document.getElementById('query-id').value;
 
         fetch('/chat-analysis', {
             method: 'POST',
@@ -25,23 +25,21 @@ export function sendMessage(chatContainer) {
         })
         .then(response => response.text())
         .then(async responseText => {
-            // --- FIX START: Ensure only the latest model message has a regenerate button ---
-            // Remove ALL regenerate buttons from ALL model messages first
             chatContainer.querySelectorAll('.chat-message.model-message .regenerate-message-btn').forEach(btn => {
                 btn.remove();
             });
-            // --- FIX END ---
 
-            // Get the current number of messages to set the data-message-index
             const messageIndex = chatContainer.children.length;
 
             const messageDiv = addMessageToChat('model', responseText, chatContainer, false, messageIndex);
-            // Add regenerate button to the newly added model message
             const messageControls = messageDiv.querySelector('.message-controls');
             const regenerateButton = createRegenerateButton();
             messageControls.appendChild(regenerateButton);
 
             await applySyntaxHighlighting(messageDiv);
+            // --- NEW: Apply file linking to the new message after syntax highlighting ---
+            linkFilePathsInElement(messageDiv.querySelector('.message-content'));
+            // --- END NEW ---
             updateCopyLinks(messageDiv);
         })
         .catch(error => {
@@ -73,12 +71,10 @@ export function resetChat(chatContainer) {
     .then(async responseText => {
         console.log('Chat reset successfully:', responseText);
         const query_selct = document.getElementById('query-selector');
-        // add option to select html tag
         const option = document.createElement('option');
         option.value = responseText;
         option.text = responseText.replace(".json", "");
         query_selct.appendChild(option);
-        // set the query-selectors to equal new option
         query_selct.value = responseText;
         queryId.value = responseText;
         
@@ -95,17 +91,14 @@ export function addMessageToChat(role, content, chatContainer, hidden = false, m
         messageDiv.dataset.messageIndex = messageIndex;
     }
     
-    // Create message content div
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
-    messageContent.innerHTML = formatMessage(content);
-    messageDiv.dataset.originalContent = content; // Store original raw content
+    messageContent.innerHTML = formatMessage(content); // Format Markdown here
+    messageDiv.dataset.originalContent = content;
     
-    // Create message controls
     const messageControls = document.createElement('div');
     messageControls.className = 'message-controls';
     
-    // Add edit button
     const editButton = document.createElement('button');
     editButton.className = 'edit-message-btn';
     editButton.textContent = 'Edit';
@@ -114,12 +107,11 @@ export function addMessageToChat(role, content, chatContainer, hidden = false, m
     
     messageControls.appendChild(editButton);
 
-    // Add hide button
     const hideButton = document.createElement('button');
     hideButton.className = 'hide-message-btn';
     hideButton.textContent = hidden ? 'Unhide' : 'Hide';
     hideButton.title = hidden ? 'Unhide message' : 'Hide message';
-    hideButton.dataset.hidden = hidden; // Store the hidden state on the button
+    hideButton.dataset.hidden = hidden;
     hideButton.addEventListener('click', () => toggleHideMessage(messageDiv));
     
     messageControls.appendChild(hideButton);
@@ -127,6 +119,9 @@ export function addMessageToChat(role, content, chatContainer, hidden = false, m
     messageDiv.appendChild(messageContent);
     messageDiv.appendChild(messageControls);
     chatContainer.appendChild(messageDiv);
+    
+    // The actual linking will happen AFTER applySyntaxHighlighting in the .then() block of sendMessage
+    // or for initial messages, directly in initAnalysisChat. This ensures order of operations.
     
     return messageDiv;
 }
@@ -148,36 +143,29 @@ export function toggleEditMode(messageDiv) {
     const messageContent = messageDiv.querySelector('.message-content');
     const role = messageDiv.classList.contains('user-message') ? 'user' : 'model';
     
-    // If already in edit mode, exit it
     if (messageDiv.classList.contains('editing')) {
         const editor = messageDiv.querySelector('.message-editor');
         const editedContent = editor.value;
         
-        // Store the updated content
         messageDiv.dataset.originalContent = editedContent;
         
-        // Update message content
         messageContent.innerHTML = formatMessage(editedContent);
         
-        // Exit edit mode
         messageDiv.classList.remove('editing');
         editor.remove();
         
         applySyntaxHighlighting(messageDiv);
+        linkFilePathsInElement(messageContent); // Re-apply linking after edit
         
-        // Save the edited message to the server
         saveEditedMessage(messageDiv, role, editedContent);
     } else {
-        // Enter edit mode
         messageDiv.classList.add('editing');
         
-        // Get original content from data attribute instead of HTML
         const originalContent = messageDiv.dataset.originalContent || messageContent.textContent;
         const editor = document.createElement('textarea');
         editor.className = 'message-editor';
         editor.value = originalContent;
         
-        // Add controls for saving/canceling
         const editControls = document.createElement('div');
         editControls.className = 'edit-controls';
         
@@ -198,7 +186,6 @@ export function toggleEditMode(messageDiv) {
         editControls.appendChild(saveButton);
         editControls.appendChild(cancelButton);
         
-        // Insert editor and controls
         messageDiv.insertBefore(editor, messageContent.nextSibling);
         messageDiv.insertBefore(editControls, editor.nextSibling);
     }
@@ -236,7 +223,6 @@ export function toggleHideMessage(messageDiv) {
     hideButton.title = newHiddenState ? 'Unhide message' : 'Hide message';
     hideButton.dataset.hidden = newHiddenState;
 
-     // Save the hidden state to the server
      saveHiddenMessage(messageDiv, newHiddenState);
 }
 
@@ -245,8 +231,6 @@ function saveHiddenMessage(messageDiv, hidden) {
     const chatContainer = messageDiv.parentElement;
     const messageIndex = Array.from(chatContainer.children).indexOf(messageDiv);
     const role = messageDiv.classList.contains('user-message') ? 'user' : 'model';
-    // No need to send content for visibility update, but originalContent is stored in dataset
-    // const content = messageDiv.dataset.originalContent; 
 
     fetch('/update-message-visibility', {
         method: 'POST',
@@ -271,16 +255,14 @@ export async function regenerateLastMessage(messageDiv) {
     const queryId = document.getElementById('query-id').value;
     const messageIndex = parseInt(messageDiv.dataset.messageIndex, 10);
 
-    // Disable buttons and show loading indicator
     const regenerateButton = messageDiv.querySelector('.regenerate-message-btn');
     if (regenerateButton) {
         regenerateButton.disabled = true;
         regenerateButton.textContent = 'Regenerating...';
     }
     const messageContent = messageDiv.querySelector('.message-content');
-    const originalContent = messageDiv.dataset.originalContent; // Store original content from dataset
+    const originalContent = messageDiv.dataset.originalContent;
     messageContent.innerHTML = '<em>Regenerating response...</em>';
-
 
     try {
         const response = await fetch('/regenerate-chat-message', {
@@ -291,25 +273,28 @@ export async function regenerateLastMessage(messageDiv) {
             body: JSON.stringify({
                 project: projectName,
                 query_id: queryId,
-                index: messageIndex // Index of the message to regenerate
+                index: messageIndex
             })
         });
 
         if (response.ok) {
             const newContent = await response.text();
-            messageDiv.dataset.originalContent = newContent; // Update original raw content
-            messageContent.innerHTML = formatMessage(newContent); // Format and update display
-            await applySyntaxHighlighting(messageDiv); // Re-apply highlighting
-            updateCopyLinks(messageDiv); // Re-apply copy links
+            messageDiv.dataset.originalContent = newContent;
+            messageContent.innerHTML = formatMessage(newContent);
+            await applySyntaxHighlighting(messageDiv);
+            // --- NEW: Apply file linking to the regenerated message ---
+            linkFilePathsInElement(messageDiv.querySelector('.message-content'));
+            // --- END NEW ---
+            updateCopyLinks(messageDiv);
         } else {
             const errorText = await response.text();
             console.error('Error regenerating message:', errorText);
-            messageContent.innerHTML = formatMessage(originalContent); // Revert on error, reformat original
+            messageContent.innerHTML = formatMessage(originalContent);
             alert('Failed to regenerate response. Please check server logs.');
         }
     } catch (error) {
         console.error('Network error during regeneration:', error);
-        messageContent.innerHTML = formatMessage(originalContent); // Revert on error, reformat original
+        messageContent.innerHTML = formatMessage(originalContent);
         alert('A network error occurred during regeneration.');
     } finally {
         if (regenerateButton) {

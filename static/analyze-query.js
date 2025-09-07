@@ -7,18 +7,21 @@ import {
   resetChat,
   toggleEditMode,
   toggleHideMessage,
-  regenerateLastMessage, // Import regenerateLastMessage
-  addMessageToChat // Import addMessageToChat (not strictly needed here but good for consistency)
+  regenerateLastMessage,
+  addMessageToChat
 } from "./analyze-query/chat.js";
 import {
   applySyntaxHighlighting,
   updateCopyLinks,
 } from "./analyze-query/syntax-highlighting.js";
-import { formatMessage } from "./analyze-query/utils.js";
+import { formatMessage, setProjectSourceDirectory, linkFilePathsInElement } from "./analyze-query/utils.js"; // Import new functions
 
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
   const queryText = document.getElementById("query-text").value;
+  const projectSourceDir = document.getElementById("project-source-dir").value; // Get project source directory
+
+  setProjectSourceDirectory(projectSourceDir); // Set the global project source directory for linking
 
   setupQueryEditor(projectName);
   setupTitleEditor(projectName);
@@ -36,9 +39,9 @@ async function initAnalysisChat() {
       const selectedQueryId = this.value;
 
       // **Clear the chat history container before submitting**
-      const chatContainer = document.getElementById("analysis-chat-container"); // Get the chat container element
+      const chatContainer = document.getElementById("analysis-chat-container");
       if (chatContainer) {
-        chatContainer.innerHTML = ""; // Clear the chat container's content
+        chatContainer.innerHTML = "";
       }
 
       // Submit the form to load the selected query
@@ -86,18 +89,20 @@ async function initAnalysisChat() {
 
   // Format existing messages from Markdown to HTML and store original content
   const chatMessages = chatContainer.querySelectorAll(".chat-message");
-  chatMessages.forEach((messageDiv) => {
+  for (const messageDiv of chatMessages) {
     const messageContent = messageDiv.querySelector(".message-content");
-    // Ensure original content is correctly stored if not already from data-original-content attribute
-    // We already added `msg.content` to the div innerHTML in render_analyze_query_page, which is the raw content.
-    // So we can use that for originalContent, and then format it.
     const rawContent = messageContent.innerHTML;
     messageDiv.dataset.originalContent = rawContent;
     messageContent.innerHTML = formatMessage(rawContent);
-  });
+  }
+
 
   // Apply syntax highlighting to existing code blocks
   await applySyntaxHighlighting();
+
+  chatMessages.forEach(messageDiv => {
+    linkFilePathsInElement(messageDiv.querySelector('.message-content'));
+  });
 
   updateCopyLinks();
 
@@ -108,8 +113,8 @@ async function initAnalysisChat() {
 
   const modal = document.createElement("div");
   modal.id = "search-results-analysis-modal";
-  modal.classList.add("analysis-search-modal"); // Use classList
-  modal.style.display = "none"; // Initially hidden
+  modal.classList.add("analysis-search-modal");
+  modal.style.display = "none";
   modal.innerHTML = `<div class="analysis-search-modal-content">
                         <div class="modal-header">
                             <h3>Search Results</h3>
@@ -139,31 +144,56 @@ async function initAnalysisChat() {
     let searchResultsContent = document.getElementById(
       "search-results-content-files-modal"
     );
-    searchResultsContent.innerHTML = ""; // Clear previous results
+    searchResultsContent.innerHTML = "";
 
     if (data.success) {
-      searchResultsContent.innerHTML = data.html; // Insert the HTML
+      searchResultsContent.innerHTML = data.html;
+      // Optional: If you want to link paths in search results as well, uncomment:
+      // linkFilePathsInElement(searchResultsContent);
     } else {
       searchResultsContent.textContent = "Error: " + data.error;
     }
 
-    modal.style.display = "block"; // Show the modal
+    modal.style.display = "block";
   });
 
-  // Close the modal when the close button is clicked
   modal.querySelector(".close-search-modal").addEventListener("click", () => {
     modal.style.display = "none";
   });
 
-  // Close the modal if the user clicks outside of it
   window.addEventListener("click", (event) => {
     if (event.target === modal) {
       modal.style.display = "none";
     }
   });
+
+    document.body.addEventListener('click', (event) => {
+    const link = event.target.closest('a.file-path-link');
+    if (link) {
+      event.preventDefault(); // Prevent default browser navigation
+
+      // Create an invisible iframe
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none'; // Keep it hidden
+      document.body.appendChild(iframe);
+
+      // Set the iframe's source to the VS Code URI
+      // This will attempt to trigger the VS Code application via the iframe's isolated context.
+      iframe.src = link.href;
+
+      // Clean up the iframe after a short delay
+      // This is not strictly necessary for functionality, but keeps the DOM tidy.
+      setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+        } catch (e) {
+          console.warn("Could not remove temporary iframe:", e);
+        }
+      }, 500); // Give the browser half a second to process the URI scheme
+    }
+  });
 }
 
-// Initialize the chat when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAnalysisChat);
 } else {

@@ -10,7 +10,7 @@ impl TemplateService {
         query: &str,
         relevant_files: &[String],
         saved_context_files: &[String],
-        project: &Project,
+        project: &Project, // Project struct contains source_dir
         existing_chat_history: &[ChatMessage], // Changed to &[ChatMessage]
         available_queries: &[(String, String)], // Timestamp and filename
         current_query_id: &str, // Currently selected query
@@ -127,6 +127,7 @@ impl TemplateService {
                         <input type="hidden" id="query-id" value="{}">
                         <input type="hidden" id="project-name" value="{}">
                         <input type="hidden" id="query-text" value="{}">
+                        <input type="hidden" id="project-source-dir" value="{}"> <!-- ADDED THIS LINE -->
                         
                         <div id="analysis-chat-container" class="chat-container">
                             {}
@@ -197,6 +198,7 @@ impl TemplateService {
             current_query_id,
             project_name,
             query,
+            project.source_dir, // Pass project.source_dir here
             chat_messages_html, // Use the generated chat HTML
             project_name,
             query
@@ -226,4 +228,5 @@ impl TemplateService {
             options_html
         )
     }
+
 }

@@ -160,7 +160,18 @@ code:not(pre > code) {
     padding: 0 5px 1px 5px;
 }
 
+code:not(pre > code) a {
+    color: #9ECBFF;
+    text-decoration: underline;
+}
+
 strong code:not(pre > code) {
+    color: #B392F0;
+    font-size: 0.85rem;
+}
+
+
+strong code:not(pre > code) a {
     color: #B392F0;
     font-size: 0.85rem;
 }
