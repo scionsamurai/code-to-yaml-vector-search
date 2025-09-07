@@ -1,5 +1,5 @@
 // src/services/template/render_analyze_query_page.rs
-use crate::models::{Project, ChatMessage}; // Import ChatMessage
+use crate::models::{Project, ChatMessage};
 use super::TemplateService;
 use crate::shared;
 
@@ -10,52 +10,19 @@ impl TemplateService {
         query: &str,
         relevant_files: &[String],
         saved_context_files: &[String],
-        project: &Project, // Project struct contains source_dir
-        existing_chat_history: &[ChatMessage], // Changed to &[ChatMessage]
-        available_queries: &[(String, String)], // Timestamp and filename
-        current_query_id: &str, // Currently selected query
+        project: &Project,
+        existing_chat_history: &[ChatMessage],
+        available_queries: &[(String, String)],
+        current_query_id: &str,
     ) -> String {
         
         let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
-
-        let mut chat_messages_html = String::new();
-        // Find the last model message to add the regenerate button
         let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
-
-        for (index, msg) in existing_chat_history.iter().enumerate() {
-            let regenerate_button_html = if let Some(last_idx) = last_model_message_index {
-                if index == last_idx {
-                    // Only add regenerate button to the last model message
-                    r#"<button class="regenerate-message-btn" title="Regenerate response">Regenerate</button>"#.to_string()
-                } else {
-                    "".to_string()
-                }
-            } else {
-                "".to_string()
-            };
-
-            // Dataset originalContent will be set by JS, so we'll leave it as is for now in Rust
-            // It's important that the content here is the raw content, not yet Markdown formatted
-            chat_messages_html.push_str(&format!(
-                r#"<div class="chat-message {}-message" data-message-index="{}">
-                    <div class="message-content">{}</div>
-                    <div class="message-controls">
-                        <button class="edit-message-btn" title="Edit message">Edit</button>
-                        <button class="hide-message-btn" title="{} message" data-hidden="{}">{}</button>
-                        {}
-                    </div>
-                </div>"#,
-                msg.role, 
-                index, // Add index for easy identification in JS
-                msg.content, 
-                if msg.hidden { "Unhide" } else { "Hide" }, 
-                msg.hidden, 
-                if msg.hidden { "Unhide" } else { "Hide" },
-                regenerate_button_html
-            ));
-        }
+        let chat_messages_html = existing_chat_history.iter().enumerate().map(|(index, msg)| {
+            self.gen_chat_message_html(msg, index, last_model_message_index.map(|i| i == index).unwrap_or(false))
+        }).collect::<Vec<_>>().join("\n");
 
         format!(
             r#"
@@ -204,29 +171,4 @@ impl TemplateService {
             query
         )
     }
-
-    fn generate_query_selector(&self, available_queries: &[(String, String)], current_query_id: &str) -> String {
-        let mut options_html = String::new();
-        for (timestamp, display_title) in available_queries {
-            let selected = match current_query_id {
-                id => timestamp == id
-            };
-            let selected_attr = if selected { "selected" } else { "" };
-            options_html.push_str(&format!(
-                r#"<option value="{}" {}>{}</option>"#,
-                timestamp, selected_attr, display_title
-            ));
-        }
-
-        format!(
-            r#"
-            <label for="query-selector">Select Query:</label>
-            <select id="query-selector" name="query_id">
-                {}
-            </select>
-            "#,
-            options_html
-        )
-    }
-
 }

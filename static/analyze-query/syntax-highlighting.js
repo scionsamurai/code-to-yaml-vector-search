@@ -61,7 +61,7 @@ export async function updateCopyLinks(el = document) {
 
       const applyToFileWrapper = document.createElement("span");
       applyToFileWrapper.className = "link_and_copy__apply_link pointer"; // New class for apply button
-      applyToFileWrapper.setAttribute("title", "Apply code to a file");
+      applyToFileWrapper.setAttribute("title", "Apply code to file");
 
       const fileIcon = document.createElement("span");
       fileIcon.className = "action-icon";

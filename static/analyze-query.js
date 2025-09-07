@@ -14,14 +14,14 @@ import {
   applySyntaxHighlighting,
   updateCopyLinks,
 } from "./analyze-query/syntax-highlighting.js";
-import { formatMessage, setProjectSourceDirectory, linkFilePathsInElement } from "./analyze-query/utils.js"; // Import new functions
+import { formatMessage, setProjectSourceDirectory, linkFilePathsInElement } from "./analyze-query/utils.js";
 
 async function initAnalysisChat() {
   const projectName = document.getElementById("project-name").value;
   const queryText = document.getElementById("query-text").value;
-  const projectSourceDir = document.getElementById("project-source-dir").value; // Get project source directory
+  const projectSourceDir = document.getElementById("project-source-dir").value;
 
-  setProjectSourceDirectory(projectSourceDir); // Set the global project source directory for linking
+  setProjectSourceDirectory(projectSourceDir);
 
   setupQueryEditor(projectName);
   setupTitleEditor(projectName);
@@ -32,19 +32,16 @@ async function initAnalysisChat() {
     () => updateContext(projectName, queryText)
   );
 
-  // Add event listener to the query selector
   const querySelector = document.getElementById("query-selector");
   if (querySelector) {
     querySelector.addEventListener("change", function () {
       const selectedQueryId = this.value;
 
-      // **Clear the chat history container before submitting**
       const chatContainer = document.getElementById("analysis-chat-container");
       if (chatContainer) {
         chatContainer.innerHTML = "";
       }
 
-      // Submit the form to load the selected query
       const form = document.createElement("form");
       form.method = "post";
       form.action = "/analyze-query";
@@ -67,7 +64,6 @@ async function initAnalysisChat() {
     });
   }
 
-  // Event listeners for existing messages (loaded from HTML)
   document.querySelectorAll(".edit-message-btn").forEach((button) => {
     button.addEventListener("click", function () {
       const messageDiv = button.closest(".chat-message");
@@ -96,8 +92,6 @@ async function initAnalysisChat() {
     messageContent.innerHTML = formatMessage(rawContent);
   }
 
-
-  // Apply syntax highlighting to existing code blocks
   await applySyntaxHighlighting();
 
   chatMessages.forEach(messageDiv => {

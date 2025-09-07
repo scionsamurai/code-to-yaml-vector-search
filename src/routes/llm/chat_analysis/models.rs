@@ -31,14 +31,6 @@ pub struct RegenerateChatMessageRequest { // New struct for regenerate request
     pub index: usize, // Index of the model message to regenerate
 }
 
-pub struct UpdateMessageVisibilityRequest {
-    pub project: String,
-    pub index: usize,
-    pub query_id: Option<String>,
-    pub hidden: bool,
-}
-
-// --- NEW: Request struct for applying code to a file ---
 #[derive(Deserialize)]
 pub struct ApplyCodeToFileRequest {
     pub project: String,

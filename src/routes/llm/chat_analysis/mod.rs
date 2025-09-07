@@ -1,15 +1,21 @@
 // src/routes/llm/chat_analysis/mod.rs
-pub mod handlers;
-pub mod models;
+pub mod chat_analysis;
+pub mod regenerate_chat_message;
+pub mod reset_analysis_chat;
+pub mod update_chat_message;
+pub mod update_message_visibility;
+pub mod apply_code_to_file; 
 pub mod utils;
+pub mod models;
 
 use actix_web::web;
 
 pub fn configure(cfg: &mut web::ServiceConfig) {
-    cfg.service(handlers::chat_analysis)
-        .service(handlers::reset_analysis_chat)
-        .service(handlers::update_message_visibility)
-        .service(handlers::update_chat_message)
-        .service(handlers::apply_code_to_file) // New service for applying code to a file
-        .service(handlers::regenerate_chat_message);
+    cfg.service(chat_analysis::chat_analysis)
+        .service(reset_analysis_chat::reset_analysis_chat)
+        .service(update_message_visibility::update_message_visibility)
+        .service(update_chat_message::update_chat_message)
+        .service(apply_code_to_file::apply_code_to_file) // New service for applying code to a file
+        .service(regenerate_chat_message::regenerate_chat_message);
+
 }
