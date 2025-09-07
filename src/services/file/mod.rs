@@ -73,20 +73,8 @@ impl FileService {
         content: &str,
     ) -> Result<()> {
         let source_dir = PathBuf::from(&project.source_dir);
-        println!(
-            "FileService Debug: Project Source Directory: {:?}",
-            source_dir
-        ); // DEBUG
-        println!(
-            "FileService Debug: Relative File Path provided: {:?}",
-            relative_file_path
-        ); // DEBUG
 
         let target_path = source_dir.join(relative_file_path);
-        println!(
-            "FileService Debug: Constructed Target Path: {:?}",
-            target_path
-        ); // DEBUG
 
         if !target_path.starts_with(&source_dir) {
             println!("FileService Error: Attempted directory traversal detected. Target path: {:?} is not within source directory: {:?}", target_path, source_dir); // DEBUG
@@ -101,22 +89,9 @@ impl FileService {
             Box::new(FileServiceError::InvalidPath) as Box<dyn Error>
         })?;
 
-        println!(
-            "FileService Debug: Ensuring parent directories exist for: {:?}",
-            parent_dir
-        ); // DEBUG
         fs::create_dir_all(parent_dir)?;
-        println!("FileService Debug: Parent directories created or already exist."); // DEBUG
-
-        println!(
-            "FileService Debug: Writing content to file: {:?}",
-            target_path
-        ); // DEBUG
         fs::write(&target_path, content)?;
-        println!(
-            "FileService Debug: Content written successfully to: {:?}",
-            target_path
-        ); // DEBUG
+
         Ok(())
     }
 }
