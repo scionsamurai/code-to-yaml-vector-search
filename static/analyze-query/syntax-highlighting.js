@@ -125,13 +125,15 @@ export async function updateCopyLinks(el = document) {
           let filePath = "";
           const firstLine = codeContent.split("\n")[0];
           // Regex to match // path/to/file.ext or # path/to/file.ext at the start of the line
-          const pathRegex =
-            /^\s*(?:\/\/|#)\s*([a-zA-Z0-9_\-./\\]+(?:\.[a-zA-Z0-9_\-.]+)+)/;
+        const pathRegex =
+          /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-.]+\/)+(?:[a-zA-Z0-9_\-.]+\.[a-zA-Z0-9_\-]+)\b/g;
+        
+
           const match = firstLine.match(pathRegex);
 
           let derivedPath = null;
-          if (match && match[1]) {
-            derivedPath = match[1].trim();
+          if (match) {
+            derivedPath = match[0].trim();
             console.log("Derived path from comment:", derivedPath);
           } else {
             console.log("No file path derived from first line comment.");

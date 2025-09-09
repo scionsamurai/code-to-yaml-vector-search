@@ -91,7 +91,7 @@ export function linkFilePathsInElement(element) {
   }
 
   const pathRegex =
-    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-]+\/)+(?:[a-zA-Z0-9_\-.]+\.(?:rs|js|ts|tsx|jsx|html|css|py|java|cpp|h|hpp|c|go|yml|yaml|json|txt|md|toml|lock|gitignore|editorconfig|env|sh|ps1|bat|dockerfile|properties|xml|sql|conf|cfg|ini)|(?:[a-zA-Z0-9_\-+]+\.svelte))\b/g;
+    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-]+\/)+(?:[a-zA-Z0-9_\-.]+\.[a-zA-Z0-9_\-]+)\b/g;
 
   // Get all <pre> elements within the target element. We will skip text nodes inside these.
   const preElements = element.querySelectorAll("pre");
