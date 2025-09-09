@@ -1,6 +1,7 @@
 // static/analyze-query/chat.js
 import { formatMessage, linkFilePathsInElement } from './utils.js'; // Import linkFilePathsInElement
-import { applySyntaxHighlighting, updateCopyLinks } from './syntax-highlighting.js';
+import { applySyntaxHighlighting } from './syntax-highlighting.js';
+import { initCodeBlockActions } from './code-block-actions.js';
 
 export function sendMessage(chatContainer) {
     const messageInput = document.getElementById('analysis-message-input');
@@ -40,7 +41,7 @@ export function sendMessage(chatContainer) {
             // --- NEW: Apply file linking to the new message after syntax highlighting ---
             linkFilePathsInElement(messageDiv.querySelector('.message-content'));
             // --- END NEW ---
-            updateCopyLinks(messageDiv);
+            initCodeBlockActions(messageDiv);
         })
         .catch(error => {
             console.error('Error:', error);
@@ -285,7 +286,7 @@ export async function regenerateLastMessage(messageDiv) {
             // --- NEW: Apply file linking to the regenerated message ---
             linkFilePathsInElement(messageDiv.querySelector('.message-content'));
             // --- END NEW ---
-            updateCopyLinks(messageDiv);
+            initCodeBlockActions(messageDiv);
         } else {
             const errorText = await response.text();
             console.error('Error regenerating message:', errorText);

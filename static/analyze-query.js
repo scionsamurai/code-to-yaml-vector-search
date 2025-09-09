@@ -12,8 +12,8 @@ import {
 } from "./analyze-query/chat.js";
 import {
   applySyntaxHighlighting,
-  updateCopyLinks,
 } from "./analyze-query/syntax-highlighting.js";
+import { initCodeBlockActions } from "./analyze-query/code-block-actions.js";
 import { formatMessage, setProjectSourceDirectory, linkFilePathsInElement } from "./analyze-query/utils.js";
 
 async function initAnalysisChat() {
@@ -98,7 +98,7 @@ async function initAnalysisChat() {
     linkFilePathsInElement(messageDiv.querySelector('.message-content'));
   });
 
-  updateCopyLinks();
+  initCodeBlockActions();
 
   const searchButton = document.createElement("button");
   searchButton.id = "analysis-search-button";
