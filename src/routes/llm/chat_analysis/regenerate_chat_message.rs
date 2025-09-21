@@ -37,7 +37,9 @@ pub async fn regenerate_chat_message(
         .get_query_data_field(&app_state, query_id, "query")
         .unwrap_or_else(|| "No previous query found".to_string());
 
-    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents);
+    let include_file_descriptions = project.get_query_data_field(&app_state, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+
+    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
 
     let mut full_history = get_full_history(&project, &app_state, &query_id);
 

@@ -14,6 +14,7 @@ impl TemplateService {
         existing_chat_history: &[ChatMessage],
         available_queries: &[(String, String)],
         current_query_id: &str,
+        include_file_descriptions: bool,
     ) -> String {
         
         let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files, project);
@@ -23,6 +24,10 @@ impl TemplateService {
         let chat_messages_html = existing_chat_history.iter().enumerate().map(|(index, msg)| {
             self.gen_chat_message_html(msg, index, last_model_message_index.map(|i| i == index).unwrap_or(false))
         }).collect::<Vec<_>>().join("\n");
+
+        // Determine if the checkbox should be checked
+        let descriptions_checked_attr = if include_file_descriptions { "checked" } else { "" };
+
 
         format!(
             r#"
@@ -64,6 +69,11 @@ impl TemplateService {
                             
                             <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
                                 background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s;">
+                            </div>
+
+                            <div class="checkbox-container">
+                                <input type="checkbox" class="file-checkbox" id="include-descriptions-checkbox" {} />
+                                <label for="include-descriptions-checkbox">Include file paths and descriptions in prompt</label>
                             </div>
                             
                             <div class="file-list">
@@ -160,6 +170,7 @@ impl TemplateService {
             project_name,
             query_selector_html,
             "<label>Query: </label>".to_string() + query,
+            descriptions_checked_attr, // Pass the checked attribute here
             relevant_files_html,
             other_files_html,
             current_query_id,

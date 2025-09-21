@@ -48,7 +48,9 @@ pub async fn analyze_query(
             Vec::new()
         }
     };
-    
+
+    let include_file_descriptions = project.get_query_data_field(&app_state, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(
         &form.project,
@@ -58,7 +60,8 @@ pub async fn analyze_query(
         &project,
         &existing_chat_history, // Pass the Vec<ChatMessage>
         &available_queries,
-        &query_id
+        &query_id,
+        include_file_descriptions
     );
 
     HttpResponse::Ok().body(html)

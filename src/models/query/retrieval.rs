@@ -93,6 +93,7 @@ impl Project {
                 match field {
                     "query" => Some(query_data.query),
                     "title" => query_data.title,
+                    "include_file_descriptions" => Some(query_data.include_file_descriptions.to_string()),
                     _ => None,
                 }
             }

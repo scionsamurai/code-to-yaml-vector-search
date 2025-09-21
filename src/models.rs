@@ -13,14 +13,19 @@ fn default_use_yaml_default() -> bool {
     true
 }
 
+// Helper function for default_include_file_descriptions
+fn default_false() -> bool {
+    false
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Project {
     pub name: String,
     pub languages: String,
     pub source_dir: String,
-    pub provider: String, // Renamed from 'model' to 'provider'
-    #[serde(default)] // Option<String> will default to None
-    pub specific_model: Option<String>, // New field for specific model name (e.g., "gemini-2.5-flash")
+    pub provider: String,
+    #[serde(default)]
+    pub specific_model: Option<String>,
     #[serde(default)]
     pub embeddings: HashMap<String, EmbeddingMetadata>,
     #[serde(default)]
@@ -39,12 +44,12 @@ pub struct QueryData {
     pub analysis_chat_history: Vec<ChatMessage>,
     pub llm_analysis: String,
     pub title: Option<String>,
+    #[serde(default = "default_false")]
+    pub include_file_descriptions: bool,
 }
-
 
 impl std::fmt::Display for EmbeddingMetadata {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // Define how the struct should be formatted as a string
         write!(
             f,
             "EmbeddingMetadata {{ file_path: {}, last_updated: {}, vector_id: {} }}",

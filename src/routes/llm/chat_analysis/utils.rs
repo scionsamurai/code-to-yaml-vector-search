@@ -23,17 +23,31 @@ pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppStat
     (context_files, file_contents)
 }
 
-pub fn create_system_prompt(query: &str, context_files: &Vec<String>, file_contents: &str) -> String {
+pub fn create_system_prompt(
+    query: &str,
+    context_files: &Vec<String>,
+    file_contents: &str,
+    project: &Project, // Add project here
+    include_file_descriptions: bool, // Add this flag
+) -> String {
     let mut prompt = format!("You are an AI assistant helping with code analysis for a project. In this chat the user controls which files you see and which messages you see with every prompt. \
         The user's original query was: \"{}\"", query);
+
+    if include_file_descriptions && !project.file_descriptions.is_empty() {
+        prompt.push_str("\n\nHere are descriptions for some of the project files:");
+        for (path, description) in project.file_descriptions.iter() {
+            prompt.push_str(&format!("\n- Path: {}\n  Description: {}", path, description));
+        }
+        prompt.push_str("\n");
+    }
     
     if !context_files.is_empty() {
         prompt.push_str("\n\nPlease note: The files provided within this message context are live and updated with every message. They represent the user's current code state, which often incorporates their attempts to implement previous suggestions or fix bugs. Always refer to these files for the latest version for all requests. The user may also change which files are included.");
-        prompt.push_str(&format!("\n\nYou have access to the following files:\n{}", context_files.join("\n")));
+        // prompt.push_str(&format!("\n\nYou have access to the following files:\n{}", context_files.join("\n")));
     }
     
     if !file_contents.is_empty() {
-        prompt.push_str(&format!("\n\nHere are the contents of these files:\n\n{}", file_contents));
+        prompt.push_str(&format!("\n\nHere are the files and their contents:\n\n{}", file_contents));
     }
     
     prompt

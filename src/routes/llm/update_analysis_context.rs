@@ -10,6 +10,7 @@ pub struct UpdateContextRequest {
     project: String,
     files: Vec<String>,
     query_id: Option<String>,
+    pub include_file_descriptions: bool, // Add this line
 }
 
 #[post("/update-analysis-context")]
@@ -51,6 +52,7 @@ pub async fn update_analysis_context(
                 Ok(mut query_data) => {
                     // Update the context files
                     query_data.context_files = data.files.clone();
+                    query_data.include_file_descriptions = data.include_file_descriptions; 
 
                     // Save the updated QueryData
                     match project_service.save_query_data(&project_dir, &query_data, &filename) {

@@ -30,6 +30,8 @@ pub async fn chat_analysis(
 
     let query_id = data.query_id.as_deref().unwrap_or_default();
 
+    let include_file_descriptions = project.get_query_data_field(&app_state, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+
     // Get selected context files and file contents
     let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
 
@@ -37,8 +39,9 @@ pub async fn chat_analysis(
         .get_query_data_field(&app_state, query_id, "query")
         .unwrap_or_else(|| "No previous query found".to_string());
 
-    // Create context prompt with the loaded file contents
-    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents);
+    
+    // Create context prompt with the loaded file contents, project, and description flag
+    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions); // Update this line
 
     // Get existing chat history from project structure
     let full_history = get_full_history(&project, &app_state, &query_id);

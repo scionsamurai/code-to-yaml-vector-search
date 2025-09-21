@@ -11,6 +11,10 @@ export function updateContext(projectName, queryText) {
         selectedFiles.push(checkbox.value);
     });
 
+    // Get the state of the new checkbox
+    const includeFileDescriptionsCheckbox = document.getElementById('include-descriptions-checkbox');
+    const includeFileDescriptions = includeFileDescriptionsCheckbox ? includeFileDescriptionsCheckbox.checked : false;
+
     fetch('/update-analysis-context', {
         method: 'POST',
         headers: {
@@ -21,13 +25,14 @@ export function updateContext(projectName, queryText) {
             query: queryText,
             files: selectedFiles,
             query_id: document.getElementById('query-id').value,
+            include_file_descriptions: includeFileDescriptions,
         })
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
             if (statusMessage) {
-                statusMessage.textContent = `Context updated: ${selectedFiles.length} files selected`;
+                statusMessage.textContent = `Context updated: ${selectedFiles.length} files selected${includeFileDescriptions ? ' with descriptions' : ''}`;
                 setTimeout(() => {
                     statusMessage.style.opacity = '0';
                     setTimeout(() => {
