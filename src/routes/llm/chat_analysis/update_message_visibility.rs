@@ -41,16 +41,8 @@ pub async fn update_message_visibility(
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(&project_name);
 
-    let project = match project_service.load_project(&project_dir) {
-        Ok(p) => p,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Failed to load project: {}", e))
-        }
-    };
-
     // Update the message visibility
-    let result = project.update_message_visibility(&app_state, index, hidden, query_id);
+    let result = project_service.chat_manager.update_message_visibility(&project_service.query_manager, &project_dir, index, hidden, query_id);
 
     match result {
         Ok(()) => HttpResponse::Ok().finish(),

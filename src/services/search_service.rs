@@ -43,7 +43,7 @@ impl SearchService {
             let project_service = ProjectService::new();
 
             // Always create a new file for each query
-            let filename = project_service.generate_query_filename();
+            let filename = project_service.query_manager.generate_query_filename(); // MODIFIED LINE
             let mut query_data = QueryData::default();
 
             // Update the QueryData with search results and LLM analysis
@@ -52,7 +52,7 @@ impl SearchService {
             query_data.llm_analysis = llm_analysis.clone();
 
             // Save the updated QueryData
-            match project_service.save_query_data(&output_dir.unwrap(), &query_data, &filename) {
+            match project_service.query_manager.save_query_data(&output_dir.unwrap(), &query_data, &filename) { // MODIFIED LINE
                 Ok(_) => {
                     println!("Query data saved successfully.");
                 }

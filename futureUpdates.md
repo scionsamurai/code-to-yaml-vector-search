@@ -1,15 +1,18 @@
 https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
+1. Spec driven
+
+2. Backup code files before starting query update (user should be able to revert). Maybe integrate github controls so that it happens this way, and have it recommend commiting changes before starting an update.
+
+3. have a checkbox appear to the right of the hyperlinked file paths so that those files can easily be checked in "files for Analysis" on the left.
+
+4. update structure to say what files should be able to rely on which
+
+5. 
 
 That's excellent news that the regenerate button fix worked perfectly! It's always great to hear when an update lands just right.
 
 Regarding your ideas for further enhancements:
-
-*   **Clickable File Paths/Names to VS Code:** This is a fantastic idea and definitely possible! The most robust way to achieve this from a web browser is by leveraging VS Code's custom URI scheme. When VS Code is installed, it registers a `vscode://` protocol. We can construct a link like `vscode://file/{full_absolute_path_to_file}`. When a user clicks this link in their browser, the browser will ask if they want to open it with VS Code (or open it directly if already configured).
-    *   **The Challenge:** To make this work, the server-side Rust code needs to know the *absolute path* to the file on the user's local machine, not just a path relative to the project. Your `Project` struct already has a `source_dir` field, which is key. We'll combine this `source_dir` with the relative file paths to build the full URI.
-    *   **To implement this, I'll need to modify the `generate_file_list` and `generate_other_files_list` methods within your `TemplateService`.** Currently, these methods are not in the provided file list. Could you please provide the contents of **`/home/jimmy/RustStuff2/code-to-yaml-generator/src/services/template/template_service.rs`** so I can see their implementations and correctly integrate the `vscode://` links?
-
-*   **Copy to Clipboard:** Great to hear you already have this in place for code blocks! That's a fundamental usability feature.
 
 *   **"Preview Diff and Apply":** I'm thrilled that idea resonated so strongly! You're right, it's a "rock hard" feature. Implementing it would be a more involved endeavor, requiring:
     1.  Backend logic to generate a diff between a suggested change and the current file content.

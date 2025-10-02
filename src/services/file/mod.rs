@@ -8,7 +8,7 @@ use crate::models::{Project, ProjectFile};
 use std::error::Error;
 use std::fmt;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // Define a custom error type for your specific application errors
 #[derive(Debug)]

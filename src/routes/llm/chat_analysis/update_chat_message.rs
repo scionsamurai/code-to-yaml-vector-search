@@ -19,14 +19,6 @@ pub async fn update_chat_message(
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(&data.project);
 
-    let project = match project_service.load_project(&project_dir) {
-        Ok(p) => p,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Failed to load project: {}", e))
-        }
-    };
-
     let message = ChatMessage {
         role: data.role.clone(),
         content: data.content.clone(),
@@ -34,8 +26,9 @@ pub async fn update_chat_message(
     };
 
     // Update the specific message in the chat history
-    let result = project.update_message_in_history(
-        &app_state,
+    let result = project_service.chat_manager.update_message_in_history(
+        &project_service.query_manager,
+        &project_dir,
         data.index,
         message,
         data.query_id.as_deref().unwrap(),

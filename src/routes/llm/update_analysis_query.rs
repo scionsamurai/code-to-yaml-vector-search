@@ -37,7 +37,7 @@ pub async fn update_analysis_query(
                 Ok(_) => req_body.query_id.clone(), // It's a valid UUID, assume it's filename
                 Err(_) => {
                     // It's not a UUID, try to match with title
-                    let available_queries = project.get_query_filenames(&app_state).unwrap_or_default();
+                    let available_queries = project_service.query_manager.get_query_filenames(&project_dir).unwrap_or_default();
                     let mut matched_filename: Option<String> = None;
 
                     for (filename, _) in available_queries {
@@ -49,18 +49,18 @@ pub async fn update_analysis_query(
 
                     match matched_filename {
                         Some(filename) => filename,
-                        None => project_service.generate_query_filename(), // If title not found, create new query
+                        None => project_service.query_manager.generate_query_filename(), // If title not found, create new query
                     }
                 }
             };
 
             // Try to load existing query data or create new
             let (mut query_data, filename) =
-                match project.load_query_data_by_filename(&app_state, &query_filename) {
+                match project_service.query_manager.load_query_data_by_filename(&project_dir, &query_filename) {
                     Ok(Some(qd)) => (qd, query_filename.to_string()),
                     _ => (
                         QueryData::default(),
-                        project_service.generate_query_filename(),
+                        project_service.query_manager.generate_query_filename(),
                     ),
                 };
 
@@ -68,7 +68,7 @@ pub async fn update_analysis_query(
             query_data.query = req_body.query.clone();
 
             // Save the updated QueryData
-            match project_service.save_query_data(&project_dir, &query_data, &filename) {
+            match project_service.query_manager.save_query_data(&project_dir, &query_data, &filename) {
                 Ok(_) => {
                     // Save the updated project - we don't need to track filenames anymore.
                     match project_service.save_project(&project, &project_dir) {

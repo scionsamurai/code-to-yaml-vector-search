@@ -9,7 +9,7 @@ use std::path::Path;
 pub mod generation;
 pub mod embedding;
 pub mod cleanup;
-use crate::routes::llm::chat_analysis::utils::unescape_html;
+use crate::services::utils::html_utils::unescape_html;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
 use std::env;

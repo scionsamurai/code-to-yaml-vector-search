@@ -6,7 +6,7 @@ use crate::services::template::TemplateService;
 use crate::services::yaml::YamlService;
 use actix_web::{get, web, HttpResponse, Responder};
 use std::path::Path;
-use crate::routes::llm::chat_analysis::utils::escape_html;
+use crate::services::utils::html_utils::escape_html;
 
 #[derive(serde::Deserialize)]
 struct QueryParams {
@@ -47,8 +47,8 @@ pub async fn get_project(
     let q_id = if let Some(id) = &query.id {
         id.clone()
     } else {
-        project
-            .get_recent_query_id(&app_state)
+        project_service.query_manager
+            .get_recent_query_id(&output_dir)
             .unwrap_or_default()
     };
 
@@ -85,7 +85,9 @@ pub async fn get_project(
         }
     } else {
         // Load most recent query data
-        let most_recent_query = project.load_most_recent_query_data(&app_state);
+        // --- MODIFIED LINE ---
+        let most_recent_query = project_service.query_manager
+            .load_most_recent_query_data(&output_dir);
         match most_recent_query {
             Ok(Some(latest_query)) => {
                 let query_text = latest_query.query.clone();
@@ -142,4 +144,3 @@ pub async fn get_project(
 
     HttpResponse::Ok().body(html)
 }
-

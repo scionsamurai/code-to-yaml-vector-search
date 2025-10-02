@@ -8,3 +8,4 @@ pub mod search_service;
 pub mod yaml;
 pub mod template;
 pub mod clustering_service;
+pub mod utils;

@@ -7,6 +7,7 @@ use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
 use std::path::Path;
+use crate::services::utils::html_utils::{escape_html, unescape_html};
 
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
@@ -28,18 +29,15 @@ pub async fn chat_analysis(
         }
     };
 
-    let query_id = data.query_id.as_deref().unwrap_or_default();
+    let query_id = data.query_id.as_deref().unwrap();
 
-    let include_file_descriptions = project.get_query_data_field(&app_state, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+    let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
 
     // Get selected context files and file contents
     let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
 
-    let query_text = project
-        .get_query_data_field(&app_state, query_id, "query")
-        .unwrap_or_else(|| "No previous query found".to_string());
+    let query_text = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
 
-    
     // Create context prompt with the loaded file contents, project, and description flag
     let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions); // Update this line
 
@@ -87,11 +85,11 @@ pub async fn chat_analysis(
     };
     println!("appstate: {:?}", app_state); // This println is probably for debug, keeping it for now
     // Add messages to chat
-    project
-        .add_chat_message(&app_state, user_message_to_save, query_id) // Use renamed variable
+    project_service.chat_manager
+        .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id)
         .unwrap();
-    project
-        .add_chat_message(&app_state, assistant_message, query_id)
+    project_service.chat_manager
+        .add_chat_message(&project_service.query_manager,&project_dir, assistant_message, query_id)
         .unwrap();
 
     HttpResponse::Ok().body(llm_response)

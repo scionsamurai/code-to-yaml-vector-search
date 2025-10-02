@@ -25,12 +25,12 @@ pub async fn reset_analysis_chat(
     };
 
     // Reset the chat history
-    let new_file_name = project.reset_chat_history(&app_state, data.query_id.as_deref().unwrap());
+    let new_file_name = project_service.chat_manager.reset_chat_history(&project_service.query_manager, &project_dir, data.query_id.as_deref().unwrap());
 
     // Save the updated project settings
     if let Err(e) = project_service.save_project(&project, &project_dir) {
         return HttpResponse::InternalServerError().body(format!("Failed to save project: {}", e));
     }
 
-    HttpResponse::Ok().body(new_file_name)
+    HttpResponse::Ok().body(new_file_name.unwrap())
 }

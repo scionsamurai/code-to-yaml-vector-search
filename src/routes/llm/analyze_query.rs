@@ -33,15 +33,13 @@ pub async fn analyze_query(
     };
 
     let query_id = form.query_id.clone();
-    let relevant_files = project.get_query_vec_field(&app_state, &query_id, "vector_results").unwrap();
-    let saved_context_files = project.get_query_vec_field(&app_state, &query_id, "context_files").unwrap();
-    let existing_chat_history = project.get_analysis_chat_history(&app_state, &query_id); // Changed to Vec<ChatMessage>
-    let last_query_text = project
-        .get_query_data_field(&app_state, &query_id, "query")
-        .unwrap_or_else(|| "No previous query found".to_string());
-    
+    let relevant_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "vector_results").unwrap();
+    let saved_context_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "context_files").unwrap();
+    let existing_chat_history = project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, &query_id);
+    let last_query_text = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
+
     // Get the list of available queries
-    let available_queries = match project.get_query_filenames(&app_state) {
+    let available_queries = match project_service.query_manager.get_query_filenames(&project_dir) {
         Ok(queries) => queries,
         Err(e) => {
             eprintln!("Failed to get query filenames: {}", e);
@@ -49,7 +47,7 @@ pub async fn analyze_query(
         }
     };
 
-    let include_file_descriptions = project.get_query_data_field(&app_state, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+    let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
 
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(

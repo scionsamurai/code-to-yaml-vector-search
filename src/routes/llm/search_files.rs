@@ -7,7 +7,7 @@ use crate::services::yaml::YamlService;
 use actix_web::{post, web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use crate::routes::llm::chat_analysis::utils::escape_html;
+use crate::services::utils::html_utils::escape_html;
 
 #[derive(Deserialize)]
 pub struct SearchRequest {

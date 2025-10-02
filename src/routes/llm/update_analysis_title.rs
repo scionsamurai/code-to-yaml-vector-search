@@ -32,8 +32,16 @@ pub async fn update_analysis_title(
     match project_service.load_project(&project_dir) {
         Ok(project) => {
             // Update the title
-            match project.update_query_title(&app_state, &req_body.query_id, &req_body.title) {
+            match project_service.query_manager.update_query_title(&project_dir, &req_body.query_id, &req_body.title) { // Updated line
                 Ok(_) => {
+                    // Save the project after the update (important!)
+                    if let Err(e) = project_service.save_project(&project, &project_dir) {
+                        eprintln!("Error saving project after title update: {}", e);
+                        return HttpResponse::InternalServerError().json(UpdateTitleResponse {
+                            success: false,
+                            message: format!("Failed to save project after title update: {}", e),
+                        });
+                    }
                     HttpResponse::Ok().json(UpdateTitleResponse {
                         success: true,
                         message: "Title updated successfully".to_string(),

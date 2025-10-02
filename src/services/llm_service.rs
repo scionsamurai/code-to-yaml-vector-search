@@ -4,7 +4,7 @@ use llm_api_access::structs::general::Message;
 use llm_api_access::llm::{Access, LLM};
 use std::fs::read_to_string;
 use std::path::Path;
-use crate::routes::llm::chat_analysis::utils::escape_html;
+use crate::services::utils::html_utils::escape_html;
 
 pub struct LlmService;
 

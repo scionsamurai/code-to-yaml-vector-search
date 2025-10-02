@@ -1,12 +1,17 @@
 // src/routes/llm/chat_analysis/utils.rs
 use crate::models::{Project, ChatMessage, AppState};
 use crate::services::file::FileService;
+use crate::services::project_service::ProjectService; // ADDED
 use actix_web::web;
+use std::path::Path;
 
 pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
-    // Get selected context files from project 
-    let context_files = project.get_query_vec_field(app_state, query_id, "context_files").unwrap();
-    
+    // Get selected context files from project
+    let project_dir = Path::new(&app_state.output_dir).join(&project.name);
+    let project_service = ProjectService::new(); // Create an instance of ProjectService
+
+    let context_files = project_service.query_manager.get_query_vec_field(&project_dir, query_id, "context_files").unwrap_or_default();
+
     let file_service = FileService {};
 
     // Load file contents for the selected files
@@ -40,63 +45,24 @@ pub fn create_system_prompt(
         }
         prompt.push_str("\n");
     }
-    
+
     if !context_files.is_empty() {
         prompt.push_str("\n\nPlease note: The files provided within this message context are live and updated with every message. They represent the user's current code state, which often incorporates their attempts to implement previous suggestions or fix bugs. Always refer to these files for the latest version for all requests. The user may also change which files are included.");
         // prompt.push_str(&format!("\n\nYou have access to the following files:\n{}", context_files.join("\n")));
     }
-    
+
     if !file_contents.is_empty() {
         prompt.push_str(&format!("\n\nHere are the files and their contents:\n\n{}", file_contents));
     }
-    
+
     prompt
  }
 
  pub fn get_full_history(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> Vec<ChatMessage> {
-    match project.load_query_data_by_filename(app_state, query_id) {
-        Ok(Some(query_data)) => query_data.analysis_chat_history,
-        _ => Vec::new()
-    }
+    let project_dir = Path::new(&app_state.output_dir).join(&project.name);
+    let project_service = ProjectService::new(); // Create an instance of ProjectService
+    project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, query_id)
 }
-
-
-pub async fn escape_html(text: String) -> String {
-    // Process text line by line to handle code block markers vs inline triple backticks
-    let processed_text = text.lines()
-        .map(|line| {
-            let trimmed = line.trim();
-            // If the line starts with triple backticks after trimming, leave it as is
-            if trimmed.starts_with("```") {
-                line.to_string()
-            } else {
-                // Replace any triple backticks in the middle of the line
-                line.replace("```", "&grave;&grave;&grave;")
-            }
-        })
-        .collect::<Vec<String>>()
-        .join("\n");
-    
-    // Perform normal HTML escaping on the processed text
-    html_escape::encode_text(&processed_text)
-        .to_string()
-        .replace("\"", "&#34;")
-}
-
-pub fn unescape_html(text: String) -> String {
-    let mut unescaped_text = text.replace("&#96;&#96;&#96;", "```");
-
-    unescaped_text = unescaped_text.replace("&lt;", "<");
-    unescaped_text = unescaped_text.replace("&gt;", ">");
-    unescaped_text = unescaped_text.replace("&quot;", "\"");
-    unescaped_text = unescaped_text.replace("&#34;", "\""); // For &#34; (double quote)
-    unescaped_text = unescaped_text.replace("&#39;", "'");  // For &#39; (single quote/apostrophe)
-    unescaped_text = unescaped_text.replace("&apos;", "'"); // For &apos; (named entity for apostrophe, though less common)
-    unescaped_text = unescaped_text.replace("&amp;", "&"); // This MUST be last
-
-    unescaped_text
-}
-
 
 fn replace_hidden_messages(messages: &mut Vec<ChatMessage>) {
     for message in messages.iter_mut() {

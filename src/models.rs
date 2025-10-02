@@ -3,10 +3,10 @@ use chrono;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-pub mod query_management;
-pub mod chat_management;
+// pub mod query_management;
+// pub mod chat_management;
 pub mod utils;
-pub mod query;
+// pub mod query;
 
 
 fn default_use_yaml_default() -> bool {

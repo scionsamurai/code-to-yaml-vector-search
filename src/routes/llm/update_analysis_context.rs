@@ -23,16 +23,9 @@ pub async fn update_analysis_context(
     // Load the project
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(&data.project);
-    
-    let project = match project_service.load_project(&project_dir) {
-        Ok(p) => p,
-        Err(e) => return HttpResponse::InternalServerError().json(serde_json::json!({
-            "success": false,
-            "error": format!("Failed to load project: {}", e)
-        })),
-    };
+
     let query_id = data.query_id.as_deref().unwrap_or_default();
-    let last_query_text = project.get_query_data_field(&app_state, query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
+    let last_query_text = project_service.query_manager.get_query_data_field(&project_dir, query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
     
     // Generate a reference prompt without including file contents
     let updated_prompt = format!(
@@ -45,17 +38,17 @@ pub async fn update_analysis_context(
 
     
     // Load the most recent query data
-    match project_service.get_most_recent_query_file(&project_dir) {
+    match project_service.query_manager.get_most_recent_query_file(&project_dir) {
         Ok(Some(file_path)) => {
             let filename = file_path.file_name().unwrap().to_str().unwrap().to_string();
-            match project_service.load_query_data(&project_dir, &filename) {
+            match project_service.query_manager.load_query_data(&project_dir, &filename) {
                 Ok(mut query_data) => {
                     // Update the context files
                     query_data.context_files = data.files.clone();
                     query_data.include_file_descriptions = data.include_file_descriptions; 
 
                     // Save the updated QueryData
-                    match project_service.save_query_data(&project_dir, &query_data, &filename) {
+                    match project_service.query_manager.save_query_data(&project_dir, &query_data, &filename) {
                         Ok(_) => {
                             return HttpResponse::Ok().json(serde_json::json!({
                                 "success": true,
