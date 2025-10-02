@@ -4,11 +4,7 @@ https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
 2. Backup code files before starting query update (user should be able to revert). Maybe integrate github controls so that it happens this way, and have it recommend commiting changes before starting an update.
 
-3. have a checkbox appear to the right of the hyperlinked file paths so that those files can easily be checked in "files for Analysis" on the left.
 
-4. update structure to say what files should be able to rely on which
-
-5. When the chat in analyze-query page is loaded, it should scroll all the way to the bottom.
 
 That's excellent news that the regenerate button fix worked perfectly! It's always great to hear when an update lands just right.
 
@@ -72,12 +68,12 @@ That said, your current approach is already quite solid. These would be refineme
     *   Intercept clicks on `.file-path-link` elements.
     *   Instead of directly launching VS Code via the hidden iframe, display a small, temporary modal (pop-up) or a toast notification.
     *   This modal should explain:
-        *   &#34;You are about to open this file in VS Code.&#34;
-        *   &#34;Your browser might ask for permission the first time.&#34;
-        *   A clear &#34;Open in VS Code&#34; button.
-        *   A &#34;Don't show this message again&#34; checkbox (persisted via `localStorage`).
-        *   A &#34;Cancel&#34; button.
-    *   If &#34;Don't show this message again&#34; is checked, subsequent clicks should bypass the modal and directly use the hidden iframe method.
+        *   "You are about to open this file in VS Code."
+        *   "Your browser might ask for permission the first time."
+        *   A clear "Open in VS Code" button.
+        *   A "Don't show this message again" checkbox (persisted via `localStorage`).
+        *   A "Cancel" button.
+    *   If "Don't show this message again" is checked, subsequent clicks should bypass the modal and directly use the hidden iframe method.
 *   **Benefits:** Improved user experience, clearer communication about external application launches, and better handling of initial browser permissions.
 *   **Files likely affected:** `static/analyze-query.js` (for modal logic and cookie/localStorage management), potentially new CSS for the modal.
 

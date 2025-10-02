@@ -204,6 +204,11 @@ async function initAnalysisChat() {
           updateContext(projectName, queryText);
       }
   });
+
+    // Scroll to bottom of chat
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
 }
 
 if (document.readyState === "loading") {
