@@ -12,9 +12,6 @@ impl QueryManager {
     pub fn new() -> Self {
         Self {}
     }
-
-    // --- Existing helper methods from ProjectService, now in QueryManager ---
-
     // Helper function to generate a unique filename for QueryData
     pub fn generate_query_filename(&self) -> String {
         format!("{}.json", Uuid::new_v4())

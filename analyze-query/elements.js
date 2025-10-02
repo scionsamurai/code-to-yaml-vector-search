@@ -1,4 +1,3 @@
-// static/analyze-query.js
 import { initializeElements } from "./analyze-query/elements.js";
 import { updateContext } from "./analyze-query/context.js";
 import { setupQueryEditor, setupTitleEditor } from "./analyze-query/query.js";

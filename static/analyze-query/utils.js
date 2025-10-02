@@ -23,42 +23,42 @@ export function setProjectSourceDirectory(path) {
   projectSourceDirectory = path;
 }
 
+// This function normalizes a file path, making it absolute if necessary.
+function normalizeFilePath(filePath, baseProjectSourceDir) {
+    if (!filePath) {
+        return filePath;
+    }
+
+    let absolutePath = filePath;
+
+    const isAbsolutePath =
+        (filePath.startsWith("/") && !filePath.startsWith("/src")) ||
+        (filePath.startsWith("\\") && !filePath.startsWith("\\src")) ||
+        /^[a-zA-Z]:[/\\]/.test(filePath) ||
+        /^\\\\[a-zA-Z0-9_.-]+\\[a-zA-Z0-9_.-]+/.test(filePath);
+
+    if (!isAbsolutePath && baseProjectSourceDir) {
+        const cleanedFilePath =
+            filePath.startsWith("/") || filePath.startsWith("\\")
+                ? filePath.slice(1)
+                : filePath;
+        const baseDir =
+            baseProjectSourceDir.endsWith("/") || baseProjectSourceDir.endsWith("\\")
+                ? baseProjectSourceDir
+                : baseProjectSourceDir + "/";
+        absolutePath = `${baseDir}${cleanedFilePath}`;
+    }
+
+    return absolutePath.replace(/\\/g, "/"); // Normalize to forward slashes
+}
+
+
 function createVsCodeLink(filePath, baseProjectSourceDir) {
-  if (!filePath) {
-    return filePath;
-  }
-
-  let absolutePath = filePath;
-
-  const isAbsolutePath =
-    (filePath.startsWith("/") && !filePath.startsWith("/src")) ||
-    (filePath.startsWith("\\") && !filePath.startsWith("\\src")) ||
-    /^[a-zA-Z]:[/\\]/.test(filePath) ||
-    /^\\\\[a-zA-Z0-9_.-]+\\[a-zA-Z0-9_.-]+/.test(filePath);
-
-  if (!isAbsolutePath && baseProjectSourceDir) {
-    const cleanedFilePath =
-      filePath.startsWith("/") || filePath.startsWith("\\")
-        ? filePath.slice(1)
-        : filePath;
-    const baseDir =
-      baseProjectSourceDir.endsWith("/") || baseProjectSourceDir.endsWith("\\")
-        ? baseProjectSourceDir
-        : baseProjectSourceDir + "/";
-    absolutePath = `${baseDir}${cleanedFilePath}`;
-  } else if (!isAbsolutePath && !baseProjectSourceDir) {
-    console.warn(
-      "Could not determine absolute path for file, projectSourceDir not available. Using relative path for VS Code link:",
-      filePath
-    );
-  }
-
-  const normalizedPath = absolutePath.replace(/\\/g, "/");
-
+  const normalizedPath = normalizeFilePath(filePath, baseProjectSourceDir);
   const encodedPath = encodeURIComponent(normalizedPath);
-
   return `vscode://file/${encodedPath}`;
 }
+
 
 export function linkFilePathsInElement(element) {
   if (!projectSourceDirectory) {
@@ -97,7 +97,16 @@ export function linkFilePathsInElement(element) {
     newHtml = newHtml.replace(pathRegex, (match) => {
       const vscodeUri = createVsCodeLink(match, projectSourceDirectory);
       const escapedMatch = new Option(match).innerHTML;
-      return `<a href="${vscodeUri}" class="file-path-link">${escapedMatch}</a>`;
+
+      // Normalize the file path for matching
+      const normalizedMatch = normalizeFilePath(match, projectSourceDirectory);
+
+      // Check if the file is currently selected in the file list
+      const fileId = match.replace(/[/\\.]/g, '-'); // Create a unique ID
+      const isChecked = document.querySelector(`.file-list input[type="checkbox"][value="${normalizedMatch}"]`)?.checked || false;
+
+
+      return `<label class="file-link-container"><input type="checkbox" class="file-path-checkbox" data-file-path="${escapedMatch}" value="${normalizedMatch}" id="checkbox-${fileId}" ${isChecked ? 'checked' : ''}><a href="${vscodeUri}" class="file-path-link">${escapedMatch}</a></label>`;
     });
 
     if (newHtml !== originalText) {

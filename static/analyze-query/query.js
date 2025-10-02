@@ -109,8 +109,6 @@ function showNotification(message) {
     }, 3000);
 }
 
-// static/analyze-query/query.js
-
 export function setupTitleEditor(projectName) {
 
     const editTitleBtn = document.getElementById('edit-title-btn');

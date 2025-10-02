@@ -8,7 +8,7 @@ https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
 4. update structure to say what files should be able to rely on which
 
-5. 
+5. When the chat in analyze-query page is loaded, it should scroll all the way to the bottom.
 
 That's excellent news that the regenerate button fix worked perfectly! It's always great to hear when an update lands just right.
 

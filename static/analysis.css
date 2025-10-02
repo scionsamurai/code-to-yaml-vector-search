@@ -376,3 +376,17 @@ pre:hover .hljs__link_and_copy .link_and_copy__apply_link,
     padding: 10px;
 }
 
+.file-link-container {
+    display: inline-flex;
+    align-items: center;
+    margin-right: 5px; /* Adjust spacing as needed */
+}
+
+.file-path-checkbox {
+    margin-right: 3px;
+    display: none;
+}
+
+.file-link-container:hover .file-path-checkbox {
+    display: inline-block;
+}
