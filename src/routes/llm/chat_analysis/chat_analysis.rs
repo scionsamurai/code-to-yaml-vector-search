@@ -83,7 +83,7 @@ pub async fn chat_analysis(
         content: llm_response.clone(),
         hidden: false,
     };
-    println!("appstate: {:?}", app_state); // This println is probably for debug, keeping it for now
+    
     // Add messages to chat
     project_service.chat_manager
         .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id)

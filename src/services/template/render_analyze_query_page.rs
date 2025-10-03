@@ -16,8 +16,11 @@ impl TemplateService {
         current_query_id: &str,
         include_file_descriptions: bool,
     ) -> String {
-
-        let relevant_files_html = self.generate_relevant_files_list(relevant_files, saved_context_files, project);
+        let vector_files: Vec<String> = relevant_files.iter()
+            .filter(|file| project.embeddings.contains_key(*file))
+            .cloned()
+            .collect();
+        let relevant_files_html = self.generate_relevant_files_list(relevant_files, &vector_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
         let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
