@@ -52,4 +52,15 @@ impl TemplateService {
         
         self.generate_file_list(&other_files, selected_files, project)
     }
+
+    pub fn generate_relevant_files_list(&self, relevant_files: &[String], context_files: &[String], project: &Project) -> String {
+        
+
+        let existing_context_files: Vec<String> = context_files.iter()
+            .filter(|file| project.embeddings.contains_key(*file))
+            .map(|file| file.clone())
+            .collect();
+
+        self.generate_file_list(&existing_context_files, relevant_files, project)
+    }
 }

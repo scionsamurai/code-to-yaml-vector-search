@@ -4,7 +4,7 @@ https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
 2. Backup code files before starting query update (user should be able to revert). Maybe integrate github controls so that it happens this way, and have it recommend commiting changes before starting an update.
 
-
+3. When generating the Relevant files we should have the LLM query append to it the files it is suggesting (and remove the alternate query suggestions from that prompt)
 
 That's excellent news that the regenerate button fix worked perfectly! It's always great to hear when an update lands just right.
 

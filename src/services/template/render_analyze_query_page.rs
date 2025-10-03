@@ -16,8 +16,8 @@ impl TemplateService {
         current_query_id: &str,
         include_file_descriptions: bool,
     ) -> String {
-        
-        let relevant_files_html = self.generate_file_list(relevant_files, saved_context_files, project);
+
+        let relevant_files_html = self.generate_relevant_files_list(relevant_files, saved_context_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
         let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
         let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
@@ -104,7 +104,7 @@ impl TemplateService {
                         <input type="hidden" id="query-id" value="{}">
                         <input type="hidden" id="project-name" value="{}">
                         <input type="hidden" id="query-text" value="{}">
-                        <input type="hidden" id="project-source-dir" value="{}"> <!-- ADDED THIS LINE -->
+                        <input type="hidden" id="project-source-dir" value="{}">
                         
                         <div id="analysis-chat-container" class="chat-container">
                             {}
@@ -169,7 +169,7 @@ impl TemplateService {
             shared::FAVICON_HTML_STRING,
             project_name,
             query_selector_html,
-            "<label>Query: </label>".to_string() + query,
+            "<label>Initial Query: </label>".to_string() + query,
             descriptions_checked_attr, // Pass the checked attribute here
             relevant_files_html,
             other_files_html,
