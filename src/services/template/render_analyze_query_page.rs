@@ -8,13 +8,14 @@ impl TemplateService {
         &self,
         project_name: &str,
         query: &str,
-        relevant_files: &[String],
+        relevant_files: &[String], // These are now the vector search results, minus LLM suggestions
         saved_context_files: &[String],
         project: &Project,
         existing_chat_history: &[ChatMessage],
         available_queries: &[(String, String)],
         current_query_id: &str,
         include_file_descriptions: bool,
+        llm_suggested_files: &[String],
     ) -> String {
         let vector_files: Vec<String> = relevant_files.iter()
             .filter(|file| project.embeddings.contains_key(*file))
@@ -25,8 +26,18 @@ impl TemplateService {
         } else {
             current_query_id
         };
+        
+        let llm_suggested_files_html = self.generate_llm_suggested_files_list(llm_suggested_files, saved_context_files, project);
         let relevant_files_html = self.generate_relevant_files_list(saved_context_files, &vector_files, project);
-        let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
+        
+        // Combine all excluded files for the 'other files' list
+        let mut all_excluded_files: Vec<String> = Vec::new();
+        all_excluded_files.extend(llm_suggested_files.iter().cloned());
+        // Use the `relevant_files` passed in (which is already filtered) for further exclusion
+        all_excluded_files.extend(relevant_files.iter().cloned()); 
+
+        let other_files_html = self.generate_other_files_list(project, &all_excluded_files, saved_context_files);
+        
         let query_selector_html = self.generate_query_selector(available_queries, query_id);
         let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
         let chat_messages_html = existing_chat_history.iter().enumerate().map(|(index, msg)| {
@@ -35,6 +46,25 @@ impl TemplateService {
 
         // Determine if the checkbox should be checked
         let descriptions_checked_attr = if include_file_descriptions { "checked" } else { "" };
+
+        let llm_suggested_files_section = if !llm_suggested_files.is_empty() {
+            format!(
+                r#"
+                <div class="file-list">
+                    <h3>
+                        LLM Suggested Files 
+                        <button id="toggle-llm-suggested-files" class="toggle-button">Toggle All</button>
+                    </h3>
+                    <div id="llm-suggested-files-list">
+                        {}
+                    </div>
+                </div>
+                "#,
+                llm_suggested_files_html
+            )
+        } else {
+            "".to_string()
+        };
 
 
         format!(
@@ -83,10 +113,12 @@ impl TemplateService {
                                 <input type="checkbox" class="file-checkbox" id="include-descriptions-checkbox" {} />
                                 <label for="include-descriptions-checkbox">Include file paths and descriptions in prompt</label>
                             </div>
+
+                            {} <!-- LLM Suggested Files Section -->
                             
                             <div class="file-list">
                                 <h3>
-                                    Relevant Files 
+                                    Other Relevant Files?
                                     <button id="toggle-relevant-files" class="toggle-button">Toggle All</button>
                                 </h3>
                                 <div id="relevant-files-list">
@@ -179,6 +211,7 @@ impl TemplateService {
             query_selector_html,
             "<label>Initial Query: </label>".to_string() + query,
             descriptions_checked_attr, // Pass the checked attribute here
+            llm_suggested_files_section, // <--- Insert the LLM suggested files HTML here
             relevant_files_html,
             other_files_html,
             query_id,

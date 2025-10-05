@@ -39,13 +39,24 @@ impl TemplateService {
             .join("\n")
     }
 
+    pub fn generate_llm_suggested_files_list(&self, llm_suggested_files: &[String], context_files: &[String], project: &Project) -> String {
+        // Filter out files that don't exist in project embeddings (just in case LLM suggests a non-existent file)
+        let existing_llm_suggested_files: Vec<String> = llm_suggested_files.iter()
+            .filter(|file| project.embeddings.contains_key(*file))
+            .map(|file| file.clone())
+            .collect();
+
+        self.generate_file_list(&existing_llm_suggested_files, context_files, project)
+    }
+
+
     pub fn generate_other_files_list(&self, project: &Project, exclude_files: &[String], selected_files: &[String]) -> String {
         // Get all project files
         let all_files: Vec<String> = match &project.embeddings {
             embeddings => embeddings.keys().cloned().collect(),
         };
 
-        // Filter out the files that are already in the relevant files list
+        // Filter out the files that are already in the combined exclusion list
         let other_files: Vec<String> = all_files.into_iter()
             .filter(|file| !exclude_files.contains(file))
             .collect();
@@ -54,8 +65,7 @@ impl TemplateService {
     }
 
     pub fn generate_relevant_files_list(&self, context_files: &[String], vector_files: &[String], project: &Project) -> String {
-        
-
+        // vector_files are already filtered in the analyze_query handler to exclude LLM suggested files
         let existing_vector_files: Vec<String> = vector_files.iter()
             .filter(|file| project.embeddings.contains_key(*file))
             .map(|file| file.clone())

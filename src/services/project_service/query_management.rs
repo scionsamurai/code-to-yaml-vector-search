@@ -253,15 +253,20 @@ impl QueryManager {
     ) -> Option<String> {
         match self.load_query_data_by_filename(project_dir, query_filename) {
             Ok(Some(query_data)) => {
-                match field {
-                    "query" => Some(query_data.query),
-                    "title" => query_data.title,
-                    "include_file_descriptions" => Some(query_data.include_file_descriptions.to_string()),
-                    _ => None,
+                match serde_json::to_value(&query_data) {
+                    Ok(value) => match value.get(field) {
+                        Some(v) if v.is_null() => None,
+                        Some(v) if v.is_string() => v.as_str().map(|s| s.to_string()),
+                        Some(v) => Some(v.to_string()), // non-string values (arrays, bools, numbers, objects)
+                        None => None,
+                    },
+                    Err(e) => {
+                        eprintln!("Failed to convert query data to JSON: {}", e);
+                        None
+                    }
                 }
             }
-            Ok(None) => None,
-            Err(_e) => None,
+            Ok(None) | Err(_) => None,
         }
     }
 
