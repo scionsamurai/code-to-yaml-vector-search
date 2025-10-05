@@ -98,7 +98,11 @@ impl SearchService {
             ```\n{}\n```\n\n\
             Related code from vector search:\n\
             ```\n{}\n```\n\n\
-            Based on the user query and the provided code: Were the vector results accurate? What other files or components would be needed to fully answer this query? DO NOT RESPOND WITH ANY CODE SNIPPETS. The purpose of this step is to identify files important to the update and suggest a few query alternatives. On that note, please suggest a few alternative queries that would be useful to explore the codebase more precisely for the desired outcome. Remember that i am saying query, but it is more of a user request about code and doesn't always have the form of a question. And remember the query should be the same but more verbose and potentially more grammatically correct.",
+            Based on the user query and the provided code, please provide a JSON code block with the following structure:\n\
+            ```json\n{{\n  \"accurate_vector_results\": \"explanation\",\n  \"suggested_files\": [\"file1.rs\", \"file2.rs\", ...]\n}}\n```\n\
+            - `accurate_vector_results`: A string explaining whether the vector results seem relevant to the query and why.\n\
+            - `suggested_files`: A list of file paths (relative to the project root) that would be needed to fully answer this query. These files should be chosen from the File Descriptions section."
+            ,
             query_text,
             file_descriptions,
             file_code

@@ -20,9 +20,14 @@ impl TemplateService {
             .filter(|file| project.embeddings.contains_key(*file))
             .cloned()
             .collect();
-        let relevant_files_html = self.generate_relevant_files_list(relevant_files, &vector_files, project);
+        let query_id = if current_query_id.is_empty() {
+            available_queries.last().map(|(id, _)| id.as_str()).unwrap_or("")
+        } else {
+            current_query_id
+        };
+        let relevant_files_html = self.generate_relevant_files_list(saved_context_files, &vector_files, project);
         let other_files_html = self.generate_other_files_list(project, relevant_files, saved_context_files);
-        let query_selector_html = self.generate_query_selector(available_queries, current_query_id);
+        let query_selector_html = self.generate_query_selector(available_queries, query_id);
         let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
         let chat_messages_html = existing_chat_history.iter().enumerate().map(|(index, msg)| {
             self.gen_chat_message_html(msg, index, last_model_message_index.map(|i| i == index).unwrap_or(false))
@@ -176,7 +181,7 @@ impl TemplateService {
             descriptions_checked_attr, // Pass the checked attribute here
             relevant_files_html,
             other_files_html,
-            current_query_id,
+            query_id,
             project_name,
             query,
             project.source_dir, // Pass project.source_dir here

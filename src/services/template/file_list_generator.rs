@@ -53,7 +53,7 @@ impl TemplateService {
         self.generate_file_list(&other_files, selected_files, project)
     }
 
-    pub fn generate_relevant_files_list(&self, relevant_files: &[String], vector_files: &[String], project: &Project) -> String {
+    pub fn generate_relevant_files_list(&self, context_files: &[String], vector_files: &[String], project: &Project) -> String {
         
 
         let existing_vector_files: Vec<String> = vector_files.iter()
@@ -61,6 +61,6 @@ impl TemplateService {
             .map(|file| file.clone())
             .collect();
 
-        self.generate_file_list(&existing_vector_files, relevant_files, project)
+        self.generate_file_list(&existing_vector_files, context_files, project)
     }
 }

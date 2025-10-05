@@ -91,10 +91,13 @@ impl QueryManager {
         project_dir: &Path,
         filename: &str,
     ) -> Result<Option<QueryData>, String> {
+        if filename.is_empty() {
+            return self.load_most_recent_query_data(project_dir);
+        }
         match self.load_query_data(project_dir, filename) {
             Ok(query_data) => Ok(Some(query_data)),
             Err(e) => {
-                println!("filename: {}", filename); // Keep for debug if needed
+                println!("filename: {}", filename);
                 eprintln!("Error loading query data: {}", e);
                 // Fallback to most recent query data
                 self.load_most_recent_query_data(project_dir) 

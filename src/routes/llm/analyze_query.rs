@@ -31,6 +31,7 @@ pub async fn analyze_query(
                 .body(format!("Failed to load project: {}", e))
         }
     };
+    
 
     let query_id = form.query_id.clone();
     let relevant_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "vector_results").unwrap();

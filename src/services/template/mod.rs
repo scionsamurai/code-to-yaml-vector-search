@@ -16,10 +16,16 @@ impl TemplateService {
 
     fn generate_query_selector(&self, available_queries: &[(String, String)], current_query_id: &str) -> String {
         let mut options_html = String::new();
+        let max_time_stamp = available_queries[available_queries.len() - 1].0.clone();
         for (timestamp, display_title) in available_queries {
-            let selected = match current_query_id {
-                id => timestamp == id
-            };
+            let mut selected = false;
+            if current_query_id.is_empty() {
+                selected = timestamp == &max_time_stamp;
+            } else {
+                selected = match current_query_id {
+                    id => timestamp == id
+                };
+            }
             let selected_attr = if selected { "selected" } else { "" };
             options_html.push_str(&format!(
                 r#"<option value="{}" {}>{}</option>"#,

@@ -74,9 +74,9 @@ impl TemplateService {
                     <!-- Search Form -->
                     <div class="search-form">
                         <form action="/projects/{}" method="get">
-                            <input type="hidden" name="id" id="id" value="{}">
-                            <textarea name="q" placeholder="Enter your query..." value="{}"></textarea>
-                            <button type="submit">Search</button>
+                            <input type="hidden" name="id" id="id" value="">
+                            <textarea name="q" placeholder="Enter your query about project..." value="{}"></textarea>
+                            <button type="submit">Submit</button>
                         </form>
                     </div>
 
@@ -111,7 +111,7 @@ impl TemplateService {
             if project.default_use_yaml { "checked" } else { "" },
             project.source_dir,
             project.name,
-            query_id,
+            // query_id,
             query_value,
             search_results_html,
             yaml_files

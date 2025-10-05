@@ -1,10 +1,26 @@
 https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
-1. Spec driven
+1. Spec driven (https://gemini.google.com/app/21a513c63d633692?)
 
 2. Backup code files before starting query update (user should be able to revert). Maybe integrate github controls so that it happens this way, and have it recommend commiting changes before starting an update.
 
-3. When generating the Relevant files we should have the LLM query append to it the files it is suggesting (and remove the alternate query suggestions from that prompt)
+3. When generating the Relevant files we should have the LLM query append to it the files it is suggesting
+
+4. Ability to exclude certain files from query file searches.
+
+5. After receiving a response in the chat on the analysis chat, we should scroll down a certain amount
+
+6. DO THIS! I should have a way to extract chats as blog posts. Specifically for open source projects. So when i push a change to github i could push the chat that helped me accomplish the update as a blog post. <- if i do this i should track which model generated which responses.
+        a. Could link the state of the code prior to the update i want to apply.
+        b. I could have a page that lists the updates i applied to my app, and each could be clickable to see the conversation and code updates.
+        c. optionally commit with each message and able to revert code back to any point in the chat. each chat might need it's own branch and merge upon success
+
+prior to 6. Git integration. If there are uncommited changes in repo upon first message being sent, the app asks if user wants to commit changes before starting. There should be a button on the page that says "Goal accomplished! Commit changes!"
+
+7. AI Suggested refinements for query, prior to sending.
+
+8. 
+
 
 That's excellent news that the regenerate button fix worked perfectly! It's always great to hear when an update lands just right.
 
