@@ -182,7 +182,7 @@ strong code:not(pre > code) a {
     border-radius: 4px;
     display: flex;
     flex-direction: column;
-    height: 80vh;
+    height: 100%;
 }
 
 .hljs__link_and_copy {
@@ -302,6 +302,9 @@ pre:hover .hljs__link_and_copy .link_and_copy__apply_link,
     border-left: 3px solid #007bff;
     margin: 5px 0;
     white-space: pre-wrap;
+    max-height: 20rem;
+    overflow: scroll;
+    background: #dcf8c6;
 }
 
 .query-display-container {

@@ -10,6 +10,10 @@ export function sendMessage(chatContainer) {
         addMessageToChat('user', message, chatContainer);
         messageInput.value = '';
 
+        if (chatContainer) {
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
         const projectName = document.getElementById('project-name').value;
         const queryId = document.getElementById('query-id').value;
 
@@ -38,14 +42,19 @@ export function sendMessage(chatContainer) {
             messageControls.appendChild(regenerateButton);
 
             await applySyntaxHighlighting(messageDiv);
-            // --- NEW: Apply file linking to the new message after syntax highlighting ---
             linkFilePathsInElement(messageDiv.querySelector('.message-content'));
-            // --- END NEW ---
             initCodeBlockActions(messageDiv);
+
+            if (chatContainer && messageDiv) {
+                chatContainer.scrollTop = chatContainer.scrollTop + 400;
+            }
         })
         .catch(error => {
             console.error('Error:', error);
             addMessageToChat('model', 'Error: Could not get a response.', chatContainer);
+            if (chatContainer) {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
         });
     }
 }
@@ -283,10 +292,12 @@ export async function regenerateLastMessage(messageDiv) {
             messageDiv.dataset.originalContent = newContent;
             messageContent.innerHTML = formatMessage(newContent);
             await applySyntaxHighlighting(messageDiv);
-            // --- NEW: Apply file linking to the regenerated message ---
             linkFilePathsInElement(messageDiv.querySelector('.message-content'));
-            // --- END NEW ---
             initCodeBlockActions(messageDiv);
+            if (chatContainer && messageDiv) {
+                // Scroll to the top of the regenerated message
+                chatContainer.scrollTop = chatContainer.scrollTop + 400;
+            }
         } else {
             const errorText = await response.text();
             console.error('Error regenerating message:', errorText);

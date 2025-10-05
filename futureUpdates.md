@@ -4,11 +4,7 @@ https://ai.google.dev/gemini-api/docs/thinking#javascript_4
 
 2. Backup code files before starting query update (user should be able to revert). Maybe integrate github controls so that it happens this way, and have it recommend commiting changes before starting an update.
 
-3. When generating the Relevant files we should have the LLM query append to it the files it is suggesting
-
 4. Ability to exclude certain files from query file searches.
-
-5. After receiving a response in the chat on the analysis chat, we should scroll down a certain amount
 
 6. DO THIS! I should have a way to extract chats as blog posts. Specifically for open source projects. So when i push a change to github i could push the chat that helped me accomplish the update as a blog post. <- if i do this i should track which model generated which responses.
         a. Could link the state of the code prior to the update i want to apply.
