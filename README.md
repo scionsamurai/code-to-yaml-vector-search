@@ -71,10 +71,6 @@ The application can be configured using environment variables or a `.env` file i
   * `ANTHROPIC_API_KEY`: API key for Anthropic models (default for chat analysis).
   * `QDRANT_SERVER_URL`: URL for the Qdrant vector database (defaults to `http://localhost:6334`).
 
-## Contributing
-
-Contributions are highly welcome\! Whether it's bug fixes, feature enhancements, or new language support, please feel free to open an issue or submit a pull request.
-
 ## License
 
 This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE).
