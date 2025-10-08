@@ -10,6 +10,8 @@ use std::collections::HashMap; // Needed for manual parsing
 pub struct GitEnvForm {
     git_author_name: String,
     git_author_email: String,
+    git_username: String,
+    git_password: String,
 }
 
 // Helper function to parse .env content into a HashMap
@@ -35,6 +37,8 @@ pub async fn get_git_env_settings(app_state: web::Data<AppState>, name: web::Pat
 
     let mut git_author_name = String::new();
     let mut git_author_email = String::new();
+    let mut git_username = String::new();
+    let mut git_password = String::new();
 
     if project_env_path.exists() {
         let env_content = read_to_string(&project_env_path).unwrap_or_default();
@@ -45,6 +49,12 @@ pub async fn get_git_env_settings(app_state: web::Data<AppState>, name: web::Pat
         }
         if let Some(email) = parsed_env.get("GIT_AUTHOR_EMAIL") {
             git_author_email = email.to_string();
+        }
+        if let Some(username) = parsed_env.get("GIT_USERNAME") {
+            git_username = username.to_string();
+        }
+        if let Some(password) = parsed_env.get("GIT_PASSWORD") {
+            git_password = password.to_string();
         }
     }
 
@@ -66,6 +76,12 @@ pub async fn get_git_env_settings(app_state: web::Data<AppState>, name: web::Pat
                     <label for="git_author_email">Git Author Email:</label>
                     <input type="email" id="git_author_email" name="git_author_email" value="{git_author_email}">
                     <br>
+                    <label for="git_username">Git Username:</label>
+                    <input type="text" id="git_username" name="git_username" value="{git_username}">
+                    <br>
+                    <label for="git_password">Git Password:</label>
+                    <input type="password" id="git_password" name="git_password" value="{git_password}">
+                    <br>
                     <button type="submit">Save Git Settings</button>
                 </form>
             </body>
@@ -74,7 +90,9 @@ pub async fn get_git_env_settings(app_state: web::Data<AppState>, name: web::Pat
         shared::FAVICON_HTML_STRING,
         project_name = project_name,
         git_author_name = git_author_name,
-        git_author_email = git_author_email
+        git_author_email = git_author_email,
+        git_username = git_username,
+        git_password = git_password
     );
 
     HttpResponse::Ok().body(html)
@@ -107,6 +125,16 @@ pub async fn post_git_env_settings(
         current_env_vars.insert("GIT_AUTHOR_EMAIL".to_string(), form_data.git_author_email.clone());
     } else {
         current_env_vars.remove("GIT_AUTHOR_EMAIL");
+    }
+    if !form_data.git_username.is_empty() {
+        current_env_vars.insert("GIT_USERNAME".to_string(), form_data.git_username.clone());
+    } else {
+        current_env_vars.remove("GIT_USERNAME");
+    }
+    if !form_data.git_password.is_empty() {
+        current_env_vars.insert("GIT_PASSWORD".to_string(), form_data.git_password.clone());
+    } else {
+        current_env_vars.remove("GIT_PASSWORD");
     }
 
     // Reconstruct the .env file content

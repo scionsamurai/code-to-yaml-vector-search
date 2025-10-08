@@ -127,7 +127,6 @@ impl GitService {
         index.add_all(["."].iter(), git2::IndexAddOption::DEFAULT, None)?;
         index.write()?;
 
-
         let tree_id = index.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
 
