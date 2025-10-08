@@ -151,7 +151,12 @@ impl GitService {
         Ok(())
     }
 
-    pub fn merge_branch(repo: &Repository, branch_name: &str) -> Result<(), GitError> {
+    pub fn merge_branch(
+        repo: &Repository,
+        branch_name: &str,
+        author_name: &str, // NEW: Added author_name
+        author_email: &str, // NEW: Added author_email
+    ) -> Result<(), GitError> {
         let branch = repo.find_branch(branch_name, BranchType::Local)?;
         let target = branch
             .get()
@@ -171,7 +176,7 @@ impl GitService {
         }
 
         // If the merge was successful, create a commit
-        let signature = Signature::now("Your Name", "your.email@example.com")?; // Replace with actual user info
+        let signature = Signature::now(author_name, author_email)?;
         let tree_id = index.write_tree()?;
         let tree = repo.find_tree(tree_id)?;
         let head = repo.head()?;

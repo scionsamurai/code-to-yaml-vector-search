@@ -6,6 +6,7 @@ use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use std::path::Path;
 use crate::models::AppState;
+use std::env;
 
 #[derive(Deserialize)]
 pub struct MergeBranchRequest {
@@ -25,6 +26,9 @@ pub async fn merge_branch(
 ) -> impl Responder {
     let project_service = ProjectService::new();
     let project_name = &data.project_name;
+
+    let git_author_name = env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "LLM Assistant".to_string());
+    let git_author_email = env::var("GIT_AUTHOR_EMAIL").unwrap_or_else(|_| "llm@example.com".to_string());
 
     // Load the project
     let output_dir = Path::new(&app_state.output_dir);
@@ -85,7 +89,7 @@ pub async fn merge_branch(
     }
 
     // Attempt to merge the chat branch
-    match GitService::merge_branch(&repo, &chat_branch_name) {
+    match GitService::merge_branch(&repo, &chat_branch_name, &git_author_name, &git_author_email) {
         Ok(_) => {
             // Merge successful, delete the chat branch
             if let Err(e) = GitService::delete_branch(&repo, &chat_branch_name) {
