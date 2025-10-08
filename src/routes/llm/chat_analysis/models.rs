@@ -22,6 +22,7 @@ pub struct UpdateChatMessageRequest {
     pub index: usize,
     pub query_id: Option<String>,
     pub hidden: Option<bool>,
+    pub commit_hash: Option<String>,
 }
 
 #[derive(Deserialize)]

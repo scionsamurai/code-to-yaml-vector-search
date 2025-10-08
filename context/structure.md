@@ -16,3 +16,5 @@ This application demonstrates a **well-defined, layered architecture** built wit
 3.  **Intuitive Directory & File Naming:**
     *   Directory names (e.g., `project`, `llm`, `ui` within `routes`; `file`, `yaml`, `template` within `services`) should clearly indicate the functional area they contain.
     *   File names (e.g., `create.rs`, `analyze_query.rs`, `project_service.rs`) should be descriptive and directly hint at the file's primary content or purpose. Your project generally excels at this, making it easy to locate specific functionalities.
+
+4. Try to keep files under 200 lines.

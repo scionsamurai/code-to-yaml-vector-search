@@ -56,6 +56,8 @@ pub fn read_files(project: &Project, gitignore_paths: &mut Vec<String>) -> Vec<P
                     file_descriptions: project.file_descriptions.clone(),
                     default_use_yaml: project.default_use_yaml,
                     file_yaml_override: project.file_yaml_override.clone(),
+                    git_integration_enabled: project.git_integration_enabled,
+                    git_branch_name: project.git_branch_name.clone(),
                 },
                 gitignore_paths,
             ));

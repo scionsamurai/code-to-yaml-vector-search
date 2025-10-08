@@ -25,7 +25,7 @@ impl TemplateService {
                 {}
             </head>
             <body>
-                <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
+                <div id="context-status" style="display: none; margin: 10px 0; padding: 5px;
                     background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s; position: fixed;">
                 </div>
                 <input type="hidden" id="project-name" value="{}">
@@ -38,7 +38,7 @@ impl TemplateService {
                 </div>
                 <div class="head">
                     <h1>{}</h1>
-                    
+
                     <!-- Project Settings Form -->
                     <div class="project-settings">
                         <form action="/update/{}/settings" method="post">
@@ -62,13 +62,20 @@ impl TemplateService {
                                 <label for="default_use_yaml">Default Use YAML:</label>
                                 <input type="checkbox" id="default_use_yaml" name="default_use_yaml" {} value="true">
                             </div>
+                            <div class="form-group">
+                                <label for="git_integration_enabled">Enable Git Integration:</label>
+                                <input type="checkbox" id="git_integration_enabled" name="git_integration_enabled" {} value="true">
+                            </div>
                             <button type="submit">Update Settings</button>
                             <div class="form-group">
                                 <button type="button" onclick="runClustering()">Run Clustering</button>
                             </div>
                         </form>
+                        <div class="form-group">
+                            <a href="/projects/{}/git-env" class="button">Configure Git Author/Email</a>
+                        </div>
                     </div>
-                    
+
                     <p>Source Directory: {}</p>
 
                     <!-- Search Form -->
@@ -104,11 +111,13 @@ impl TemplateService {
             project.name,
             project.name,
             project.languages,
-            if project.provider == "gemini" { "selected" } else { "" }, // Updated from project.model
-            if project.provider == "openai" { "selected" } else { "" }, // Updated from project.model
-            if project.provider == "anthropic" { "selected" } else { "" }, // Updated from project.model
-            project.specific_model.as_deref().unwrap_or(""), // Display specific_model or empty string
+            if project.provider == "gemini" { "selected" } else { "" },
+            if project.provider == "openai" { "selected" } else { "" },
+            if project.provider == "anthropic" { "selected" } else { "" },
+            project.specific_model.as_deref().unwrap_or(""),
             if project.default_use_yaml { "checked" } else { "" },
+            if project.git_integration_enabled { "checked" } else { "" },
+            project.name,
             project.source_dir,
             project.name,
             // query_id,

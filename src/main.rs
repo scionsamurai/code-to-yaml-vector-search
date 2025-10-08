@@ -25,6 +25,8 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::ui::configure)
             .configure(routes::project::configure)
             .configure(routes::llm::configure) 
+            .configure(routes::query::configure)
+            .configure(routes::git::configure)
             .service(Files::new("/static", "./static"))
             
     })

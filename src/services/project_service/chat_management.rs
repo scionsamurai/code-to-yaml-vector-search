@@ -48,7 +48,23 @@ impl ChatManager {
     ) -> Result<(), String> {
         query_manager.update_query_data_in_project(project_dir, query_filename, |qd| {
             if index < qd.analysis_chat_history.len() {
-                qd.analysis_chat_history[index] = updated_message;
+                if updated_message.commit_hash == Some("retain".to_string()) {
+                    // Retain the existing commit_hash if "retain" is specified
+                    let existing_commit_hash = qd.analysis_chat_history[index].commit_hash.clone();
+                    qd.analysis_chat_history[index] = ChatMessage {
+                        role: updated_message.role,
+                        content: updated_message.content,
+                        hidden: updated_message.hidden,
+                        commit_hash: existing_commit_hash,
+                    };
+                    return;
+                }
+                qd.analysis_chat_history[index] = ChatMessage {
+                    role: updated_message.role,
+                    content: updated_message.content,
+                    hidden: updated_message.hidden,
+                    commit_hash: updated_message.commit_hash,
+                };
             } else {
                 eprintln!("Attempted to update message at index {} but history length is {}", index, qd.analysis_chat_history.len());
             }

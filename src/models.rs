@@ -34,6 +34,9 @@ pub struct Project {
     pub default_use_yaml: bool,
     #[serde(default)]
     pub file_yaml_override: HashMap<String, bool>,
+    #[serde(default = "default_false")]
+    pub git_integration_enabled: bool,
+    pub git_branch_name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -46,6 +49,8 @@ pub struct QueryData {
     pub title: Option<String>,
     #[serde(default = "default_false")]
     pub include_file_descriptions: bool,
+    #[serde(default = "default_false")]
+    pub auto_commit: bool, 
 }
 
 impl std::fmt::Display for EmbeddingMetadata {
@@ -64,6 +69,7 @@ pub struct ChatMessage {
     pub content: String,
     #[serde(default)]
     pub hidden: bool,
+    pub commit_hash: Option<String>,  
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

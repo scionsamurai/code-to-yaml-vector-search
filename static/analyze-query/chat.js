@@ -216,7 +216,8 @@ function saveEditedMessage(messageDiv, role, content) {
             role: role,
             content: content,
             index: messageIndex,
-            query_id: document.getElementById('query-id').value
+            query_id: document.getElementById('query-id').value,
+            commit_hash: 'retain'
         })
     })
     .catch(error => {

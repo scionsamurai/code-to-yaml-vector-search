@@ -8,7 +8,7 @@ impl TemplateService {
         &self,
         project_name: &str,
         query: &str,
-        relevant_files: &[String], // These are now the vector search results, minus LLM suggestions
+        relevant_files: &[String], 
         saved_context_files: &[String],
         project: &Project,
         existing_chat_history: &[ChatMessage],
@@ -16,6 +16,9 @@ impl TemplateService {
         current_query_id: &str,
         include_file_descriptions: bool,
         llm_suggested_files: &[String],
+        auto_commit: bool,
+        branch_name: String,
+        all_branches: Vec<String>,
     ) -> String {
         let vector_files: Vec<String> = relevant_files.iter()
             .filter(|file| project.embeddings.contains_key(*file))
@@ -47,6 +50,48 @@ impl TemplateService {
         // Determine if the checkbox should be checked
         let descriptions_checked_attr = if include_file_descriptions { "checked" } else { "" };
 
+        // Add these lines to determine auto-commit and branch name state
+        let auto_commit_checked_attr = if auto_commit { "checked" } else { "" };
+
+        // Generate branch options for the dropdown
+        let branch_options_html: String = all_branches.iter().map(|branch| {
+            let selected = if &branch_name == branch { "selected" } else { "" };
+            format!(r#"<option value="{}" {}>{}</option>"#, branch, selected, branch)
+        }).collect();
+
+        // Git Branch Selector HTML (to be placed in chat header)
+        let git_branch_selector_html = if project.git_integration_enabled {
+            format!(
+                r#"
+                <div class="git-branch-selector-container">
+                    <label for="git-branch-selector">Current Repo Branch:</label>
+                    <select id="git-branch-selector">
+                        {}
+                    </select>
+                </div>
+                "#,
+                branch_options_html
+            )
+        } else {
+            "".to_string()
+        };
+
+        // "Start New Branch" button logic: disabled if a feature branch is currently active
+        let disable_new_branch_button = if project.git_integration_enabled && branch_name != "main" { "disabled" } else { "" };
+
+        // "Merge to Main" button logic: visible only if current branch is not the default branch
+        let merge_button_html = if project.git_integration_enabled {
+            // Assuming "main" or "master" are common default branches.
+            // This check could be more robust by fetching the actual default branch name.
+            if !branch_name.is_empty() && branch_name != "main" && branch_name != "master" {
+                r#"<button id="merge-to-main-button">Merge to Main</button>"#.to_string()
+            } else {
+                "".to_string()
+            }
+        } else {
+            "".to_string()
+        };
+
         let llm_suggested_files_section = if !llm_suggested_files.is_empty() {
             format!(
                 r#"
@@ -66,6 +111,27 @@ impl TemplateService {
             "".to_string()
         };
 
+        let git_actions_html = if project.git_integration_enabled {
+            format!(
+                r#"
+                <div class="git-actions">
+                    <button id="commit-button">Commit</button>
+                    <label>
+                        Enable Auto-Commit for this Chat:
+                        <input type="checkbox" id="auto-commit-checkbox" {} >
+                    </label>
+                    <button id="start-new-branch-button" {} >Start New Branch</button>
+                    {} <!-- Merge button -->
+                    <div id="git-action-message" class="git-message" style="display:none;"></div>
+                </div>
+                "#,
+                auto_commit_checked_attr,
+                disable_new_branch_button,
+                merge_button_html
+            )
+        } else {
+            "".to_string()
+        };
 
         format!(
             r#"
@@ -87,9 +153,6 @@ impl TemplateService {
         {}
                 </head>
                 <body>
-                <div class="head">
-                    <h1>Code Analysis</h1>
-                </div>
                 
                 <div class="analysis-container">
                     <div class="editable-query">
@@ -140,7 +203,12 @@ impl TemplateService {
                     </div>
                     
                     <div class="chat-interface">
-                        <h2>Analysis Chat</h2>
+                        <div class="chat-header">
+                            <h2>Chat about your code</h2>
+                            {} <!-- Git Branch Selector -->
+                            {}
+                            {}
+                        </div>
                         <input type="hidden" id="query-id" value="{}">
                         <input type="hidden" id="project-name" value="{}">
                         <input type="hidden" id="query-text" value="{}">
@@ -214,6 +282,13 @@ impl TemplateService {
             llm_suggested_files_section, // <--- Insert the LLM suggested files HTML here
             relevant_files_html,
             other_files_html,
+            git_branch_selector_html,
+            git_actions_html, // Insert Git Actions HTML
+            if project.git_integration_enabled {
+                "<script src=\"/static/analyze-query/git-branch-actions.js\" type=\"module\"></script>".to_string()
+             } else {
+                 "".to_string()
+             },
             query_id,
             project_name,
             query,

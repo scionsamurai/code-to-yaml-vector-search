@@ -7,6 +7,7 @@ pub mod update_settings;
 pub mod path_comment;
 pub mod update_file_yaml_override;
 pub mod cluster;
+pub mod git_env_settings;
 
 use actix_web::web;
 
@@ -18,5 +19,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(path_comment::validate_paths)
         .service(update_settings::update_settings)
         .service(update_file_yaml_override::update_file_yaml_override)
-        .service(cluster::cluster_project_embeddings);
+        .service(cluster::cluster_project_embeddings)
+        .service(git_env_settings::get_git_env_settings)
+        .service(git_env_settings::post_git_env_settings);
 }

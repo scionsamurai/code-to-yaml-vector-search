@@ -23,6 +23,7 @@ pub async fn update_chat_message(
         role: data.role.clone(),
         content: data.content.clone(),
         hidden: data.hidden.unwrap_or(false),
+        commit_hash: data.commit_hash.clone(),
     };
 
     // Update the specific message in the chat history

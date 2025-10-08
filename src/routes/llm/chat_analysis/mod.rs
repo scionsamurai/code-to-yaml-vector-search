@@ -7,6 +7,7 @@ pub mod update_message_visibility;
 pub mod apply_code_to_file; 
 pub mod utils;
 pub mod models;
+pub mod suggest_branch_name;
 
 use actix_web::web;
 
@@ -16,6 +17,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_message_visibility::update_message_visibility)
         .service(update_chat_message::update_chat_message)
         .service(apply_code_to_file::apply_code_to_file) // New service for applying code to a file
-        .service(regenerate_chat_message::regenerate_chat_message);
+        .service(regenerate_chat_message::regenerate_chat_message)
+        .service(suggest_branch_name::suggest_branch_name);
 
 }

@@ -85,7 +85,6 @@ pub async fn get_project(
         }
     } else {
         // Load most recent query data
-        // --- MODIFIED LINE ---
         let most_recent_query = project_service.query_manager
             .load_most_recent_query_data(&output_dir);
         match most_recent_query {

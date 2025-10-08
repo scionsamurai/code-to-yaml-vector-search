@@ -72,4 +72,17 @@ impl ProjectService {
         Ok(format!("{}<h2 style='text-align: center;'>YAML Representations</h2>{}", graph_html, yaml_html))
     }
     
+    pub fn load_project_env(&self, project_dir: &Path) -> Result<(), String> {
+        let project_env_path = project_dir.join(".env");
+        if project_env_path.exists() {
+            // dotenv::from_path will load the .env file into the current process's environment variables.
+            // This makes them accessible via std::env::var.
+            dotenv::from_path(project_env_path)
+                .map_err(|e| format!("Failed to load project .env file: {}", e))?;
+            Ok(())
+        } else {
+            // No .env file exists for this project, which is fine if Git is not enabled.
+            Ok(())
+        }
+    }
 }

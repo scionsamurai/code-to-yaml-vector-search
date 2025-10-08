@@ -68,6 +68,7 @@ pub async fn regenerate_chat_message(
             role: message.role.clone(),
             content: unescaped_content,
             hidden: message.hidden,
+            commit_hash: message.commit_hash.clone(),
         });
     }
     
@@ -83,6 +84,7 @@ pub async fn regenerate_chat_message(
         role: "model".to_string(),
         content: llm_response.clone(),
         hidden: false, // Regeneration implies it's not hidden
+        commit_hash: None,
     };
 
     if let Err(e) = project_service.chat_manager.update_message_in_history(&project_service.query_manager, &project_dir, message_index, new_assistant_message, query_id) {

@@ -393,3 +393,14 @@ pre:hover .hljs__link_and_copy .link_and_copy__apply_link,
 .file-link-container:hover .file-path-checkbox {
     display: inline-block;
 }
+
+.chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0 10px;
+}
+
+.chat-header h2 {
+    margin: 0;
+}
