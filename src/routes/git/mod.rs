@@ -3,6 +3,7 @@ pub mod merge_branch;
 pub mod get_branches;
 pub mod checkout_branch;
 pub mod commit_changes;
+pub mod push_changes;
 
 use actix_web::web;
 
@@ -12,4 +13,5 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
    cfg.service(get_branches::get_branches);
    cfg.service(checkout_branch::checkout_branch);
    cfg.service(commit_changes::commit_changes);
+   cfg.service(push_changes::push_changes);
 }

@@ -116,6 +116,7 @@ impl TemplateService {
                 r#"
                 <div class="git-actions">
                     <button id="commit-button">Commit</button>
+                    <button id="push-changes-button">Push Changes</button>
                     <label>
                         Enable Auto-Commit for this Chat:
                         <input type="checkbox" id="auto-commit-checkbox" {} >

@@ -211,4 +211,45 @@ impl GitService {
         }
         Ok(false)
     }
+
+    // Push changes to the remote repository
+    pub fn push_to_remote(
+        repo: &Repository,
+        remote_name: &str,
+        branch_name: &str,
+    ) -> Result<(), GitError> {
+        let mut remote = repo.find_remote(remote_name)?;
+
+        // Setup credentials for push
+        // This is a simplified approach. In a real-world application,
+        // you might need more robust credential handling (e.g., SSH keys,
+        // Git credential manager, explicit username/password/PAT).
+        // git2 can often pick up credentials if they are configured
+        // system-wide or via GIT_SSH_COMMAND/GIT_ASKPASS.
+        let mut callbacks = git2::RemoteCallbacks::new();
+        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+            // Try to get credentials from environment or configuration
+            // For HTTPS, you might need a Personal Access Token (PAT)
+            // For SSH, you might need an SSH key path
+            eprintln!("Attempting to acquire credentials for user: {:?}", username_from_url);
+            // Example: If you expect a PAT, you might read it from an env var
+            // let pat = std::env::var("GIT_PASSWORD").ok();
+            // if let Some(p) = pat {
+            //     return git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), &p);
+            // }
+            
+            // This often allows git2 to try and find credentials via standard git config
+            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
+                .or_else(|_| git2::Cred::default())
+        });
+
+        let mut options = git2::PushOptions::new();
+        options.remote_callbacks(callbacks);
+
+        let mut refspecs = Vec::new();
+        refspecs.push(format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name));
+
+        remote.push(&refspecs, Some(&mut options)).map_err(GitError::from)?;
+        Ok(())
+    }
 }

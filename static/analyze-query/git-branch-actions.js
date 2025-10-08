@@ -3,6 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const autoCommitCheckbox = document.getElementById('auto-commit-checkbox');
     const startNewBranchButton = document.getElementById('start-new-branch-button');
+    const pushChangesButton = document.getElementById('push-changes-button');
     const mergeToMainButton = document.getElementById('merge-to-main-button');
     const commitButton = document.getElementById('commit-button');
     const gitBranchSelector = document.getElementById('git-branch-selector');
@@ -18,6 +19,33 @@ document.addEventListener('DOMContentLoaded', () => {
         gitActionMessageDiv.style.color = isError ? '#721c24' : '#155724';
         gitActionMessageDiv.style.display = 'block';
         setTimeout(() => { gitActionMessageDiv.style.display = 'none'; }, 5000);
+    }
+
+    if (pushChangesButton) {
+        pushChangesButton.addEventListener('click', async () => {
+            if (!confirm(`Are you sure you want to push changes for branch '${gitBranchSelector.dataset.currentBranch}' to remote?`)) {
+                displayGitMessage('Push cancelled.', true);
+                return;
+            }
+
+            try {
+                const response = await fetch('/push-git-changes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ project_name: projectName }),
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    displayGitMessage(data.message);
+                } else {
+                    displayGitMessage('Push failed: ' + data.message, true);
+                }
+            } catch (error) {
+                console.error('Error pushing changes:', error);
+                displayGitMessage('Error pushing changes.', true);
+            }
+        });
     }
 
     if (autoCommitCheckbox) {
