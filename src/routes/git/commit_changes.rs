@@ -56,8 +56,8 @@ pub async fn commit_changes(
         eprintln!("Warning: Failed to load project .env for Git author/email for project '{}': {}", project_name, e);
     }
 
-    let git_author_name = env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "LLM Assistant".to_string());
-    let git_author_email = env::var("GIT_AUTHOR_EMAIL").unwrap_or_else(|_| "llm@example.com".to_string());
+    let git_author_name = env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "".to_string());
+    let git_author_email = env::var("GIT_AUTHOR_EMAIL").unwrap_or_else(|_| "".to_string());
 
     let repo = match GitService::open_repository(Path::new(&project.source_dir)) {
         Ok(r) => r,
