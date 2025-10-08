@@ -227,20 +227,27 @@ impl GitService {
         // git2 can often pick up credentials if they are configured
         // system-wide or via GIT_SSH_COMMAND/GIT_ASKPASS.
         let mut callbacks = git2::RemoteCallbacks::new();
-        callbacks.credentials(|_url, username_from_url, _allowed_types| {
+        callbacks.credentials(|url, username_from_url, _allowed_types| {
             // Try to get credentials from environment or configuration
             // For HTTPS, you might need a Personal Access Token (PAT)
             // For SSH, you might need an SSH key path
-            eprintln!("Attempting to acquire credentials for user: {:?}", username_from_url);
+           eprintln!("[GitService::credentials] Attempting to acquire credentials for URL: {}, user from URL: {:?}", url, username_from_url);
 
-            let username = username_from_url.unwrap_or("git");
+           let username = username_from_url.unwrap_or("git");
+
+            let effective_username = if let Ok(env_username) = std::env::var("GIT_USERNAME") {
+                eprintln!("[GitService::credentials] Using GIT_USERNAME environment variable: {}", env_username);
+                env_username
+            } else {
+                username.to_string()
+            };
 
             // Prioritize Personal Access Token (PAT) from environment variable for HTTPS
             // The user needs to set a GIT_PASSWORD env var with their PAT.
             if _allowed_types.is_user_pass_plaintext() {
                 if let Ok(password) = std::env::var("GIT_PASSWORD") {
-                    eprintln!("Using GIT_PASSWORD environment variable for user: {}", username);
-                    return git2::Cred::userpass_plaintext(username, &password);
+                    eprintln!("[GitService::credentials] Using GIT_PASSWORD environment variable for user: {}", effective_username);
+                    return git2::Cred::userpass_plaintext(&effective_username, &password);
                 }
             }
 
@@ -259,6 +266,9 @@ impl GitService {
 
         let mut options = git2::PushOptions::new();
         options.remote_callbacks(callbacks);
+
+        eprintln!("[GitService::push_to_remote] Attempting to push branch '{}' to remote '{}' ({})", branch_name, remote_name, remote.url().unwrap_or("unknown URL"));
+        eprintln!("[GitService::push_to_remote] Refspec: refs/heads/{}:refs/heads/{}", branch_name, branch_name);
 
         let mut refspecs = Vec::new();
         refspecs.push(format!("refs/heads/{}:refs/heads/{}", branch_name, branch_name));
