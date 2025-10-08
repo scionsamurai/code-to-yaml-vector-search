@@ -232,15 +232,29 @@ impl GitService {
             // For HTTPS, you might need a Personal Access Token (PAT)
             // For SSH, you might need an SSH key path
             eprintln!("Attempting to acquire credentials for user: {:?}", username_from_url);
-            // Example: If you expect a PAT, you might read it from an env var
-            // let pat = std::env::var("GIT_PASSWORD").ok();
-            // if let Some(p) = pat {
-            //     return git2::Cred::userpass_plaintext(username_from_url.unwrap_or("git"), &p);
-            // }
-            
-            // This often allows git2 to try and find credentials via standard git config
-            git2::Cred::ssh_key_from_agent(username_from_url.unwrap_or("git"))
-                .or_else(|_| git2::Cred::default())
+
+            let username = username_from_url.unwrap_or("git");
+
+            // Prioritize Personal Access Token (PAT) from environment variable for HTTPS
+            // The user needs to set a GIT_PASSWORD env var with their PAT.
+            if _allowed_types.is_user_pass_plaintext() {
+                if let Ok(password) = std::env::var("GIT_PASSWORD") {
+                    eprintln!("Using GIT_PASSWORD environment variable for user: {}", username);
+                    return git2::Cred::userpass_plaintext(username, &password);
+                }
+            }
+
+            // Fallback to SSH agent (for SSH remotes)
+            if _allowed_types.is_ssh_key() {
+                if let Ok(cred) = git2::Cred::ssh_key_from_agent(username) {
+                    eprintln!("Using SSH agent for user: {}", username);
+                    return Ok(cred);
+                }
+            }
+
+            // Fallback to default credential lookup (e.g., .netrc, git credential manager)
+            eprintln!("Falling back to default git credentials for user: {}", username);
+            git2::Cred::default()
         });
 
         let mut options = git2::PushOptions::new();
