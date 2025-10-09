@@ -148,9 +148,14 @@ pub async fn generate_commit_message(
         // (implies this might be the first commit for this query)
         relevant_history_for_commit_msg.extend_from_slice(&unescaped_history);
     }
-
-    let formatted_relevant_history = if !relevant_history_for_commit_msg.is_empty() {
-        relevant_history_for_commit_msg.iter()
+     // Create a mutable copy of the messages
+    let mut visible_history = relevant_history_for_commit_msg.clone();
+    // Modify the mutable copy to replace hidden messages
+    replace_hidden_messages(&mut visible_history);
+    
+    let formatted_relevant_history = if !visible_history.is_empty() {
+        visible_history
+            .iter()
             .map(|msg| format!("{}: {}", msg.role, msg.content))
             .collect::<Vec<String>>()
             .join("\n")
