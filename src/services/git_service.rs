@@ -35,24 +35,10 @@ impl From<std::io::Error> for GitError {
 pub struct GitService {}
 
 impl GitService {
-    pub fn new() -> Self {
-        GitService {}
-    }
 
-    pub fn repository_exists(path: &Path) -> bool {
-        Repository::open(path).is_ok()
-    }
-
-    // Initialize a new Git repository
-    pub fn init_repository(path: &Path) -> Result<Repository, GitError> {
-        Repository::init(path).map_err(GitError::from)
-    }
-
-    // Open an existing Git repository
     pub fn open_repository(path: &Path) -> Result<Repository, GitError> {
         Repository::open(path).map_err(GitError::from)
     }
-
 
     pub fn get_default_branch_name(repo: &Repository) -> Result<String, GitError> {
         let head = repo.head()?;
@@ -193,7 +179,6 @@ impl GitService {
         Ok(())
     }
 
-    // New function to check for uncommitted changes
     pub fn has_uncommitted_changes(repo: &Repository) -> Result<bool, GitError> {
         let mut options = git2::StatusOptions::new();
         options.include_untracked(true); // Include untracked files
@@ -207,8 +192,7 @@ impl GitService {
             let status = entry.status();
             // We're looking for any changes that are not 'ignored'
             if status != Status::empty() &&
-               !status.is_ignored() &&
-               !status.is_wt_new()
+               !status.is_ignored()
             {
                 return Ok(true);
             }
@@ -216,7 +200,6 @@ impl GitService {
         Ok(false)
     }
 
-    // Push changes to the remote repository
     pub fn push_to_remote(
         repo: &Repository,
         remote_name: &str,

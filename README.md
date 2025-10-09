@@ -30,6 +30,18 @@ In large codebases, finding relevant information, understanding complex interact
       * Dedicated project pages to view generated YAML representations.
       * Selective regeneration of YAML for individual files.
       * Save and resume previous analysis chats and query histories.
+  * **Integrated Git Workflow:**
+      * **Streamlined Branch Management:** Easily create new feature branches directly from your chat session to isolate development, allowing you to work on significant updates without affecting your main codebase.
+      * **Seamless Branch Switching:** Use the built-in branch selector to view the current active branch and switch between branches within the application.
+      * **Flexible Commit Options:**
+          * **Auto-Commit:** Enable per-chat auto-commits to automatically save changes between user and AI messages to the active branch, associating conversation progress directly with code milestones.
+          * **Manual Commit:** Take granular control by manually committing changes with a custom message using the dedicated "Commit" button.
+      * **Push to Remote:** Synchronize your local commits with your remote repository (e.g., GitHub) at any time with a single click.
+      * **Effortless Merging:** Merge your feature branch back into the main development branch once your changes are complete and reviewed.
+      * **Integrated Git Credentials:** Configure your Git author name, email, and remote authentication credentials (like GitHub Personal Access Tokens for HTTPS) directly through the application's UI, ensuring smooth `push` operations.
+      * **Conflict Handling:** In case of merge conflicts, the application will notify you, requiring manual resolution outside the app to maintain full control over your codebase.
+      * **AI's Role:** The AI assistant provides code suggestions and insights, while all Git operations (branching, committing, merging, pushing) remain fully under user control.
+
   * **User-Friendly Web Interface:** Access all features through a modern web application.
 
 ## Installation
