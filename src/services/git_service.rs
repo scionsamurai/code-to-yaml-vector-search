@@ -1,6 +1,6 @@
 // src/services/git_service.rs
 
-use git2::{Branch, BranchType, Commit, ObjectType, Oid, Repository, Signature, Status};
+use git2::{Branch, BranchType, Commit, DiffOptions, ObjectType, Oid, Repository, Signature, Status}; // Add DiffOptions
 use std::path::Path;
 
 #[derive(Debug)]
@@ -97,6 +97,36 @@ impl GitService {
         index.add_path(file_path)?;
         index.write()?;
         Ok(())
+    }
+
+
+    pub fn get_uncommitted_diff(repo: &Repository) -> Result<String, GitError> {
+        let mut diff_options = DiffOptions::new();
+        // Include unstaged changes, staged changes, and untracked files
+        diff_options
+            .include_untracked(true) // Correct method for untracked files
+            .recurse_untracked_dirs(true) // Correct method for recursing untracked dirs
+            .ignore_filemode(true) // Correct method for ignoring file mode changes
+            .patience(true); // Correct method for patience algorithm
+
+
+        // Diff between HEAD and working directory with index.
+        // If there's no HEAD (e.g., empty repo), this would fail. Assume non-empty for now.
+        let head_tree = repo.head()?.peel_to_tree()?;
+
+        let diff = repo.diff_tree_to_workdir_with_index(
+            Some(&head_tree),
+            Some(&mut diff_options)
+        )?;
+
+        let mut diff_output = Vec::new();
+        diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
+            diff_output.extend_from_slice(line.content());
+            true
+        })?;
+
+        String::from_utf8(diff_output)
+            .map_err(|e| GitError::Other(format!("Failed to convert diff to UTF-8: {}", e)))
     }
 
     // Commit changes
