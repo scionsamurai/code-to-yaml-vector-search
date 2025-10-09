@@ -11,9 +11,9 @@ export function updateContext(projectName, queryText) {
         selectedFiles.push(checkbox.value);
     });
 
-    // Get the state of the new checkbox
     const includeFileDescriptionsCheckbox = document.getElementById('include-descriptions-checkbox');
     const includeFileDescriptions = includeFileDescriptionsCheckbox ? includeFileDescriptionsCheckbox.checked : false;
+    
 
     fetch('/update-analysis-context', {
         method: 'POST',

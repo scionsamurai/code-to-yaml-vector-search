@@ -174,7 +174,7 @@ impl TemplateService {
                             </div>
 
                             <div class="checkbox-container">
-                                <input type="checkbox" class="file-checkbox" id="include-descriptions-checkbox" {} />
+                                <input type="checkbox" class="descriptions-checkbox" id="include-descriptions-checkbox" {} />
                                 <label for="include-descriptions-checkbox">Include file paths and descriptions in prompt</label>
                             </div>
 
@@ -193,7 +193,6 @@ impl TemplateService {
                             <div class="file-list">
                                 <h3>
                                     Other Project Files
-                                    <button id="toggle-other-files" class="toggle-button">Toggle All</button>
                                 </h3>
                                 <div id="other-files-list">
                                     {}
