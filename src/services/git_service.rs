@@ -200,6 +200,45 @@ impl GitService {
         Ok(false)
     }
 
+    pub fn has_unpushed_commits(repo: &Repository, remote_name: &str, branch_name: &str) -> Result<bool, GitError> {
+        let upstream_branch = format!("{}/{}", remote_name, branch_name);
+        let local_branch = repo.find_branch(branch_name, BranchType::Local)?;
+        let local_oid = local_branch.get().target().ok_or(GitError::Other("Failed to get local branch target".to_string()))?;
+
+        let upstream_oid = match repo.find_branch(&upstream_branch, BranchType::Remote) {
+            Ok(branch) => branch.get().target().ok_or(GitError::Other("Failed to get upstream branch target".to_string()))?,
+            Err(_) => {
+                 // If the upstream branch doesn't exist, we can assume there are unpushed commits.
+                return Ok(true);
+            }
+        };
+
+
+        let local_commit = repo.find_commit(local_oid)?;
+        let upstream_commit = repo.find_commit(upstream_oid)?;
+
+        // Use revwalk to check if all commits in local branch are reachable from the remote branch
+        let mut revwalk = repo.revwalk()?;
+        revwalk.push(local_oid)?;
+        revwalk.hide(upstream_oid)?; // Hide commits reachable from upstream
+        let mut has_unpushed = false;
+        for result in revwalk {
+            match result {
+                Ok(_) => {
+                    // If there are any commits remaining after hiding those reachable from the upstream,
+                    // then there are unpushed commits
+                    has_unpushed = true;
+                    break;
+                },
+                Err(e) => {
+                    return Err(GitError::from(e));
+                }
+            }
+        }
+        Ok(has_unpushed)
+
+    }
+
     pub fn push_to_remote(
         repo: &Repository,
         remote_name: &str,

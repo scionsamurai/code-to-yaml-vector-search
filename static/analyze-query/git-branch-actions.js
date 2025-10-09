@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const projectName = document.getElementById('project-name').value;
     const queryId = document.getElementById('query-id').value;
-    let projectGitBranchName = document.getElementById('git-branch-selector').value;
+    let projectGitBranchName = document.getElementById('git-branch-selector').value; // Initial value from DOM
+
+    const POLLING_INTERVAL_MS = 10000; // Poll every 10 seconds
 
     function displayGitMessage(message, isError = false) {
         gitActionMessageDiv.textContent = message;
@@ -20,6 +22,73 @@ document.addEventListener('DOMContentLoaded', () => {
         gitActionMessageDiv.style.display = 'block';
         setTimeout(() => { gitActionMessageDiv.style.display = 'none'; }, 5000);
     }
+
+    /**
+     * Fetches the current Git status (uncommitted changes, unpushed commits) from the backend.
+     * @param {string} projectName The name of the project.
+     * @returns {Promise<{hasUncommitted: boolean, hasUnpushed: boolean}>}
+     */
+    async function fetchGitStatus(projectName) {
+        try {
+            const response = await fetch(`/git-status?project_name=${projectName}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (data.success) {
+                return {
+                    hasUncommitted: data.has_uncommitted_changes,
+                    hasUnpushed: data.has_unpushed_commits
+                };
+            } else {
+                console.error('Failed to fetch Git status:', data.message);
+                displayGitMessage('Failed to fetch Git status: ' + data.message, true);
+                return { hasUncommitted: false, hasUnpushed: false }; // Default to false on API error
+            }
+        } catch (error) {
+            console.error('Error fetching Git status:', error);
+            displayGitMessage('Error fetching Git status.', true);
+            return { hasUncommitted: false, hasUnpushed: false }; // Default to false on network error
+        }
+    }
+
+    /**
+     * Updates the visibility of Commit and Push Changes buttons based on Git status and auto-commit setting.
+     * @param {boolean} hasUncommitted True if there are uncommitted changes.
+     * @param {boolean} hasUnpushed True if there are unpushed commits.
+     */
+    function updateGitButtonVisibility(hasUncommitted, hasUnpushed) {
+        if (commitButton) {
+            // Commit button visibility: depends on uncommitted changes AND auto-commit setting
+            const autoCommitEnabled = autoCommitCheckbox ? autoCommitCheckbox.checked : false;
+            if (hasUncommitted && !autoCommitEnabled) {
+                commitButton.style.display = 'inline-block';
+            } else {
+                commitButton.style.display = 'none';
+            }
+        }
+
+        if (pushChangesButton) {
+            // Push Changes button visibility: depends on unpushed commits
+            if (hasUnpushed) {
+                pushChangesButton.style.display = 'inline-block';
+            } else {
+                pushChangesButton.style.display = 'none';
+            }
+        }
+    }
+
+    /**
+     * Main function to fetch status and update buttons. Called on load and by polling.
+     */
+    async function refreshGitStatusAndButtons() {
+        if (projectName) { // Ensure project name is available
+            const { hasUncommitted, hasUnpushed } = await fetchGitStatus(projectName);
+            updateGitButtonVisibility(hasUncommitted, hasUnpushed);
+        }
+    }
+
+    // --- Event Listeners ---
 
     if (pushChangesButton) {
         pushChangesButton.addEventListener('click', async () => {
@@ -38,12 +107,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     displayGitMessage(data.message);
+                    // Optimistic UI update: Assume no unpushed commits after successful push
+                    pushChangesButton.style.display = 'none';
+                    // The commit button state isn't affected by a push.
                 } else {
                     displayGitMessage('Push failed: ' + data.message, true);
+                    // If push fails, re-fetch status to ensure correct button visibility
+                    await refreshGitStatusAndButtons();
                 }
             } catch (error) {
                 console.error('Error pushing changes:', error);
                 displayGitMessage('Error pushing changes.', true);
+                await refreshGitStatusAndButtons(); // Re-fetch on network error
             }
         });
     }
@@ -75,22 +150,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     autoCommitCheckbox.checked = !autoCommit; // Revert checkbox state
                 } else {
                     displayGitMessage('Auto-commit setting updated.');
-                    // Toggle commit button visibility based on auto-commit state
-                    if (commitButton) {
-                        commitButton.style.display = autoCommit ? 'none' : 'inline';
-                    }
+                    // Re-evaluate button visibility based on the new auto-commit state and current git status
+                    await refreshGitStatusAndButtons();
                 }
             } catch (error) {
                 console.error('Error updating auto-commit:', error);
                 displayGitMessage('Error updating auto-commit setting.', true);
                 autoCommitCheckbox.checked = !autoCommit; // Revert checkbox state
+                await refreshGitStatusAndButtons(); // Re-fetch on error
             }
         });
         
+        // Initial visibility based on auto-commit checkbox for the commit button.
+        // This will be overridden by the refreshGitStatusAndButtons call later,
+        // but it's good to have for immediate rendering.
         if (commitButton) {
-            commitButton.style.display = autoCommitCheckbox.checked ? 'none' : 'inline';
+            commitButton.style.display = autoCommitCheckbox.checked ? 'none' : 'inline-block';
         }
     }
+    
     if (commitButton) {
         commitButton.addEventListener('click', async () => {
             const commitMessage = prompt('Enter commit message:');
@@ -109,12 +187,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     displayGitMessage(data.message);
+                    // Optimistic UI update: Assume no uncommitted changes and now unpushed commits
+                    if (commitButton) commitButton.style.display = 'none';
+                    if (pushChangesButton) pushChangesButton.style.display = 'inline-block';
                 } else {
                     displayGitMessage('Commit failed: ' + data.message, true);
+                    // If commit fails, re-fetch status to ensure correct button visibility
+                    await refreshGitStatusAndButtons();
                 }
             } catch (error) {
                 console.error('Error committing changes:', error);
                 displayGitMessage('Error committing changes.', true);
+                await refreshGitStatusAndButtons(); // Re-fetch on network error
             }
         });
      }
@@ -159,6 +243,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         startNewBranchButton.disabled = true; // Disable "Start New Branch"
                         if (mergeToMainButton) mergeToMainButton.style.display = 'inline-block'; // Show "Merge to Main"
                         await updateBranchSelector(projectName, branchName); // Update and select new branch
+                        await refreshGitStatusAndButtons(); // Refresh status after branch creation/checkout
                     } else {
                         displayGitMessage('Failed to create branch: ' + createBranchData.message, true);
                     }
@@ -200,6 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     startNewBranchButton.disabled = false; // Enable "Start New Branch"
                     mergeToMainButton.style.display = 'none'; // Hide "Merge to Main"
                     await updateBranchSelector(projectName, 'main'); // Update and select default branch (assuming 'main')
+                    await refreshGitStatusAndButtons(); // Refresh status after merge
                 } else {
                     displayGitMessage('Merge failed: ' + data.message, true);
                 }
@@ -242,6 +328,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         startNewBranchButton.disabled = false;
                         if (mergeToMainButton) mergeToMainButton.style.display = 'none';
                     }
+                    await refreshGitStatusAndButtons(); // Refresh status after checkout
                 } else {
                     displayGitMessage('Failed to checkout branch: ' + data.message, true);
                     // Revert dropdown selection on failure
@@ -301,5 +388,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         if (startNewBranchButton) startNewBranchButton.disabled = false;
         if (mergeToMainButton) mergeToMainButton.style.display = 'none';
-    }  
+    }
+
+    // --- NEW: Initial Git status check and polling ---
+    refreshGitStatusAndButtons(); // Call once on load
+    setInterval(refreshGitStatusAndButtons, POLLING_INTERVAL_MS); // Start polling
+    // --- END NEW ---
 });

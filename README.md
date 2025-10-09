@@ -13,6 +13,9 @@ In large codebases, finding relevant information, understanding complex interact
   * **Empowering AI Assistants:** Chat with LLMs about your specific code, getting intelligent suggestions and analysis in real-time.
   * **Streamlining Code Updates:** Iteratively refine code with AI guidance, always ensuring the LLM understands the current state of your files.
 
+> **A Note on Development:**
+> This application has been leveraged by the author to develop and advance its own codebase since its earliest stages. Its growing utility has allowed the author to **phase out reliance on external LLM web interfaces entirely**. This self-reliance eliminates tedious manual steps and the context-switching headache of other tools, **centralizing the entire development workflow**—from intelligent code analysis to **streamlined Git operations**—all within a single, focused browser tab.
+
 ## Features
 
   * **Automated YAML Generation:** Converts your source code files into a structured, language-agnostic YAML format, focusing on code structure, documentation, and intent (no implementation details included\!).
