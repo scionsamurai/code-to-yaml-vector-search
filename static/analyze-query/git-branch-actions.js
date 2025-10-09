@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let projectGitBranchName = document.getElementById('git-branch-selector').value; // Initial value from DOM
 
     const POLLING_INTERVAL_MS = 10000; // Poll every 10 seconds
+    let pollingIntervalId; // Variable to store the interval ID for control
 
     function displayGitMessage(message, isError = false) {
         gitActionMessageDiv.textContent = message;
@@ -88,7 +89,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Event Listeners ---
+    function startPolling() {
+        // Clear any existing interval to prevent duplicates
+        stopPolling(); 
+        pollingIntervalId = setInterval(refreshGitStatusAndButtons, POLLING_INTERVAL_MS);
+        console.log('Git status polling started.');
+    }
+
+    function stopPolling() {
+        if (pollingIntervalId) {
+            clearInterval(pollingIntervalId);
+            pollingIntervalId = null;
+            console.log('Git status polling stopped.');
+        }
+    }
+    
 
     if (pushChangesButton) {
         pushChangesButton.addEventListener('click', async () => {
@@ -107,9 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     displayGitMessage(data.message);
-                    // Optimistic UI update: Assume no unpushed commits after successful push
-                    pushChangesButton.style.display = 'none';
-                    // The commit button state isn't affected by a push.
+                    // After a successful push, we assume no unpushed commits,
+                    // so we can hide the button and refresh the status.
+                    await refreshGitStatusAndButtons(); 
                 } else {
                     displayGitMessage('Push failed: ' + data.message, true);
                     // If push fails, re-fetch status to ensure correct button visibility
@@ -187,9 +202,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await response.json();
                 if (data.success) {
                     displayGitMessage(data.message);
-                    // Optimistic UI update: Assume no uncommitted changes and now unpushed commits
-                    if (commitButton) commitButton.style.display = 'none';
-                    if (pushChangesButton) pushChangesButton.style.display = 'inline-block';
+                    // After a successful commit, we assume no uncommitted changes,
+                    // and there will now be unpushed commits. Refresh to update buttons.
+                    await refreshGitStatusAndButtons();
                 } else {
                     displayGitMessage('Commit failed: ' + data.message, true);
                     // If commit fails, re-fetch status to ensure correct button visibility
@@ -390,8 +405,22 @@ document.addEventListener('DOMContentLoaded', () => {
         if (mergeToMainButton) mergeToMainButton.style.display = 'none';
     }
 
-    // --- NEW: Initial Git status check and polling ---
-    refreshGitStatusAndButtons(); // Call once on load
-    setInterval(refreshGitStatusAndButtons, POLLING_INTERVAL_MS); // Start polling
-    // --- END NEW ---
+    refreshGitStatusAndButtons(); // Always perform an immediate check on load
+
+    // Start polling only if the page is currently visible
+    if (!document.hidden) {
+        startPolling();
+    }
+
+    // Listen for visibility changes to pause/resume polling
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopPolling();
+        } else {
+            // When the page becomes visible, immediately refresh and then start polling
+            refreshGitStatusAndButtons(); 
+            startPolling();
+        }
+    });
+    
 });
