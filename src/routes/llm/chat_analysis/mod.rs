@@ -11,6 +11,15 @@ pub mod suggest_branch_name;
 
 use actix_web::web;
 
+#[derive(Clone, Debug, Default)]
+struct ChatMessageMetadata {
+    timestamp: Option<chrono::DateTime<chrono::Utc>>,
+    context_files: Option<Vec<String>>,
+    provider: Option<String>,
+    model: Option<String>,
+    hidden_context: Option<Vec<String>>,
+}
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(chat_analysis::chat_analysis)
         .service(reset_analysis_chat::reset_analysis_chat)

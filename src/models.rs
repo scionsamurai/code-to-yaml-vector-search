@@ -70,6 +70,11 @@ pub struct ChatMessage {
     #[serde(default)]
     pub hidden: bool,
     pub commit_hash: Option<String>,  
+    pub timestamp: Option<chrono::DateTime<chrono::Utc>>, // Add timestamp
+    pub context_files: Option<Vec<String>>,       // Add context files
+    pub provider: Option<String>,              // Add provider
+    pub model: Option<String>,                 // Add model
+    pub hidden_context: Option<Vec<String>>,    // Add hidden context representation
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

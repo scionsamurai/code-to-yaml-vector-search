@@ -17,12 +17,9 @@ pub struct ResetAnalysisChatRequest {
 #[derive(Deserialize)]
 pub struct UpdateChatMessageRequest {
     pub project: String,
-    pub role: String,
     pub content: String,
     pub index: usize,
     pub query_id: Option<String>,
-    pub hidden: Option<bool>,
-    pub commit_hash: Option<String>,
 }
 
 #[derive(Deserialize)]

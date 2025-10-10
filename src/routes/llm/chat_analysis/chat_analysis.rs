@@ -9,6 +9,7 @@ use actix_web::{post, web, HttpResponse};
 use std::path::Path;
 use crate::services::utils::html_utils::{escape_html, unescape_html};
 use std::env;
+use crate::routes::llm::chat_analysis::ChatMessageMetadata;
 
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
@@ -43,13 +44,29 @@ pub async fn chat_analysis(
     // Get existing chat history from project structure *before* the current user message
     let full_history = get_full_history(&project, &app_state, &query_id);
     let mut unescaped_history: Vec<ChatMessage> = Vec::new();
+    let mut hidden_context: Vec<String> = Vec::new();
     for message in full_history.iter() {
+        let code = match (message.role.as_str(), message.hidden) {
+            ("user", false) => "P",
+            ("user", true) => "p",
+            ("model", false) => "R",
+            ("model", true) => "r",
+            _ => "", // Handle unexpected roles
+        };
+        if !code.is_empty() {
+            hidden_context.push(code.to_string());
+        }
         let unescaped_content = unescape_html(message.content.clone());
         unescaped_history.push(ChatMessage {
             role: message.role.clone(),
             content: unescaped_content,
             hidden: message.hidden,
             commit_hash: message.commit_hash.clone(), // Ensure commit_hash is carried over
+            timestamp: message.timestamp,
+            context_files: message.context_files.clone(),
+            provider: message.provider.clone(),
+            model: message.model.clone(),
+            hidden_context: message.hidden_context.clone(),
         });
     }
 
@@ -146,12 +163,26 @@ pub async fn chat_analysis(
     // Escape the user's message
     let escaped_message = escape_html(data.message.clone()).await;
 
+    // Capture metadata for the user message
+    let user_message_metadata = ChatMessageMetadata {
+        timestamp: Some(chrono::Utc::now()),
+        context_files: Some(context_files.clone()), // Clone the context files
+        provider: Some(project.provider.clone()),
+        model: project.specific_model.clone(),
+        hidden_context: Some(hidden_context.clone()),
+    };
+
     // Create user message to save, with the determined commit_hash
     let user_message_to_save = ChatMessage {
         role: "user".to_string(),
         content: escaped_message.to_string(),
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(), // Assign the commit hash here
+        timestamp: user_message_metadata.timestamp,
+        context_files: user_message_metadata.context_files,
+        provider: user_message_metadata.provider,
+        model: user_message_metadata.model,
+        hidden_context: user_message_metadata.hidden_context,
     };
 
     // Format messages for LLM with system prompt and existing history + new user message
@@ -162,12 +193,26 @@ pub async fn chat_analysis(
         .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
         .await;
 
+    // Capture metadata for the assistant message
+    let assistant_message_metadata = ChatMessageMetadata {
+        timestamp: Some(chrono::Utc::now()),
+        context_files: Some(context_files.clone()), // Clone the context files
+        provider: Some(project.provider.clone()),
+        model: project.specific_model.clone(),
+        hidden_context: Some(hidden_context), 
+    };
+
     // Create response message (LLM response doesn't directly cause a commit here)
     let assistant_message = ChatMessage {
         role: "model".to_string(),
         content: llm_response.clone(),
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(), // Associate LLM response with same commit
+        timestamp: assistant_message_metadata.timestamp,
+        context_files: assistant_message_metadata.context_files,
+        provider: assistant_message_metadata.provider,
+        model: assistant_message_metadata.model,
+        hidden_context: assistant_message_metadata.hidden_context,
     };
 
     // Add messages to chat

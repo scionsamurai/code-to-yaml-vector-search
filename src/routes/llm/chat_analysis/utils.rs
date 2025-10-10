@@ -82,25 +82,31 @@ pub fn format_messages_for_llm(system_prompt: &str, full_history: &Vec<ChatMessa
             content: system_prompt.to_string(),
             hidden: false,
             commit_hash: None,
+            timestamp: None,
+            context_files: None,
+            provider: None,
+            model: None,
+            hidden_context: None,
         },
         ChatMessage {
             role: "model".to_string(),
             content: "I confirm that I'll follow your instructions carefully throughout our conversation. I'm here to assist you according to your specific requirements and will respond to your future requests for code analysis appropriately when needed.\n\nPlease feel free to share your next request when you're ready, and I'll provide the analysis or other assistance you're looking for.".to_string(),
             hidden: false,
             commit_hash: None,
+            timestamp: None,
+            context_files: None,
+            provider: None,
+            model: None,
+            hidden_context: None,
         }
     ];
 
     messages.extend(full_history.clone());
-
     messages.push(user_message.clone());
 
-     // Create a mutable copy of the messages
-    let mut llm_messages = messages.clone();
-    // Modify the mutable copy to replace hidden messages
-    replace_hidden_messages(&mut llm_messages);
+    replace_hidden_messages(&mut messages);
 
-    llm_messages
+    messages
 }
 
 
@@ -183,6 +189,12 @@ pub async fn generate_commit_message(
         content: user_messsage_for_commit,
         hidden: false,
         commit_hash: None,
+        timestamp: None,
+        context_files: None,
+        provider: None,
+        model: None,
+        hidden_context: None,
+        
     });
 
     let generated_message_llm_response = llm_service

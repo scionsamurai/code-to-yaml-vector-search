@@ -37,7 +37,6 @@ impl ChatManager {
         })
     }
 
-    // Will handle logic from Project::update_message_in_history
     pub fn update_message_in_history(
         &self,
         query_manager: &QueryManager, // Dependency injection
@@ -48,22 +47,16 @@ impl ChatManager {
     ) -> Result<(), String> {
         query_manager.update_query_data_in_project(project_dir, query_filename, |qd| {
             if index < qd.analysis_chat_history.len() {
-                if updated_message.commit_hash == Some("retain".to_string()) {
-                    // Retain the existing commit_hash if "retain" is specified
-                    let existing_commit_hash = qd.analysis_chat_history[index].commit_hash.clone();
-                    qd.analysis_chat_history[index] = ChatMessage {
-                        role: updated_message.role,
-                        content: updated_message.content,
-                        hidden: updated_message.hidden,
-                        commit_hash: existing_commit_hash,
-                    };
-                    return;
-                }
                 qd.analysis_chat_history[index] = ChatMessage {
                     role: updated_message.role,
                     content: updated_message.content,
                     hidden: updated_message.hidden,
                     commit_hash: updated_message.commit_hash,
+                    timestamp: updated_message.timestamp,
+                    context_files: updated_message.context_files,
+                    provider: updated_message.provider,
+                    model: updated_message.model,
+                    hidden_context: updated_message.hidden_context,
                 };
             } else {
                 eprintln!("Attempted to update message at index {} but history length is {}", index, qd.analysis_chat_history.len());
