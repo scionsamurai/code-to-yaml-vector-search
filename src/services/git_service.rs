@@ -194,126 +194,43 @@ impl GitService {
     pub fn merge_branch(
         repo: &Repository,
         branch_name: &str,
-        author_name: &str,
-        author_email: &str,
+        author_name: &str, // NEW: Added author_name
+        author_email: &str, // NEW: Added author_email
     ) -> Result<(), GitError> {
-        let branch_to_merge = repo.find_branch(branch_name, BranchType::Local)?;
-        let merge_target_oid = branch_to_merge
+        let branch = repo.find_branch(branch_name, BranchType::Local)?;
+        let target = branch
             .get()
             .target()
-            .ok_or(GitError::Other(format!("Branch '{}' has no target commit.", branch_name)))?;
-        let merge_target_commit = repo.find_commit(merge_target_oid)?;
+            .ok_or(GitError::Other("Branch has no target".to_string()))?;
+        let annotated_commit = repo.find_annotated_commit(target)?;
 
+        let mut merge_options = git2::MergeOptions::new();
+        merge_options.fail_on_conflict(true);
+
+        repo.merge(&[&annotated_commit], Some(&mut merge_options), None)?;
+
+        // Check if there are any conflicts
+        let mut index = repo.index()?;
+        if index.has_conflicts() {
+            return Err(GitError::Other("Merge conflicts detected".to_string()));
+        }
+
+        // If the merge was successful, create a commit
+        let signature = Signature::now(author_name, author_email)?;
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
         let head = repo.head()?;
-        let head_commit = head.peel_to_commit()?;
-        let head_branch_name = head.shorthand().unwrap_or("HEAD").to_string();
+        let commit = head.peel_to_commit()?;
 
-        let annotated_merge_target = repo.find_annotated_commit(merge_target_oid)?;
-        let (analysis, _preference) = repo.merge_analysis(&[&annotated_merge_target])?;
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &format!("Merged branch '{}'", branch_name),
+            &tree,
+            &[&commit],
+        )?;
 
-        if analysis.is_up_to_date() {
-            println!("[GitService::merge_branch] Branch '{}' is already up-to-date with '{}'. No merge needed.", head_branch_name, branch_name);
-            return Ok(());
-        }
-
-        // Fast-forward merge
-        if analysis.is_fast_forward() {
-            println!("[GitService::merge_branch] Performing a fast-forward merge for branch '{}' into '{}'.", branch_name, head_branch_name);
-            let reference_name = format!("refs/heads/{}", head_branch_name);
-            repo.reference(&reference_name, merge_target_oid, true, &format!("Fast-forward merge of {}", branch_name))?;
-            repo.set_head(&reference_name)?;
-            // Checkout the updated tree to reflect changes in working directory
-            repo.checkout_tree(&merge_target_commit.as_object(), None)?;
-            println!("[GitService::merge_branch] Fast-forward merge completed and working directory updated.");
-
-        } else if analysis.is_normal() {
-            println!("[GitService::merge_branch] Performing a normal merge for branch '{}' into '{}'.", branch_name, head_branch_name);
-            let mut merge_options = git2::MergeOptions::new();
-            merge_options.fail_on_conflict(true);
-
-            // Perform the merge operation into the index and working directory
-            // This can return an error if conflicts occur.
-            repo.merge_commits(&head_commit, &merge_target_commit, Some(&mut merge_options))?;
-
-            // Check for conflicts after merge_commits.
-            let mut index = repo.index()?;
-            if index.has_conflicts() {
-                return Err(GitError::Other("Merge conflicts detected".to_string()));
-            }
-
-            // Write the merged tree from the index to the repository's object database
-            let tree_id = index.write_tree()?;
-            let tree = repo.find_tree(tree_id)?;
-
-            let signature = Signature::now(author_name, author_email)?;
-
-            // Create the merge commit with *two* parents. This is crucial for a normal merge.
-            let merge_commit_oid = repo.commit(
-                Some(&format!("refs/heads/{}", head_branch_name)), // Update the HEAD of the current branch to this new merge commit
-                &signature,
-                &signature,
-                &format!("Merge branch '{}' into '{}'", branch_name, head_branch_name),
-                &tree,
-                &[&head_commit, &merge_target_commit], // The two parent commits
-            )?;
-            println!("[GitService::merge_branch] Normal merge commit created: {}", merge_commit_oid);
-
-            // *******************************************************************
-            // NEW: After creating the merge commit and updating HEAD,
-            // refresh the working directory to reflect the new state.
-            // This ensures VSCode sees the repository as clean after the merge.
-            let mut checkout_opts = git2::build::CheckoutBuilder::new();
-            checkout_opts.force(); // Ensure all files are updated, even if locally modified
-
-            repo.checkout_head(Some(&mut checkout_opts))?;
-            println!("[GitService::merge_branch] Working directory updated to reflect merge commit.");
-            // *******************************************************************
-
-        } else {
-            return Err(GitError::Other(format!("Unhandled merge analysis result: {:?}", analysis).to_string()));
-        }
-
-        Ok(())
-    }
-
-    pub fn delete_remote_branch(
-        repo: &Repository,
-        remote_name: &str,
-        branch_name: &str,
-    ) -> Result<(), GitError> {
-        let mut remote = repo.find_remote(remote_name)?;
-
-        let mut callbacks = git2::RemoteCallbacks::new();
-        callbacks.credentials(|url, username_from_url, _allowed_types| {
-            eprintln!("[GitService::delete_remote_branch] Attempting to acquire credentials for URL: {}, user from URL: {:?}", url, username_from_url);
-
-            let username = username_from_url.unwrap_or("git");
-            let effective_username = std::env::var("GIT_USERNAME").unwrap_or_else(|_| username.to_string());
-
-            if _allowed_types.is_user_pass_plaintext() {
-                if let Ok(password) = std::env::var("GIT_PASSWORD") {
-                    eprintln!("[GitService::delete_remote_branch] Using GIT_PASSWORD environment variable for user: {}", effective_username);
-                    return git2::Cred::userpass_plaintext(&effective_username, &password);
-                }
-            }
-            if _allowed_types.is_ssh_key() {
-                if let Ok(cred) = git2::Cred::ssh_key_from_agent(username) {
-                    eprintln!("[GitService::delete_remote_branch] Using SSH agent for user: {}", username);
-                    return Ok(cred);
-                }
-            }
-            eprintln!("[GitService::delete_remote_branch] Falling back to default git credentials for user: {}", username);
-            git2::Cred::default()
-        });
-
-        let mut options = git2::PushOptions::new();
-        options.remote_callbacks(callbacks);
-
-        // The refspec for deleting a remote branch is prefixed with a colon.
-        let refspec = format!(":refs/heads/{}", branch_name);
-        eprintln!("[GitService::delete_remote_branch] Attempting to push refspec '{}' to remote '{}' ({})", refspec, remote_name, remote.url().unwrap_or("unknown URL"));
-
-        remote.push(&[refspec], Some(&mut options)).map_err(GitError::from)?;
         Ok(())
     }
 
