@@ -33,7 +33,7 @@ pub async fn suggest_branch_name(
 
     // Format messages for LLM.  We only need the chat history
     let mut messages: Vec<ChatMessage> = Vec::new();
-    messages.push(ChatMessage { role: "system".to_string(), content: system_prompt, hidden: false, commit_hash: None, timestamp: None, context_files: None, provider: None, model: None, hidden_context: None });
+    messages.push(ChatMessage { role: "model".to_string(), content: system_prompt, hidden: false, commit_hash: None, timestamp: None, context_files: None, provider: None, model: None, hidden_context: None });
     messages.extend(chat_history);
 
     let llm_response = llm_service.send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref()).await;
