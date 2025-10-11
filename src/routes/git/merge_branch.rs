@@ -87,12 +87,6 @@ pub async fn merge_branch(
             message: format!("Failed to checkout default branch ({}): {}", default_branch_name, e),
         });
     }
-    // Debugging log to confirm current branch after checkout
-    match GitService::get_current_branch_name(&repo) {
-        Ok(current_head) => println!("[merge_branch route] HEAD is now on: {}", current_head),
-        Err(e) => eprintln!("[merge_branch route] Could not get current HEAD after checkout: {}", e),
-    }
-
 
     // Attempt to merge the chat branch
     match GitService::merge_branch(&repo, &chat_branch_name, &git_author_name, &git_author_email) {
@@ -100,11 +94,7 @@ pub async fn merge_branch(
             // Merge successful, delete the chat branch
             if let Err(e) = GitService::delete_branch(&repo, &chat_branch_name) {
                 eprintln!("Warning: Failed to delete branch '{}': {}", chat_branch_name, e);
-                // Don't fail the whole operation if delete fails, but log it.
-                // The merge might still be considered successful from the user's perspective.
-                // However, the error from your original query ("cannot delete branch as it is the current HEAD")
-                // suggests a prior issue. The fix to `merge_branch` above should prevent this,
-                // as HEAD will be correctly on the `default_branch_name`.
+                // Don't fail the whole operation if delete fails
             }
 
             // Update project's git_branch_name to None
@@ -118,26 +108,10 @@ pub async fn merge_branch(
                 });
             }
 
-            // ************** NEW: Push merged changes to remote **************
-            let remote_name = "origin"; // Assuming "origin" is the remote name
-            match GitService::push_to_remote(&repo, remote_name, &default_branch_name) {
-                Ok(_) => {
-                    println!("Successfully pushed merged changes to remote '{}' on branch '{}'.", remote_name, default_branch_name);
-                    HttpResponse::Ok().json(MergeBranchResponse {
-                        success: true,
-                        message: format!("Branch '{}' merged into '{}', deleted, and pushed successfully.", chat_branch_name, default_branch_name),
-                    })
-                }
-                Err(e) => {
-                    eprintln!("Error: Failed to push merged changes to remote: {}", e);
-                    // If the push fails, it's a significant issue as the remote isn't updated.
-                    // Report this as an error to the user.
-                    HttpResponse::InternalServerError().json(MergeBranchResponse {
-                        success: false,
-                        message: format!("Merge successful, branch deleted, but failed to push to remote '{}' on branch '{}': {}", remote_name, default_branch_name, e),
-                    })
-                }
-            }
+            HttpResponse::Ok().json(MergeBranchResponse {
+                success: true,
+                message: format!("Branch '{}' merged into '{}' and deleted successfully.", chat_branch_name, default_branch_name),
+            })
         }
         Err(GitError::Other(msg)) if msg == "Merge conflicts detected" => {
             HttpResponse::Conflict().json(MergeBranchResponse {

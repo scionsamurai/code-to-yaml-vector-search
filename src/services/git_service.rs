@@ -194,76 +194,42 @@ impl GitService {
     pub fn merge_branch(
         repo: &Repository,
         branch_name: &str,
-        author_name: &str,
-        author_email: &str,
+        author_name: &str, // NEW: Added author_name
+        author_email: &str, // NEW: Added author_email
     ) -> Result<(), GitError> {
-        // Get the local branch we intend to merge (the feature branch)
-        let branch_to_merge = repo.find_branch(branch_name, BranchType::Local)?;
-        let merge_target_oid = branch_to_merge
+        let branch = repo.find_branch(branch_name, BranchType::Local)?;
+        let target = branch
             .get()
             .target()
-            .ok_or(GitError::Other(format!("Branch '{}' has no target commit.", branch_name)))?;
-        let merge_target_commit = repo.find_commit(merge_target_oid)?;
+            .ok_or(GitError::Other("Branch has no target".to_string()))?;
+        let annotated_commit = repo.find_annotated_commit(target)?;
 
-        // Get the current HEAD commit (the branch we are merging *into*, e.g., 'main')
-        let head = repo.head()?;
-        let head_commit = head.peel_to_commit()?;
-        let head_branch_name = head.shorthand().unwrap_or("HEAD").to_string(); // Name of the branch we are merging into
+        let mut merge_options = git2::MergeOptions::new();
+        merge_options.fail_on_conflict(true);
 
-        // Analyze the merge to determine if it's fast-forward, normal, or already up-to-date
-        let annotated_merge_target = repo.find_annotated_commit(merge_target_oid)?;
-        let (analysis, _preference) = repo.merge_analysis(&[&annotated_merge_target])?;
+        repo.merge(&[&annotated_commit], Some(&mut merge_options), None)?;
 
-        if analysis.is_fast_forward() {
-            println!("[GitService::merge_branch] Performing a fast-forward merge for branch '{}' into '{}'.", branch_name, head_branch_name);
-            // Fast-forward merge: update the current branch's reference and HEAD
-            let reference_name = format!("refs/heads/{}", head_branch_name);
-            repo.reference(&reference_name, merge_target_oid, true, &format!("Fast-forward merge of {}", branch_name))?;
-            repo.set_head(&reference_name)?;
-            // Checkout the updated tree to reflect changes in working directory
-            repo.checkout_tree(&merge_target_commit.as_object(), None)?;
-
-        } else if analysis.is_normal() {
-            println!("[GitService::merge_branch] Performing a normal merge for branch '{}' into '{}'.", branch_name, head_branch_name);
-            let mut merge_options = git2::MergeOptions::new();
-            // This ensures that if conflicts occur during the merge, merge_commits will return an error
-            merge_options.fail_on_conflict(true);
-
-            // This performs the merge operation on the repository's index and working directory.
-            // If successful, the index will contain the merged tree.
-            repo.merge_commits(&head_commit, &merge_target_commit, Some(&mut merge_options))?;
-
-            // After the merge attempt, check for conflicts in the index.
-            let mut index = repo.index()?;
-            if index.has_conflicts() {
-                // This branch should ideally not be reached if `fail_on_conflict(true)`
-                // and merge_commits returns an error on conflict, but it's a safety check.
-                return Err(GitError::Other("Merge conflicts detected".to_string()));
-            }
-
-            // Write the merged tree from the index to the repository's object database
-            let tree_id = index.write_tree()?;
-            let tree = repo.find_tree(tree_id)?;
-
-            let signature = Signature::now(author_name, author_email)?;
-
-            // Create the merge commit with *two* parents. This is crucial for a normal merge.
-            repo.commit(
-                Some(&format!("refs/heads/{}", head_branch_name)), // Update the HEAD of the current branch to this new merge commit
-                &signature,
-                &signature,
-                &format!("Merge branch '{}' into '{}'", branch_name, head_branch_name),
-                &tree,
-                &[&head_commit, &merge_target_commit], // The two parent commits
-            )?;
-            println!("[GitService::merge_branch] Normal merge committed successfully.");
-
-        } else if analysis.is_up_to_date() {
-            println!("[GitService::merge_branch] Branch '{}' is already up-to-date with '{}'. No merge needed.", head_branch_name, branch_name);
-            // Nothing to do, return success
-        } else {
-            return Err(GitError::Other(format!("Unhandled merge analysis result: {:?}", analysis).to_string()));
+        // Check if there are any conflicts
+        let mut index = repo.index()?;
+        if index.has_conflicts() {
+            return Err(GitError::Other("Merge conflicts detected".to_string()));
         }
+
+        // If the merge was successful, create a commit
+        let signature = Signature::now(author_name, author_email)?;
+        let tree_id = index.write_tree()?;
+        let tree = repo.find_tree(tree_id)?;
+        let head = repo.head()?;
+        let commit = head.peel_to_commit()?;
+
+        repo.commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            &format!("Merged branch '{}'", branch_name),
+            &tree,
+            &[&commit],
+        )?;
 
         Ok(())
     }
