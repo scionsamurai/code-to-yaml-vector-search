@@ -2,6 +2,7 @@
 
 use git2::{Branch, BranchType, Commit, DiffOptions, ObjectType, Oid, Repository, Signature, Status}; // Add DiffOptions
 use std::path::Path;
+use std::fs;
 
 #[derive(Debug)]
 pub enum GitError {
@@ -38,6 +39,12 @@ impl GitService {
 
     pub fn open_repository(path: &Path) -> Result<Repository, GitError> {
         Repository::open(path).map_err(GitError::from)
+    }
+
+    pub fn get_blob_hash(repo: &Repository, file_path: &Path) -> Result<String, GitError> {
+        let content = fs::read_to_string(file_path)?;
+        let mut obj = repo.blob(content.as_bytes())?;
+        Ok(obj.to_string())
     }
 
     pub fn get_default_branch_name(repo: &Repository) -> Result<String, GitError> {
