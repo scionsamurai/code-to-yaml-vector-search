@@ -2,6 +2,7 @@
 
 use git2::{Branch, BranchType, Commit, DiffOptions, ObjectType, Oid, Repository, Signature, Status}; // Add DiffOptions
 use std::path::Path;
+use std::fs;
 
 #[derive(Debug)]
 pub enum GitError {
@@ -40,13 +41,37 @@ impl GitService {
         Repository::open(path).map_err(GitError::from)
     }
 
+    pub fn get_blob_hash(repo: &Repository, file_path: &Path) -> Result<String, GitError> {
+        let content = fs::read_to_string(file_path)?;
+        let mut obj = repo.blob(content.as_bytes())?;
+        Ok(obj.to_string())
+    }
+
     pub fn get_default_branch_name(repo: &Repository) -> Result<String, GitError> {
-        let head = repo.head()?;
-        let shorthand = head.shorthand();
-        match shorthand {
-            Some(branch_name) => Ok(branch_name.to_string()),
-            None => Err(GitError::Other("Failed to get default branch name".to_string())),
+        // 1. Try to get the default branch from the 'origin' remote's HEAD
+        if let Ok(remote) = repo.find_remote("origin") {
+            if let Ok(head_ref_buf) = remote.default_branch() {
+                if let Some(head_ref_str) = head_ref_buf.as_str() {
+                    // remote.default_branch() returns something like "refs/heads/main" or "refs/heads/master"
+                    if let Some(branch_name) = head_ref_str.strip_prefix("refs/heads/") {
+                        eprintln!("[GitService::get_default_branch_name] Found default branch from remote 'origin/HEAD': {}", branch_name);
+                        return Ok(branch_name.to_string());
+                    }
+                }
+            }
         }
+
+        // 2. Fallback: Check for common local default branches ("main", "master")
+        for potential_default in ["main", "master"].iter() {
+            if repo.find_branch(potential_default, BranchType::Local).is_ok() {
+                eprintln!("[GitService::get_default_branch_name] Found local default branch: {}", potential_default);
+                return Ok(potential_default.to_string());
+            }
+        }
+        
+        // 3. Ultimate Fallback: Default to "main"
+        eprintln!("[GitService::get_default_branch_name] Could not determine default branch, falling back to 'main'.");
+        Ok("main".to_string())
     }
     
     pub fn get_current_branch_name(repo: &Repository) -> Result<String, GitError> {

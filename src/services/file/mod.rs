@@ -5,10 +5,12 @@ pub mod update_checker;
 pub mod validation;
 
 use crate::models::{Project, ProjectFile};
+use crate::routes::project;
 use std::error::Error;
 use std::fmt;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use git2::Repository;
 
 // Define a custom error type for your specific application errors
 #[derive(Debug)]
@@ -62,8 +64,16 @@ impl FileService {
         reading::read_specific_file(project, file_path)
     }
 
-    pub fn needs_yaml_update(&self, source_path: &str, yaml_path: &str) -> bool {
-        update_checker::needs_yaml_update(source_path, yaml_path)
+    // project: &Project,
+    // // Pass the result of opening the repository.
+    // // This allows needs_yaml_update to handle cases where git integration is enabled
+    // // but the repo couldn't be opened, or when git integration is not enabled.
+    // repo_result: &Result<Repository, crate::services::git_service::GitError>,
+    // source_path: &Path,
+    // yaml_path: &Path,
+
+    pub fn needs_yaml_update(&self, project: &Project, repo_result: &std::result::Result<Repository, crate::services::git_service::GitError>, source_path: &Path, yaml_path: &Path) -> bool {
+        update_checker::needs_yaml_update(project, repo_result, source_path, yaml_path)
     }
 
     pub fn write_file_content(

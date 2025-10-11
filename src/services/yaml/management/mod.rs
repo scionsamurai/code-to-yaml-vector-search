@@ -111,8 +111,29 @@ impl YamlManagement {
             };
         }
 
-        // **Generate and store the new embedding**
-        embedding::process_embedding(&embedding_service, &qdrant_service, project, file_path, &content_to_embed).await;
+        let mut current_blob_hash: Option<String> = None;
+        let source_file_abs_path = Path::new(file_path);
+
+        let repo_result = if project.git_integration_enabled {
+            crate::services::git_service::GitService::open_repository(Path::new(&project.source_dir))
+        } else {
+            Err(crate::services::git_service::GitError::Other("Git integration not enabled".to_string()))
+        };
+
+        if project.git_integration_enabled && repo_result.is_ok() {
+            if let Ok(repo) = repo_result {
+                match crate::services::git_service::GitService::get_blob_hash(&repo, &source_file_abs_path) {
+                    Ok(hash) => {
+                        current_blob_hash = Some(hash);
+                    },
+                    Err(e) => {
+                        eprintln!("Failed to get Git blob hash for {:?}: {}. Proceeding without it.", source_file_abs_path, e);
+                    }
+                }
+            }
+        }
+
+        embedding::process_embedding(&embedding_service, &qdrant_service, project, file_path, &content_to_embed, current_blob_hash).await;
     }
 
 }

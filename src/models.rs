@@ -57,8 +57,8 @@ impl std::fmt::Display for EmbeddingMetadata {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "EmbeddingMetadata {{ file_path: {}, last_updated: {}, vector_id: {} }}",
-            self.file_path, self.last_updated, self.vector_id
+            "EmbeddingMetadata {{ file_path: {}, last_updated: {}, vector_id: {}, git_blob_hash: {:?} }}", // Added git_blob_hash
+            self.file_path, self.last_updated, self.vector_id, self.git_blob_hash
         )
     }
 }
@@ -93,6 +93,8 @@ pub struct EmbeddingMetadata {
     pub file_path: String,
     pub last_updated: chrono::DateTime<chrono::Utc>,
     pub vector_id: String,
+    #[serde(default)] // Make it optional and default to None for backward compatibility
+    pub git_blob_hash: Option<String>,
 }
 
 #[derive(Deserialize)]
