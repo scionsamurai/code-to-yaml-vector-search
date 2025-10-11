@@ -8,6 +8,7 @@ use std::env;
 use std::fs::write;
 use crate::services::git_service::GitService; // Import GitService
 use git2::Repository; // Import Repository
+use chrono::{DateTime, Utc}; // Import for timestamp comparison
 
 pub async fn process_embedding(
     embedding_service: &EmbeddingService,
@@ -67,11 +68,17 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
         return;
     }
 
-    // Open the repo once if git integration is enabled
-    let repo_result = if project.git_integration_enabled {
-        GitService::open_repository(Path::new(&project.source_dir))
+
+    let repo = if project.git_integration_enabled {
+        match GitService::open_repository(Path::new(&project.source_dir)) {
+            Ok(r) => Some(r),
+            Err(e) => {
+                eprintln!("Failed to open Git repository for update check: {}. Git tracking will be disabled for this run.", e);
+                None
+            }
+        }
     } else {
-        Err(crate::services::git_service::GitError::Other("Git integration not enabled".to_string()))
+        None
     };
     
     let mut any_updates = false;
@@ -102,11 +109,12 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
                 let mut current_blob_hash: Option<String> = None;
 
                 // Determine if Git tracking is active and repository is successfully opened
-                let use_git_tracking = project.git_integration_enabled && repo_result.is_ok();
+                let use_git_tracking = project.git_integration_enabled && repo.is_some();
 
                 if use_git_tracking {
-                    let repo_ref = repo_result.as_ref().unwrap();
-                    match GitService::get_blob_hash(repo_ref, source_file_path) {
+                    let repo_ref = repo.as_ref().unwrap();
+
+                    match GitService::get_blob_hash(repo_ref, &source_file_path) {
                         Ok(hash) => {
                             current_blob_hash = Some(hash.clone());
                             if let Some(metadata_entry) = project.embeddings.get(&source_file_path_str) {
@@ -116,22 +124,48 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
                                     }
                                 } else {
                                     // Git enabled, but no hash stored - needs update to bootstrap
-                                    needs_update = true;
+                                    //logic:
+                                    // If file content (by timestamp) is still the same as when embedded,
+                                    // we just need to add the hash, not re-embed.
+                                    let source_modified_time = std::fs::metadata(&source_file_path)
+                                        .ok()
+                                        .and_then(|m| m.modified().ok())
+                                        .map(Into::<DateTime<Utc>>::into);
+
+                                    if let Some(source_mod) = source_modified_time {
+                                        // Check if source file's modified time is "close enough" to the last_updated timestamp
+                                        // in metadata, indicating no actual content change since embedding.
+                                        // Use a small tolerance for file system timestamp variations.
+                                        let duration_since_update = source_mod.signed_duration_since(metadata_entry.last_updated);
+                                        if duration_since_update.num_seconds().abs() <= 1 {
+                                            // Timestamps match (within tolerance), so just update the blob hash in metadata
+                                            project.embeddings.get_mut(&source_file_path_str).unwrap().git_blob_hash = Some(hash);
+                                            any_updates = true; // Mark that project settings were changed
+                                            println!("Bootstrapped Git blob hash for {:?} without re-embedding.", source_file_path_str);
+                                            continue; // Move to the next file, no full embedding needed
+                                        } else {
+                                            // Timestamps don't match, meaning content has changed, full update needed
+                                            needs_update = true;
+                                        }
+                                    } else {
+                                        // Could not get source file modified time, assume update needed
+                                        needs_update = true;
+                                    }
                                 }
                             } else {
-                                // No metadata entry - needs update
+                                // No embedding metadata at all for this file - definitely needs update
                                 needs_update = true;
                             }
                         },
                         Err(e) => {
                             eprintln!("Failed to get Git blob hash for {:?}: {}. Falling back to timestamp.", source_file_path, e);
                             // Fallback to timestamp logic
-                            needs_update = check_timestamp_update_logic(project, &source_file_path_str, &path, use_yaml);
+                            needs_update = check_timestamp_update_logic(project, &source_file_path, &path, use_yaml);
                         }
                     }
                 } else {
                     // Git not enabled or repo not available - use timestamp logic
-                    needs_update = check_timestamp_update_logic(project, &source_file_path_str, &path, use_yaml);
+                    needs_update = check_timestamp_update_logic(project, source_file_path, &path, use_yaml);
                 }
                 
                 if needs_update {
@@ -178,11 +212,11 @@ pub async fn check_and_update_yaml_embeddings(project: &mut Project, output_dir:
 }
 
 // Helper function for timestamp comparison logic (used as fallback)
-fn check_timestamp_update_logic(project: &Project, source_file_path_str: &str, yaml_path: &Path, use_yaml: bool) -> bool {
-    let source_metadata = match std::fs::metadata(source_file_path_str) {
+fn check_timestamp_update_logic(project: &Project, source_file_abs_path: &Path, yaml_path: &Path, use_yaml: bool) -> bool {
+    let source_metadata = match std::fs::metadata(source_file_abs_path) {
         Ok(m) => Some(m),
         Err(e) => {
-            eprintln!("Fallback: Failed to get metadata for source file {:?}: {}", source_file_path_str, e);
+            eprintln!("Fallback: Failed to get metadata for source file {:?}: {}", source_file_abs_path, e);
             return true; // Assume update needed if source metadata is unavailable
         }
     };
@@ -197,19 +231,16 @@ fn check_timestamp_update_logic(project: &Project, source_file_path_str: &str, y
 
     if let (Some(source_meta), Some(yaml_meta)) = (source_metadata, yaml_metadata) {
         // Compare modified times
-        let source_modified = source_meta.modified().unwrap();
-        let yaml_modified = yaml_meta.modified().unwrap();
+        let source_modified: chrono::DateTime<chrono::Utc> = source_meta.modified().unwrap().into();
+        let yaml_modified: chrono::DateTime<chrono::Utc> = yaml_meta.modified().unwrap().into();
         
-        let metadata_entry = project.embeddings.get(source_file_path_str);
+        let metadata_entry = project.embeddings.get(source_file_abs_path.to_str().unwrap_or_default());
 
         match metadata_entry {
             Some(metadata) => {
-                let updated_source_modified: chrono::DateTime<chrono::Utc> = source_modified.into();
-                let updated_yaml_modified: chrono::DateTime<chrono::Utc> = yaml_modified.into();
-
                 // If using YAML, compare against YAML file's modification time
                 // If not using YAML, compare against source file's modification time
-                let comparison_time = if use_yaml { updated_yaml_modified } else { updated_source_modified };
+                let comparison_time = if use_yaml { yaml_modified } else { source_modified };
 
                 // If the file itself is newer than when we last recorded it, update
                 comparison_time > metadata.last_updated
