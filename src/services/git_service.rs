@@ -258,16 +258,6 @@ impl GitService {
             )?;
             println!("[GitService::merge_branch] Normal merge commit created: {}", merge_commit_oid);
 
-            // *******************************************************************
-            // NEW: After creating the merge commit and updating HEAD,
-            // refresh the working directory to reflect the new state.
-            // This ensures VSCode sees the repository as clean after the merge.
-            let mut checkout_opts = git2::build::CheckoutBuilder::new();
-            checkout_opts.force(); // Ensure all files are updated, even if locally modified
-
-            repo.checkout_head(Some(&mut checkout_opts))?;
-            println!("[GitService::merge_branch] Working directory updated to reflect merge commit.");
-            // *******************************************************************
 
         } else {
             return Err(GitError::Other(format!("Unhandled merge analysis result: {:?}", analysis).to_string()));
