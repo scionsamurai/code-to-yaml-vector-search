@@ -233,6 +233,7 @@ impl GitService {
 
         Ok(())
         // This is a note added for a test merge
+        // This is another note added for a test merge
     }
 
     pub fn delete_remote_branch(
