@@ -19,7 +19,6 @@ pub struct MergeBranchResponse {
     message: String,
 }
 
-
 #[post("/merge-git-branch")]
 pub async fn merge_branch(
     data: web::Json<MergeBranchRequest>,
@@ -79,10 +78,7 @@ pub async fn merge_branch(
     // Checkout the default branch (e.g., "main")
     let default_branch_name = match GitService::get_default_branch_name(&repo) {
         Ok(branch_name) => branch_name,
-        Err(e) => {
-             eprintln!("Warning: Failed to determine default branch, falling back to 'main': {}", e);
-             "main".to_string()
-        }
+        Err(_) => "main".to_string(), // Fallback to "main" if can't determine default
     };
 
     if let Err(e) = GitService::checkout_branch(&repo, &default_branch_name) {
@@ -91,31 +87,22 @@ pub async fn merge_branch(
             message: format!("Failed to checkout default branch ({}): {}", default_branch_name, e),
         });
     }
-    match GitService::get_current_branch_name(&repo) {
-        Ok(current_head) => println!("[merge_branch route] HEAD is now on: {}", current_head),
-        Err(e) => eprintln!("[merge_branch route] Could not get current HEAD after checkout: {}", e),
-    }
-
 
     // Attempt to merge the chat branch
     match GitService::merge_branch(&repo, &chat_branch_name, &git_author_name, &git_author_email) {
         Ok(_) => {
-            // Merge successful, proceed with cleanup and push.
-
-            // 1. Delete the local chat branch
+            // Merge successful, delete the chat branch
             if let Err(e) = GitService::delete_branch(&repo, &chat_branch_name) {
-                eprintln!("Warning: Failed to delete local branch '{}': {}", chat_branch_name, e);
-                // Log but don't fail, as the merge itself was successful.
+                eprintln!("Warning: Failed to delete branch '{}': {}", chat_branch_name, e);
+                // Don't fail the whole operation if delete fails
             }
 
-            // *******************************************************************
-            // NEW: Delete the remote chat branch
+
             let remote_name = "origin"; // Assuming "origin" is the remote name
             if let Err(e) = GitService::delete_remote_branch(&repo, remote_name, &chat_branch_name) {
                 eprintln!("Warning: Failed to delete remote branch '{}' on remote '{}': {}", chat_branch_name, remote_name, e);
                 // Log but don't fail; local state is updated, and default branch push can still happen.
             }
-            // *******************************************************************
 
             // Update project's git_branch_name to None
             project.git_branch_name = None;
@@ -128,24 +115,10 @@ pub async fn merge_branch(
                 });
             }
 
-            // 3. Push merged changes of the default branch to remote
-            match GitService::push_to_remote(&repo, remote_name, &default_branch_name) {
-                Ok(_) => {
-                    println!("Successfully pushed merged changes of '{}' to remote '{}'.", default_branch_name, remote_name);
-                    HttpResponse::Ok().json(MergeBranchResponse {
-                        success: true,
-                        message: format!("Branch '{}' merged into '{}', local & remote branches deleted, and changes pushed successfully.", chat_branch_name, default_branch_name),
-                    })
-                }
-                Err(e) => {
-                    eprintln!("Error: Failed to push merged changes of '{}' to remote: {}", default_branch_name, e);
-                    // This is a significant issue if the remote isn't updated, so it's a failure.
-                    HttpResponse::InternalServerError().json(MergeBranchResponse {
-                        success: false,
-                        message: format!("Merge successful, branches deleted, but failed to push updated '{}' to remote '{}': {}", default_branch_name, remote_name, e),
-                    })
-                }
-            }
+            HttpResponse::Ok().json(MergeBranchResponse {
+                success: true,
+                message: format!("Branch '{}' merged into '{}' and deleted successfully.", chat_branch_name, default_branch_name),
+            })
         }
         Err(GitError::Other(msg)) if msg == "Merge conflicts detected" => {
             HttpResponse::Conflict().json(MergeBranchResponse {
