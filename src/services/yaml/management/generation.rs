@@ -6,6 +6,8 @@ use crate::services::qdrant_service::QdrantService;
 use std::path::Path;
 use std::fs::write;
 use std::env;
+use crate::services::git_service::GitService; // Import GitService
+use git2::Repository; // Import Repository
 
 pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut Project, output_dir: &str, force: bool) {
     let output_path = Path::new(output_dir).join(&project.name);
@@ -20,31 +22,52 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
 
     let files = yaml_management.file_service.read_project_files(&project);
 
-    for file in files {
-        println!("Checking if yaml update needed for {}", &file.path);
-        let source_path = &file.path;
-        let yaml_path = output_path.join(format!("{}.yml", file.path.replace("/", "*")));
-        let use_yaml = project.file_yaml_override.get(&source_path.clone()).map(|&b| b).unwrap_or(project.default_use_yaml);
+    // Open the repo once if git integration is enabled
+    let repo_result = if project.git_integration_enabled {
+        GitService::open_repository(Path::new(&project.source_dir))
+    } else {
+        Err(crate::services::git_service::GitError::Other("Git integration not enabled".to_string()))
+    };
 
-        let file_extension = Path::new(&file.path)
+    for file in files {
+        let source_path_buf = Path::new(&file.path);
+        let yaml_path = output_path.join(format!("{}.yml", file.path.replace("/", "*")));
+        let use_yaml = project.file_yaml_override.get(&file.path).map(|&b| b).unwrap_or(project.default_use_yaml);
+
+        let file_extension = source_path_buf
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("");
+
+        // Determine if an update is needed using the new `needs_yaml_update` signature
+        let needs_update = if force {
+            true // Force update overrides all checks
+        } else {
+            yaml_management.file_service.needs_yaml_update(project, &repo_result, source_path_buf, &yaml_path)
+        };
+        
+        // Get blob hash if git is enabled and repo is open for the current file
+        let git_blob_hash_for_file = if repo_result.is_ok() {
+            GitService::get_blob_hash(repo_result.as_ref().unwrap(), source_path_buf).ok()
+        } else {
+            None
+        };
+
 
         if file_extension == "md" {
             // Handle Markdown files: read content and generate embedding
             println!("Processing Markdown file: {}", &file.path);
             let markdown_content = std::fs::read_to_string(&file.path).unwrap();
-            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &markdown_content).await;
-        } else if use_yaml && (force || yaml_management.file_service.needs_yaml_update(&source_path, &yaml_path.display().to_string())) {
-
+            embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &markdown_content, git_blob_hash_for_file.clone()).await;
+        } else if use_yaml && needs_update {
+            println!("YAML update needed for: {}", &file.path);
             let combined_content = yaml_management.create_yaml_with_imports(&file, &project.provider, project.specific_model.as_deref()).await;
 
             // Write YAML to file
             write(&yaml_path, combined_content.clone().unwrap()).unwrap();
 
-            // Generate and store embedding
-            embedding::process_embedding(&embedding_service, &qdrant_service, project, &source_path, &combined_content.unwrap()).await;
+            // Generate and store embedding, passing the git_blob_hash
+            embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &combined_content.unwrap(), git_blob_hash_for_file.clone()).await;
         }
     }
 
