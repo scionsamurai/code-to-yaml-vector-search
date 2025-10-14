@@ -1,4 +1,5 @@
 # Project AI Code Assistant (or similar name)
+![](https://tokei.rs/b1/github/scionsamurai/code-to-yaml-vector-search)
 
 ## Intelligent Code Management Powered by AI
 

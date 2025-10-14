@@ -97,7 +97,6 @@ pub async fn merge_branch(
                 // Don't fail the whole operation if delete fails
             }
 
-
             let remote_name = "origin"; // Assuming "origin" is the remote name
             if let Err(e) = GitService::delete_remote_branch(&repo, remote_name, &chat_branch_name) {
                 eprintln!("Warning: Failed to delete remote branch '{}' on remote '{}': {}", chat_branch_name, remote_name, e);
