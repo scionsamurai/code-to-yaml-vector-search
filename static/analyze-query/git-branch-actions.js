@@ -10,7 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gitActionMessageDiv = document.getElementById('git-action-message');
 
     const projectName = document.getElementById('project-name').value;
-    const queryId = document.getElementById('query-id').value;
+    const queryId = document.getElementById('query-id').value; // Ensure queryId is correctly retrieved
     let projectGitBranchName = document.getElementById('git-branch-selector').value; // Initial value from DOM
 
     const POLLING_INTERVAL_MS = 10000; // Poll every 10 seconds
@@ -196,7 +196,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/commit-changes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ project_name: projectName, message: commitMessage }),
+                    body: JSON.stringify({
+                        project_name: projectName,
+                        message: commitMessage,
+                        query_id: queryId // <--- ADDED: Include queryId in the commit request
+                    }),
                 });
 
                 const data = await response.json();
