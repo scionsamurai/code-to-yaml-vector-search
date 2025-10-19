@@ -46,6 +46,9 @@ pub async fn chat_analysis(
     let mut unescaped_history: Vec<ChatMessage> = Vec::new();
     let mut hidden_context: Vec<String> = Vec::new();
     for message in full_history.iter() {
+        if message.role == "git-flag" {
+            continue;
+        }
         let code = match (message.role.as_str(), message.hidden) {
             ("user", false) => "P",
             ("user", true) => "p",

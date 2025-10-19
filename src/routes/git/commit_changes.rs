@@ -40,7 +40,6 @@ pub async fn commit_changes(
 
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(project_name);
-    let query_filename = format!("{}.json", query_id); // Construct query_filename from query_id
 
     let project = match project_service.load_project(&project_dir) {
         Ok(p) => p,
@@ -103,7 +102,7 @@ pub async fn commit_changes(
                         &query_manager,
                         &project_dir,
                         git_flag_message,
-                        &query_filename,
+                        &query_id,
                     ) {
                         eprintln!("Failed to add git-flag chat message for project '{}', query '{}': {}", project_name, query_id, e);
                         // Log the error but proceed as the Git commit was successful.
