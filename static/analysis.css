@@ -132,6 +132,10 @@ body {
     cursor: pointer;
 }
 
+.git-flag-message {
+    display: none;
+}
+
 .shiki-block {
     margin: 10px 0;
     border-radius: 6px;
