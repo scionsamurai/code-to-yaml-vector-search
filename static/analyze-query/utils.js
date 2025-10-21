@@ -1,12 +1,25 @@
 // static/analyze-query/utils.js
+import { decodeHtmlEntities } from './syntax-highlighting.js';
+
 export function formatMessage(content) {
   const renderer = new marked.Renderer();
 
-  // Override the 'code' method
+  // Override the 'code' method (for fenced code blocks, e.g., ```rust ... ```)
   renderer.code = (code) => {
     const language = code.lang || "plaintext";
     const encodedCode = encodeURIComponent(code.text);
     return `<pre class="shiki-block" data-language="${language}" data-original-code="${encodedCode}"><code class="language-${language}">${code.raw}</code></pre>`;
+  };
+
+  // Override the 'codespan' method (for inline code, e.g., `code`)
+  renderer.codespan = (text) => {
+    const literalCodeContent = decodeHtmlEntities(text.text);
+
+    const tempDiv = document.createElement('div');
+    tempDiv.textContent = literalCodeContent;
+    const htmlSafeCodeContent = tempDiv.innerHTML;
+
+    return `<code>${htmlSafeCodeContent}</code>`;
   };
 
   marked.setOptions({
