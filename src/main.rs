@@ -8,6 +8,10 @@ mod routes;
 mod services;
 pub mod shared;
 
+// const IP_ADDRESS: &str = "0.0.0.0"; // Listen on all interfaces (for deployment or local network testing)
+const IP_ADDRESS: &str = "127.0.0.1"; // Localhost for testing on host machine
+const PORT: u16 = 8080;
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -18,7 +22,7 @@ async fn main() -> std::io::Result<()> {
         output_dir: "output".to_string(),
     });
 
-    println!("Starting server at http://127.0.0.1:8080");
+    println!("Starting server at http://{}:{}", IP_ADDRESS, PORT);
     HttpServer::new(move || {
         App::new()
             .app_data(app_state.clone())
@@ -30,7 +34,7 @@ async fn main() -> std::io::Result<()> {
             .service(Files::new("/static", "./static"))
             
     })
-    .bind("127.0.0.1:8080")?
+    .bind(format!("{}:{}", IP_ADDRESS, PORT))?
     .run()
     .await
 }
