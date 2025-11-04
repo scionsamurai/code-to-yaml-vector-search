@@ -62,13 +62,13 @@ fn process_yaml_entry(
     let original_source_path = Path::new(&project.source_dir).join(&source_path);
 
     if !original_source_path.exists()
-        || gitignore_handler::is_file_gitignored(
+        || gitignore_handler::is_file_ignored(
             &project.source_dir,
             &source_path,
             &original_source_path,
         )
     {
-        // Source file doesn't exist or is in a gitignore folder, mark it for cleanup
+        // Source file doesn't exist or is in an ignore file, mark it for cleanup
         orphan_file_handler::handle_orphan_file(
             &yaml_path,
             &source_path,

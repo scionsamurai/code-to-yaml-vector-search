@@ -1,6 +1,6 @@
 // src/services/yaml/mod.rs
 pub mod management;
-mod processing;
+pub mod processing;
 
 pub use management::YamlManagement;
 pub use processing::YamlProcessing;
