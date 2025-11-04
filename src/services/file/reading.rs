@@ -47,17 +47,8 @@ pub fn read_files(project: &Project, gitignore_paths: &mut Vec<String>) -> Vec<P
             // Recursively read files from subdirectories
             files.extend(read_files(
                 &Project {
-                    name: project.name.clone(),
-                    languages: project.languages.clone(),
                     source_dir: path_str.clone(),
-                    provider: project.provider.clone(),
-                    specific_model: project.specific_model.clone(),
-                    embeddings: project.embeddings.clone(),
-                    file_descriptions: project.file_descriptions.clone(),
-                    default_use_yaml: project.default_use_yaml,
-                    file_yaml_override: project.file_yaml_override.clone(),
-                    git_integration_enabled: project.git_integration_enabled,
-                    git_branch_name: project.git_branch_name.clone(),
+                    ..project.clone()
                 },
                 gitignore_paths,
             ));
@@ -102,4 +93,64 @@ pub fn read_specific_file(project: &Project, file_path: &str) -> Option<String> 
     }
 
     None
+}
+
+pub fn read_project_files_paths_only(project: &Project) -> Vec<String> {
+    let mut gitignore_paths = Vec::new();
+    read_files_paths_only_recursive(project, &mut gitignore_paths)
+}
+
+fn read_files_paths_only_recursive(project: &Project, gitignore_paths: &mut Vec<String>) -> Vec<String> {
+    let mut files = Vec::new();
+    let source_dir = Path::new(&project.source_dir);
+
+    if let Ok(gitignore_file) = File::open(source_dir.join(".gitignore")) {
+        for line in BufReader::new(gitignore_file).lines() {
+            if let Ok(path) = line {
+                gitignore_paths.push(source_dir.join(&path).to_string_lossy().to_string());
+            }
+        }
+    }
+
+    let allowed_extensions: Vec<&str> = project
+        .languages
+        .split(',')
+        .flat_map(|s| {
+            let mut parts = vec![];
+            for part in s.split_whitespace() {
+                if !part.is_empty() {
+                    parts.push(part);
+                }
+            }
+            parts
+        })
+        .collect();
+
+    if let Ok(entries) = read_dir(source_dir) {
+        for entry in entries {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                let path_str = path.to_string_lossy().to_string();
+
+                if path.is_dir() && !gitignore_paths.iter().any(|p| path_str.starts_with(p)) {
+                    files.extend(read_files_paths_only_recursive(
+                        &Project {
+                            name: project.name.clone(),
+                            languages: project.languages.clone(),
+                            source_dir: path_str.clone(),
+                            // Other fields are not relevant for path reading, but cloning for Project struct consistency
+                            ..project.clone()
+                        },
+                        gitignore_paths,
+                    ));
+                } else if !gitignore_paths.iter().any(|p| path_str.starts_with(p)) {
+                    let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
+                    if allowed_extensions.iter().any(|&ext| ext == extension) {
+                        files.push(path_str);
+                    }
+                }
+            }
+        }
+    }
+    files
 }

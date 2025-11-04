@@ -59,6 +59,7 @@ In large codebases, finding relevant information, understanding complex interact
     ```bash
     docker run -p 6334:6334 -p 6333:6333 qdrant/qdrant
     ```
+    
 ## Usage
 
 1.  **Configure API Keys:**
@@ -76,6 +77,8 @@ In large codebases, finding relevant information, understanding complex interact
       * Use the **semantic search** bar to find relevant code files.
       * Initiate a **code analysis chat** to discuss and modify your codebase with the LLM.
       * Dynamically select which files are visible to the LLM within the chat interface.
+
+See usage suggestions [here](UsageSuggestions.md).
 
 ## Configuration
 

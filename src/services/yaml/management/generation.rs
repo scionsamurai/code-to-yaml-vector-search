@@ -6,8 +6,7 @@ use crate::services::qdrant_service::QdrantService;
 use std::path::Path;
 use std::fs::write;
 use std::env;
-use crate::services::git_service::GitService; // Import GitService
-use git2::Repository; // Import Repository
+use crate::services::git_service::GitService; 
 
 pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut Project, output_dir: &str, force: bool) {
     let output_path = Path::new(output_dir).join(&project.name);
@@ -52,7 +51,6 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
         } else {
             None
         };
-
 
         if file_extension == "md" {
             // Handle Markdown files: read content and generate embedding
