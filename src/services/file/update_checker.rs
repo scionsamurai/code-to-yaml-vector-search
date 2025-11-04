@@ -4,6 +4,7 @@ use std::fs::metadata;
 use std::path::{Path, PathBuf};
 use crate::services::git_service::GitService; // Import GitService
 use git2::Repository; // Import Repository type
+use crate::services::yaml::processing::gitignore_handler::is_file_ignored;
 
 // Check if any files in a project need to be updated
 pub fn project_needs_update(project: &Project, output_dir: &str) -> bool {
@@ -39,6 +40,16 @@ pub fn needs_yaml_update(
     source_path: &Path,
     yaml_path: &Path,
 ) -> bool {
+
+    let source_path_str = source_path.to_string_lossy().to_string();
+    let source_dir_str = project.source_dir.clone();
+    let original_source_path = Path::new(&source_path_str);
+
+    if is_file_ignored(&source_dir_str, &source_path_str, original_source_path) {
+        println!("File {:?} is ignored, skipping update check.", source_path);
+        return false;
+    }
+
     // 1. Check if the YAML file exists first. If not, it definitely needs an update.
     let yaml_file_exists = yaml_path.exists();
     if !yaml_file_exists {
