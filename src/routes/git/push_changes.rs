@@ -3,10 +3,9 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use crate::services::project_service::ProjectService;
-use crate::services::git_service::{GitService, GitError};
+use crate::services::git_service::GitService;
 use crate::models::AppState;
 use std::path::Path;
-use std::env; // Potentially for remote name, though "origin" is default
 
 #[derive(Deserialize)]
 pub struct PushChangesRequest {

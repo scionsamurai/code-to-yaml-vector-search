@@ -3,7 +3,7 @@ use crate::models::{Project, ChatMessage, AppState};
 use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
 use crate::services::llm_service::LlmService;
-use crate::services::git_service::{GitService, GitError};
+use crate::services::git_service::GitService;
 use git2::Repository;
 use actix_web::web;
 use std::path::Path;

@@ -1,7 +1,7 @@
 // src/services/file/update_checker.rs
-use crate::models::{Project, EmbeddingMetadata};
+use crate::models::Project;
 use std::fs::metadata;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use crate::services::git_service::GitService; // Import GitService
 use git2::Repository; // Import Repository type
 use crate::services::yaml::processing::gitignore_handler::is_file_ignored;

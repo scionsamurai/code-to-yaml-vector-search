@@ -43,7 +43,7 @@ impl GitService {
 
     pub fn get_blob_hash(repo: &Repository, file_path: &Path) -> Result<String, GitError> {
         let content = fs::read_to_string(file_path)?;
-        let mut obj = repo.blob(content.as_bytes())?;
+        let obj = repo.blob(content.as_bytes())?;
         Ok(obj.to_string())
     }
 
@@ -115,15 +115,6 @@ impl GitService {
         let obj = repo.head()?.resolve()?.peel(ObjectType::Commit)?;
         repo.find_commit(obj.id()).map_err(GitError::from)
     }
-
-    // Add a file to the staging area
-    pub fn add_file_to_stage(repo: &Repository, file_path: &Path) -> Result<(), GitError> {
-        let mut index = repo.index()?;
-        index.add_path(file_path)?;
-        index.write()?;
-        Ok(())
-    }
-
 
     pub fn get_uncommitted_diff(repo: &Repository) -> Result<String, GitError> {
         let mut diff_options = DiffOptions::new();
@@ -310,10 +301,6 @@ impl GitService {
                 return Ok(true);
             }
         };
-
-
-        let local_commit = repo.find_commit(local_oid)?;
-        let upstream_commit = repo.find_commit(upstream_oid)?;
 
         // Use revwalk to check if all commits in local branch are reachable from the remote branch
         let mut revwalk = repo.revwalk()?;

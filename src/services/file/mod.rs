@@ -5,7 +5,6 @@ pub mod update_checker;
 pub mod validation;
 
 use crate::models::{Project, ProjectFile};
-use crate::routes::project;
 use std::error::Error;
 use std::fmt;
 use std::fs;
@@ -64,9 +63,6 @@ impl FileService {
         reading::read_specific_file(project, file_path)
     }
     
-    pub fn read_project_files_paths_only(&self, project: &Project) -> Vec<String> {
-        reading::read_project_files_paths_only(project)
-    }
 
     pub fn needs_yaml_update(&self, project: &Project, repo_result: &std::result::Result<Repository, crate::services::git_service::GitError>, source_path: &Path, yaml_path: &Path) -> bool {
         update_checker::needs_yaml_update(project, repo_result, source_path, yaml_path)

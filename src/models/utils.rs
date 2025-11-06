@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 impl Project {
     // Get project directory
-    pub fn get_project_dir(&self, app_state: &web::Data<AppState>) -> PathBuf {
+    pub fn _get_project_dir(&self, app_state: &web::Data<AppState>) -> PathBuf {
         let output_dir = Path::new(&app_state.output_dir);
         output_dir.join(&self.name)
     }

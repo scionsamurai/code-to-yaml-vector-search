@@ -3,7 +3,7 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::{Deserialize, Serialize};
 use crate::services::project_service::ProjectService;
-use crate::services::git_service::{GitService, GitError};
+use crate::services::git_service::GitService;
 use crate::models::{AppState, ChatMessage}; // Import ChatMessage
 use crate::services::project_service::chat_management::ChatManager; // Import ChatManager
 use crate::services::project_service::query_management::QueryManager; // Import QueryManager

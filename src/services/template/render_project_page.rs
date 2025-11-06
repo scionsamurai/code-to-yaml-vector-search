@@ -10,7 +10,7 @@ impl TemplateService {
         search_results_html: &str,
         yaml_files: &str,
         query_value: &str,
-        query_id: &str,
+        _query_id: &str,
     ) -> String {
         format!(
             r#"

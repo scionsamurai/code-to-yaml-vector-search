@@ -15,6 +15,7 @@ pub fn cluster_embeddings(
 
 use rand::Rng;
 
+#[allow(dead_code)]
 pub struct CosineClustering {
     pub membership: Vec<usize>,
     pub centroids: Vec<Vec<f32>>,

@@ -1,7 +1,6 @@
 // src/services/file/reading.rs
 use crate::models::{Project, ProjectFile};
-use std::fs::{read_dir, read_to_string, File, metadata};
-use std::io::{BufRead, BufReader};
+use std::fs::{read_dir, read_to_string, metadata};
 use std::path::Path;
 use crate::services::yaml::processing::gitignore_handler::is_file_ignored; // Import the function
 
@@ -90,61 +89,4 @@ pub fn read_specific_file(project: &Project, file_path: &str) -> Option<String> 
     }
 
     None
-}
-
-pub fn read_project_files_paths_only(project: &Project) -> Vec<String> {
-    read_files_paths_only_recursive(project)
-}
-
-fn read_files_paths_only_recursive(project: &Project) -> Vec<String> {
-    let mut files = Vec::new();
-    let source_dir = Path::new(&project.source_dir);
-    let source_dir_str = project.source_dir.clone();
-
-    let allowed_extensions: Vec<&str> = project
-        .languages
-        .split(',')
-        .flat_map(|s| {
-            let mut parts = vec![];
-            for part in s.split_whitespace() {
-                if !part.is_empty() {
-                    parts.push(part);
-                }
-            }
-            parts
-        })
-        .collect();
-
-    if let Ok(entries) = read_dir(source_dir) {
-        for entry in entries {
-            if let Ok(entry) = entry {
-                let path = entry.path();
-                let path_str = path.to_string_lossy().to_string();
-
-                if path.is_dir() {
-                    let original_source_path = Path::new(&path_str);
-                    if !is_file_ignored(&source_dir_str, &path_str, original_source_path) {
-                        files.extend(read_files_paths_only_recursive(
-                            &Project {
-                                name: project.name.clone(),
-                                languages: project.languages.clone(),
-                                source_dir: path_str.clone(),
-                                // Other fields are not relevant for path reading, but cloning for Project struct consistency
-                                ..project.clone()
-                            },
-                        ));
-                    }
-                } else {
-                  let original_source_path = Path::new(&path_str);
-                    if !is_file_ignored(&source_dir_str, &path_str, original_source_path) {
-                        let extension = path.extension().and_then(|ext| ext.to_str()).unwrap_or("");
-                        if allowed_extensions.iter().any(|&ext| ext == extension) {
-                            files.push(path_str);
-                        }
-                    }
-                }
-            }
-        }
-    }
-    files
 }

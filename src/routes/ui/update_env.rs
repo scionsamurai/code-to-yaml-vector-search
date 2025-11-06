@@ -65,8 +65,17 @@ pub async fn update_env() -> impl Responder {
     HttpResponse::Ok().body(html)
 }
 
+#[allow(dead_code)]
+#[derive(serde::Deserialize)]
+struct EnvSetForm {
+    open_ai_key: String,
+    open_ai_org: String,
+    gemini_api_key: String,
+    anthropic_api_key: String,
+}
+
 #[post("/update-env")]
-pub async fn save_env(form_data: web::Form<EnvForm>) -> HttpResponse {
+pub async fn save_env(form_data: web::Form<EnvSetForm>) -> HttpResponse {
     let form_data = form_data.into_inner();
     let env_path = env::current_dir().unwrap().join(".env");
 
@@ -98,12 +107,4 @@ pub async fn save_env(form_data: web::Form<EnvForm>) -> HttpResponse {
     HttpResponse::SeeOther()
         .append_header(("Location", "/"))
         .finish()
-}
-
-#[derive(serde::Deserialize)]
-struct EnvForm {
-    open_ai_key: String,
-    open_ai_org: String,
-    gemini_api_key: String,
-    anthropic_api_key: String,
 }

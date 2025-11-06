@@ -7,7 +7,6 @@ use std::path::Path;
 use std::env;
 use std::fs::write;
 use crate::services::git_service::GitService; // Import GitService
-use git2::Repository; // Import Repository
 use chrono::{DateTime, Utc}; // Import for timestamp comparison
 
 pub async fn process_embedding(

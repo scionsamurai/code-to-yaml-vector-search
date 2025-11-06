@@ -1,7 +1,7 @@
 // src/services/yaml/processing/gitignore_handler.rs
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 fn read_ignore_file(source_dir: &Path, filename: &str) -> Vec<String> {
     let mut ignore_paths = Vec::new();

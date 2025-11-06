@@ -18,7 +18,7 @@ impl TemplateService {
         let mut options_html = String::new();
         let max_time_stamp = available_queries[available_queries.len() - 1].0.clone();
         for (timestamp, display_title) in available_queries {
-            let mut selected = false;
+            let selected ;
             if current_query_id.is_empty() {
                 selected = timestamp == &max_time_stamp;
             } else {
