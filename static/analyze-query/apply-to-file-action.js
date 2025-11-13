@@ -20,7 +20,8 @@ export async function handleApplyToFile(event, codeBlock, fileIcon) {
   const firstLine = codeContent.split("\n")[0];
   // Regex to match // path/to/file.ext or # path/to/file.ext at the start of the line
   const pathRegex =
-    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-.+]+\/)+(?:[a-zA-Z0-9_\-.+]+\.[a-zA-Z0-9_\-]+)\b/g;
+    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-.+\[\]]+\/)+(?:[a-zA-Z0-9_\-.+\[\]]+\.[a-zA-Z0-9_\-]+)\b/g;
+    
 
   const match = firstLine.match(pathRegex);
 

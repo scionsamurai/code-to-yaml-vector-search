@@ -82,7 +82,7 @@ export function linkFilePathsInElement(element) {
   }
 
   const pathRegex =
-    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-.+]+\/)+(?:[a-zA-Z0-9_\-.+]+\.[a-zA-Z0-9_\-]+)\b/g;
+    /(?:(?:[a-zA-Z]:[\\\/])|(?:\.{1,2}[\\\/])|(?:\/))?(?:[a-zA-Z0-9_\-.+\[\]]+\/)+(?:[a-zA-Z0-9_\-.+\[\]]+\.[a-zA-Z0-9_\-]+)\b/g;
 
   const preElements = element.querySelectorAll("pre");
 
