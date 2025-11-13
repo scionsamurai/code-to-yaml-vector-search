@@ -1,6 +1,8 @@
 // src/services/template/file_list_generator.rs
 use crate::models::Project;
 use super::TemplateService;
+use crate::services::file::reading::read_exclude_search_files;
+use std::collections::HashSet;
 
 impl TemplateService {
     pub fn generate_file_list(&self, files: &[String], selected_files: &[String], project: &Project) -> String {
@@ -51,14 +53,21 @@ impl TemplateService {
 
 
     pub fn generate_other_files_list(&self, project: &Project, exclude_files: &[String], selected_files: &[String]) -> String {
-        // Get all project files
-        let all_files: Vec<String> = match &project.embeddings {
+                // Get all project files
+        let mut all_files: Vec<String> = match &project.embeddings {
             embeddings => embeddings.keys().cloned().collect(),
         };
 
+        // Get all project files that are excluded from search
+        let excluded_files: Vec<String> = read_exclude_search_files(project).into_iter().map(|pf| pf.path).collect();
+        all_files.extend(excluded_files.clone());
+
+        // Convert exclude_files to a HashSet for faster lookups
+        let exclude_files_set: HashSet<String> = exclude_files.iter().cloned().collect();
+
         // Filter out the files that are already in the combined exclusion list
         let other_files: Vec<String> = all_files.into_iter()
-            .filter(|file| !exclude_files.contains(file))
+            .filter(|file| !exclude_files_set.contains(file))
             .collect();
         
         self.generate_file_list(&other_files, selected_files, project)
