@@ -173,7 +173,7 @@ export function toggleEditMode(messageDiv) {
         
         const originalContent = messageDiv.dataset.originalContent || messageContent.textContent;
         const editor = document.createElement('textarea');
-        editor.className = 'message-editor';
+        editor.className = 'message-editor text-area-fmt';
         editor.value = originalContent;
         
         const editControls = document.createElement('div');

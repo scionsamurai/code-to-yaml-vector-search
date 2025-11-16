@@ -5,6 +5,7 @@ use llm_api_access::llm::{Access, LLM};
 use std::fs::read_to_string;
 use std::path::Path;
 use crate::services::utils::html_utils::escape_html;
+use std::io::Error; // Import std::io::Error
 
 pub struct LlmService;
 
@@ -63,6 +64,69 @@ impl LlmService {
             Err(e) => format!("Error during conversation: {}", e),
         }
     }
+
+    // NEW: Method to optimize a prompt with optional direction, chat history, and file context
+    pub async fn get_optimized_prompt(
+        &self,
+        original_prompt: &str,
+        optimization_direction: Option<&str>,
+        chat_history_str: Option<&str>, // New parameter
+        file_context_str: Option<&str>, // New parameter
+        provider: &str,
+        specific_model: Option<&str>,
+    ) -> Result<String, Error> { // Changed return type to Result<String, Error>
+        // Determine the target model based on provider string
+        let target_model = match provider.to_lowercase().as_str() {
+            "openai" => LLM::OpenAI,
+            "anthropic" => LLM::Anthropic,
+            "gemini" | _ => LLM::Gemini,
+        };
+
+        let mut user_prompt_content = String::new();
+        user_prompt_content.push_str("You are an expert query optimization assistant. Your task is to refine user queries. .\n\n");
+
+        if let Some(history) = chat_history_str {
+            if !history.is_empty() {
+                user_prompt_content.push_str("Here is the relevant chat conversation history:\n");
+                user_prompt_content.push_str(history);
+                user_prompt_content.push_str("\n\n");
+            }
+        }
+
+        if let Some(file_context) = file_context_str {
+            if !file_context.is_empty() {
+                user_prompt_content.push_str("Here are the contents of the selected context files:\n");
+                user_prompt_content.push_str(file_context);
+                user_prompt_content.push_str("\n\n");
+            }
+        }
+
+        user_prompt_content.push_str(&format!("Original prompt to optimize: \"{}\"", original_prompt));
+        if let Some(direction) = optimization_direction {
+            if !direction.is_empty() {
+                user_prompt_content.push_str(&format!("\nOptimization Direction: \"{}\"", direction));
+            }
+        }
+        user_prompt_content.push_str("\nYou must only output the optimized query, without any additional conversational text or formatting (e.g., no \"Optimized Query:\", no quotes around the query, no markdown code blocks and no description or summary about the optimization).");
+        
+        let messages = vec![
+            Message {
+                role: "user".to_string(),
+                content: user_prompt_content,
+            },
+        ];
+
+        let llm_response = target_model.send_convo_message(messages, specific_model).await;
+
+        match llm_response {
+            Ok(content) => {
+                let escaped_content = escape_html(content).await;
+                Ok(escaped_content)
+            },
+            Err(e) => Err(Error::new(std::io::ErrorKind::Other, format!("LLM API error: {}", e))),
+        }
+    }
+
 
     // Updated signature: takes provider and specific_model as separate arguments
     pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, specific_model: Option<&str>) -> String {

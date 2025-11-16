@@ -408,3 +408,14 @@ pre:hover .hljs__link_and_copy .link_and_copy__apply_link,
 .chat-header h2 {
     margin: 0;
 }
+
+.text-area-fmt {
+    width: 100%;
+    height: 8rem;
+    padding: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    resize: vertical;
+}

@@ -67,7 +67,7 @@ pub fn create_system_prompt(
     project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, query_id)
 }
 
-fn replace_hidden_messages(messages: &mut Vec<ChatMessage>) {
+pub fn replace_hidden_messages(messages: &mut Vec<ChatMessage>) {
     for message in messages.iter_mut() {
         if message.hidden {
             message.content = "User hid this message due to it no longer being contextually necessary and/or it was redundant info.".to_string();

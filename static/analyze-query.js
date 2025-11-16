@@ -100,27 +100,76 @@ async function initAnalysisChat() {
 
   initCodeBlockActions();
 
+  const chatInputContainer = document.querySelector(".chat-input");
+
   const searchButton = document.createElement("button");
   searchButton.id = "analysis-search-button";
   searchButton.textContent = "Search Files";
-  document.querySelector(".chat-input").appendChild(searchButton);
+  chatInputContainer.appendChild(searchButton);
 
-  const modal = document.createElement("div");
-  modal.id = "search-results-analysis-modal";
-  modal.classList.add("analysis-search-modal");
-  modal.style.display = "none";
-  modal.innerHTML = `<div class="analysis-search-modal-content">
+  const optimizePromptButton = document.createElement("button"); // Renamed button variable
+  optimizePromptButton.id = "optimize-prompt-button"; // Renamed ID
+  optimizePromptButton.textContent = "Optimize Prompt"; // Renamed text
+  chatInputContainer.appendChild(optimizePromptButton); // Add next to search button
+
+  const searchModal = document.createElement("div");
+  searchModal.id = "search-results-analysis-modal";
+  searchModal.classList.add("analysis-search-modal");
+  searchModal.style.display = "none";
+  searchModal.innerHTML = `<div class="analysis-search-modal-content">
                         <div class="modal-header">
                             <h3>Search Results</h3>
                             <span class="close-search-modal">&times;</span>
                         </div>
                         <div id="search-results-content-files-modal"></div>
                     </div>`;
-  document.body.appendChild(modal);
+  document.body.appendChild(searchModal);
 
+  const optimizePromptModal = document.createElement("div");
+  optimizePromptModal.id = "optimize-prompt-modal";
+  optimizePromptModal.classList.add("analysis-search-modal");
+  optimizePromptModal.style.display = "none";
+  optimizePromptModal.innerHTML = `<div class="analysis-search-modal-content">
+                        <div class="modal-header">
+                            <h3>Optimize Prompt</h3> <!-- Renamed header text -->
+                            <span class="close-optimize-prompt-modal">&times;</span> <!-- Renamed close button class -->
+                        </div>
+                        <div class="modal-body">
+                            <p><strong>Original Prompt:</strong></p>
+                            <textarea id="original-prompt-display" class="text-area-fmt" rows="3" readonly></textarea>
+                            
+                            <p><strong>Optimization Direction (Optional):</strong></p>
+                            <textarea id="optimization-direction-input" class="text-area-fmt" rows="4" placeholder="e.g., Make it more concise, focus on code structure, simplify technical jargon, include specific keywords..."></textarea>
+
+                            <div class="checkbox-group"> <!-- New container for checkboxes -->
+                                <label>
+                                    <input type="checkbox" id="include-chat-history-checkbox">
+                                    Include Chat Conversation History
+                                </label>
+                                <label>
+                                    <input type="checkbox" id="include-context-files-checkbox">
+                                    Include Selected Context Files
+                                </label>
+                            </div>
+
+                            <button id="generate-optimized-prompt-btn" class="primary">Generate Optimized Prompt</button>
+                            <div id="optimized-prompt-loading" style="display:none; color: gray;">Generating...</div>
+                            <div id="optimized-prompt-error" style="color: red; display:none;"></div>
+
+                            <p><strong>Optimized Prompt:</strong></p>
+                            <textarea id="optimized-prompt-output" class="text-area-fmt" rows="5" readonly></textarea>
+                        </div>
+                        <div class="modal-footer">
+                            <button id="use-optimized-prompt-btn" class="primary" style="display:none;">Use Optimized Prompt</button>
+                            <button id="close-optimize-prompt-modal" class="secondary">Close</button>
+                        </div>
+                    </div>`;
+  document.body.appendChild(optimizePromptModal); // Appending new modal variable
+
+  // Event listener for Search Files button
   searchButton.addEventListener("click", async () => {
     const projectName = document.getElementById("project-name").value;
-    const queryText = document.getElementById("analysis-message-input").value;
+    const promptText = document.getElementById("analysis-message-input").value; // Variable rename for clarity
 
     const response = await fetch("/search-related-files", {
       method: "POST",
@@ -129,7 +178,7 @@ async function initAnalysisChat() {
       },
       body: JSON.stringify({
         project: projectName,
-        query: queryText,
+        query: promptText, // Backend still expects 'query' for search, which is fine
       }),
     });
 
@@ -148,18 +197,115 @@ async function initAnalysisChat() {
       searchResultsContent.textContent = "Error: " + data.error;
     }
 
-    modal.style.display = "block";
+    searchModal.style.display = "block";
   });
 
-  modal.querySelector(".close-search-modal").addEventListener("click", () => {
-    modal.style.display = "none";
+  const defaultOptimizationDirections = `
+The goal is to make the queries more effective, precise, and clear.
+
+Consider the following aspects when optimizing:
+- **Clarity and Specificity:** Make the query unambiguous.
+- **Keywords:** Suggest relevant programming terms, API names, design patterns, or function types.
+- **Context:** If a direction is provided, incorporate it to focus the query.
+- **Conciseness:** Remove unnecessary words without losing meaning.
+- **Searchability:** Think about what terms would best match code files.
+  `
+
+  // Event listener for Optimize Prompt button
+  optimizePromptButton.addEventListener("click", () => { // Changed variable name
+    const originalPromptInput = document.getElementById("analysis-message-input");
+    document.getElementById("original-prompt-display").value = originalPromptInput.value; // Changed ID
+    document.getElementById("optimization-direction-input").value = defaultOptimizationDirections; // Clear previous direction
+    document.getElementById("optimized-prompt-output").value = ""; // Changed ID
+    document.getElementById("optimized-prompt-loading").style.display = "none"; // Changed ID
+    document.getElementById("optimized-prompt-error").style.display = "none"; // Changed ID
+    document.getElementById("use-optimized-prompt-btn").style.display = "none"; // Changed ID
+    optimizePromptModal.style.display = "block"; // Changed modal variable
   });
 
-  window.addEventListener("click", (event) => {
-    if (event.target === modal) {
-      modal.style.display = "none";
+  // Event listener for Generate Optimized Prompt button inside the modal
+  document.getElementById("generate-optimized-prompt-btn").addEventListener("click", async () => { // Changed ID
+    const projectName = document.getElementById("project-name").value;
+    const queryId = document.getElementById("query-id").value; // Get query_id for context
+    const originalPrompt = document.getElementById("original-prompt-display").value; // Changed ID and variable name
+    const optimizationDirection = document.getElementById("optimization-direction-input").value;
+    const includeChatHistory = document.getElementById("include-chat-history-checkbox").checked;
+    const includeContextFiles = document.getElementById("include-context-files-checkbox").checked;
+    const optimizedPromptOutput = document.getElementById("optimized-prompt-output"); // Changed ID and variable name
+    const loadingDiv = document.getElementById("optimized-prompt-loading"); // Changed ID
+    const errorDiv = document.getElementById("optimized-prompt-error"); // Changed ID
+    const useOptimizedButton = document.getElementById("use-optimized-prompt-btn"); // Changed ID
+
+    optimizedPromptOutput.value = "";
+    loadingDiv.style.display = "block";
+    errorDiv.style.display = "none";
+    useOptimizedButton.style.display = "none";
+
+    try {
+      const response = await fetch("/optimize-prompt", { // Changed endpoint
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          project: projectName,
+          query_id: queryId,
+          original_prompt: originalPrompt, // Changed field name
+          optimization_direction: optimizationDirection,
+          include_chat_history: includeChatHistory,
+          include_context_files: includeContextFiles,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        optimizedPromptOutput.value = data.optimized_prompt; // Changed field name
+        useOptimizedButton.style.display = "block";
+      } else {
+        errorDiv.textContent = "Error: " + data.error;
+        errorDiv.style.display = "block";
+      }
+    } catch (error) {
+      console.error("Error optimizing prompt:", error); // Changed log message
+      errorDiv.textContent = "Network error or unexpected response.";
+      errorDiv.style.display = "block";
+    } finally {
+      loadingDiv.style.display = "none";
     }
   });
+
+  // Event listener for Use Optimized Prompt button inside the modal
+  document.getElementById("use-optimized-prompt-btn").addEventListener("click", () => { // Changed ID
+    const optimizedPrompt = document.getElementById("optimized-prompt-output").value; // Changed ID and variable name
+    document.getElementById("analysis-message-input").value = optimizedPrompt;
+    optimizePromptModal.style.display = "none"; // Close the modal after using the prompt
+  });
+
+  // Event listener for closing Search modal
+  searchModal.querySelector(".close-search-modal").addEventListener("click", () => {
+    searchModal.style.display = "none";
+  });
+
+  // Event listener for closing Optimize Prompt modal
+  optimizePromptModal.querySelector(".close-optimize-prompt-modal").addEventListener("click", () => { // Changed class
+    optimizePromptModal.style.display = "none";
+  });
+  document.getElementById("close-optimize-prompt-modal").addEventListener("click", () => { // Changed ID
+    optimizePromptModal.style.display = "none";
+  });
+
+
+  // Close modals if clicked outside
+  window.addEventListener("click", (event) => {
+    if (event.target === searchModal) {
+      searchModal.style.display = "none";
+    }
+    if (event.target === optimizePromptModal) { // Changed modal variable
+      optimizePromptModal.style.display = "none";
+    }
+  });
+
 
     document.body.addEventListener('click', (event) => {
     const link = event.target.closest('a.file-path-link');
