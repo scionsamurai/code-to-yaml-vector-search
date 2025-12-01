@@ -175,6 +175,18 @@ pub async fn chat_analysis(
         hidden_context: Some(hidden_context.clone()),
     };
 
+    let user_message_for_llm = ChatMessage {
+        role: "user".to_string(),
+        content: data.message.clone(),
+        hidden: false,
+        commit_hash: commit_hash_for_user_message.clone(), // Assign the commit hash here
+        timestamp: user_message_metadata.timestamp,
+        context_files: user_message_metadata.context_files.clone(),
+        provider: user_message_metadata.provider.clone(),
+        model: user_message_metadata.model.clone(),
+        hidden_context: user_message_metadata.hidden_context.clone(),
+    };
+
     // Create user message to save, with the determined commit_hash
     let user_message_to_save = ChatMessage {
         role: "user".to_string(),
@@ -189,7 +201,7 @@ pub async fn chat_analysis(
     };
 
     // Format messages for LLM with system prompt and existing history + new user message
-    let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_to_save);
+    let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
 
     // Send to LLM
     let llm_response = llm_service

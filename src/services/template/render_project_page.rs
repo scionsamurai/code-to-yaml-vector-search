@@ -14,6 +14,7 @@ impl TemplateService {
     ) -> String {
         format!(
             r#"
+        <!DOCTYPE html>
         <html>
             <head>
                 <title>{}</title>

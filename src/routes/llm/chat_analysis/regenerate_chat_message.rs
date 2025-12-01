@@ -56,7 +56,16 @@ pub async fn regenerate_chat_message(
     if user_message_index.is_none() || full_history[user_message_index.unwrap()].role != "user" {
         return HttpResponse::BadRequest().body("Could not find a preceding user message for regeneration.");
     }
-    let actual_user_message = full_history[user_message_index.unwrap()].clone();
+
+    // Clone the actual user message from history (content is currently escaped)
+    let actual_user_message_escaped = full_history[user_message_index.unwrap()].clone();
+
+    // Create an unescaped version of the user message for the LLM
+    let actual_user_message_unescaped = ChatMessage {
+        content: unescape_html(actual_user_message_escaped.content.clone()),
+        ..actual_user_message_escaped.clone() // Copy other fields
+    };
+    
     // Truncate the history to exclude the model message being regenerated and its preceding user message
     // This allows `format_messages_for_llm` to correctly add the system prompt + existing history + new user message.
     full_history.truncate(user_message_index.unwrap());
@@ -92,7 +101,7 @@ pub async fn regenerate_chat_message(
     }
     
     // Format messages for LLM with system prompt, truncated history, and the user message that led to the response being regenerated
-    let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message);
+    let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message_unescaped);
 
     let llm_response = llm_service
         .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
@@ -112,7 +121,7 @@ pub async fn regenerate_chat_message(
         role: "model".to_string(),
         content: llm_response.clone(),
         hidden: false,
-        commit_hash: actual_user_message.commit_hash.clone(),
+        commit_hash: actual_user_message_escaped.commit_hash.clone(),
         timestamp: assistant_message_metadata.timestamp,
         context_files: assistant_message_metadata.context_files,
         provider: assistant_message_metadata.provider,

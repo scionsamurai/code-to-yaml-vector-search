@@ -136,6 +136,7 @@ impl TemplateService {
 
         format!(
             r#"
+            <!DOCTYPE html>
             <html>
                 <head>
                     <title>Code Analysis - {}</title>
