@@ -84,17 +84,14 @@ pub async fn commit_changes(
                 Ok(oid) => {
                     let commit_hash_str = oid.to_string();
 
-                    // Create the new git-flag message
+                    // Create the new git-flag message using ChatMessage::default()
                     let git_flag_message = ChatMessage {
                         role: "git-flag".to_string(),
                         content: "".to_string(), // Empty as requested
                         hidden: true,           // Hidden as requested
                         commit_hash: Some(commit_hash_str.clone()),
                         timestamp: Some(Utc::now()),
-                        context_files: None,    // Empty/default as requested
-                        provider: None,         // Empty/default as requested
-                        model: None,            // Empty/default as requested
-                        hidden_context: None,   // Empty/default as requested
+                        ..Default::default()
                     };
 
                     // Add the git-flag message to the chat history
@@ -103,11 +100,11 @@ pub async fn commit_changes(
                         &project_dir,
                         git_flag_message,
                         &query_id,
-                    ) {
+                        None // No parent_id override for a git-flag message
+                    ).map(|_| ()) // <--- Map the Result<Uuid, String> to Result<(), String>
+                    {
                         eprintln!("Failed to add git-flag chat message for project '{}', query '{}': {}", project_name, query_id, e);
                         // Log the error but proceed as the Git commit was successful.
-                        // Depending on requirements, this could be a fatal error, but for
-                        // chat history persistence, it's often handled as a soft failure.
                     }
 
                     HttpResponse::Ok().json(CommitChangesResponse {

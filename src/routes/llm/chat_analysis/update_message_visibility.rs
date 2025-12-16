@@ -4,8 +4,7 @@ use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
 use serde_json::Value;
 use std::path::Path;
-
-
+use uuid::Uuid; // <--- ADD THIS LINE
 
 #[post("/update-message-visibility")]
 pub async fn update_message_visibility(
@@ -22,9 +21,13 @@ pub async fn update_message_visibility(
         None => return HttpResponse::BadRequest().body("Missing 'project'"),
     };
 
-    let index = match req.get("index").and_then(|v| v.as_u64()) {
-        Some(i) => i as usize,
-        None => return HttpResponse::BadRequest().body("Missing or invalid 'index'"),
+    // Changed from index: usize to message_id: Uuid
+    let message_id = match req.get("message_id").and_then(|v| v.as_str()) {
+        Some(s) => match Uuid::parse_str(s) {
+            Ok(uuid) => uuid,
+            Err(_) => return HttpResponse::BadRequest().body("Invalid 'message_id' format"),
+        },
+        None => return HttpResponse::BadRequest().body("Missing 'message_id'"),
     };
 
     let hidden = match req.get("hidden").and_then(|v| v.as_bool()) {
@@ -42,7 +45,7 @@ pub async fn update_message_visibility(
     let project_dir = output_dir.join(&project_name);
 
     // Update the message visibility
-    let result = project_service.chat_manager.update_message_visibility(&project_service.query_manager, &project_dir, index, hidden, query_id);
+    let result = project_service.chat_manager.update_message_visibility(&project_service.query_manager, &project_dir, message_id, hidden, query_id);
 
     match result {
         Ok(()) => HttpResponse::Ok().finish(),

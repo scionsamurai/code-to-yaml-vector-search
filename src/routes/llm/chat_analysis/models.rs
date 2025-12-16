@@ -1,5 +1,6 @@
 // src/routes/llm/chat_analysis/models.rs
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Deserialize)]
 pub struct ChatAnalysisRequest {
@@ -18,15 +19,17 @@ pub struct ResetAnalysisChatRequest {
 pub struct UpdateChatMessageRequest {
     pub project: String,
     pub content: String,
-    pub index: usize,
+    pub message_id: Uuid,
     pub query_id: Option<String>,
+    #[serde(default)] // Default to false if not provided
+    pub create_new_branch: bool, // <--- NEW FIELD
 }
 
 #[derive(Deserialize)]
-pub struct RegenerateChatMessageRequest { // New struct for regenerate request
+pub struct RegenerateChatMessageRequest {
     pub project: String,
     pub query_id: Option<String>,
-    pub index: usize, // Index of the model message to regenerate
+    pub message_id: Uuid,
 }
 
 #[derive(Deserialize)]

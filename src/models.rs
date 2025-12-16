@@ -2,6 +2,7 @@
 use chrono;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use uuid::Uuid; // <--- ADD THIS LINE
 
 // pub mod query_management;
 // pub mod chat_management;
@@ -44,13 +45,27 @@ pub struct QueryData {
     pub query: String,
     pub vector_results: Vec<(String, f32)>,
     pub context_files: Vec<String>,
-    pub analysis_chat_history: Vec<ChatMessage>,
+    // This field is kept for backward compatibility.
+    // #[serde(default)] ensures it's an empty Vec if not present in old files.
+    // #[serde(skip_serializing_if = "Vec::is_empty")] prevents it from being serialized
+    // if empty, which effectively cleans up old files after they've been migrated
+    // to the new `chat_nodes` structure.
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub analysis_chat_history: Vec<ChatMessage>, // Kept for backward compatibility
+
+    // New fields for the linked list structure
+    #[serde(default)]
+    pub chat_nodes: HashMap<Uuid, ChatMessage>, // Stores all chat messages by ID
+    #[serde(default)]
+    pub current_node_id: Option<Uuid>, // Points to the ID of the current head of the conversation
+
     pub llm_analysis: String,
     pub title: Option<String>,
     #[serde(default = "default_false")]
     pub include_file_descriptions: bool,
     #[serde(default = "default_false")]
-    pub auto_commit: bool, 
+    pub auto_commit: bool,
 }
 
 impl std::fmt::Display for EmbeddingMetadata {
@@ -63,18 +78,46 @@ impl std::fmt::Display for EmbeddingMetadata {
     }
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+fn default_uuid_v4() -> Uuid {
+    Uuid::new_v4()
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ChatMessage {
+    #[serde(default = "default_uuid_v4")]
+    pub id: Uuid, // Every message gets a unique ID
+    #[serde(default)] // Default to None if not present (for backward compatibility)
+    pub parent_id: Option<Uuid>, // Points to the message it's a direct reply to
+
     pub role: String,
     pub content: String,
     #[serde(default)]
     pub hidden: bool,
-    pub commit_hash: Option<String>,  
+    pub commit_hash: Option<String>,
     pub timestamp: Option<chrono::DateTime<chrono::Utc>>, // Add timestamp
     pub context_files: Option<Vec<String>>,       // Add context files
     pub provider: Option<String>,              // Add provider
     pub model: Option<String>,                 // Add model
     pub hidden_context: Option<Vec<String>>,    // Add hidden context representation
+}
+
+// Implement Default for ChatMessage to ensure new messages get an ID and other defaults
+impl Default for ChatMessage {
+    fn default() -> Self {
+        ChatMessage {
+            id: Uuid::new_v4(), // Generate a unique ID for new messages
+            parent_id: None,
+            role: String::default(),
+            content: String::default(),
+            hidden: false,
+            commit_hash: None,
+            timestamp: None,
+            context_files: None,
+            provider: None,
+            model: None,
+            hidden_context: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -100,4 +143,12 @@ pub struct EmbeddingMetadata {
 #[derive(Deserialize)]
 pub struct UpdateQuery {
     pub force: Option<bool>,
+}
+
+// New struct to pass branching information to the template
+#[derive(Debug)] // Add Debug trait for easier debugging
+pub struct BranchDisplayData {
+    pub current_index: usize, // 0-indexed position of this message among its siblings
+    pub total_siblings: usize, // Total number of siblings (including itself)
+    pub sibling_ids: Vec<Uuid>, // IDs of all siblings (for navigation)
 }

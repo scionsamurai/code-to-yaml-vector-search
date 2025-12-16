@@ -5,6 +5,9 @@ use std::fs::{create_dir_all, read_to_string, write, read_dir, DirEntry};
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 use std::time::SystemTime;
+// Add Uuid import
+use crate::models::ChatMessage; // We'll need ChatMessage for migration
+use std::collections::HashMap; // We'll need HashMap for migration
 
 pub struct QueryManager;
 
@@ -49,6 +52,7 @@ impl QueryManager {
             .map_err(|e| format!("Failed to deserialize query data: {}", e))
     }
 
+    
     pub fn get_most_recent_query_file(&self, project_dir: &Path) -> Result<Option<PathBuf>, String> {
         let queries_dir = self.get_queries_dir(project_dir);
 
@@ -158,7 +162,29 @@ impl QueryManager {
             }
         };
 
-        // Apply the update function
+        // --- MIGRATION LOGIC START ---
+        // If chat_nodes is empty but analysis_chat_history is not,
+        // it means we've loaded an old file. Migrate it to the new structure.
+        if query_data.chat_nodes.is_empty() && !query_data.analysis_chat_history.is_empty() {
+            println!("Migrating old chat history format for query: {}", filename);
+            let mut new_chat_nodes: HashMap<Uuid, ChatMessage> = HashMap::new();
+            let mut last_message_id: Option<Uuid> = None;
+
+            for mut old_message in query_data.analysis_chat_history.drain(..) { // Drain to empty the old Vec
+                let new_id = Uuid::new_v4();
+                old_message.id = new_id;
+                old_message.parent_id = last_message_id;
+                
+                new_chat_nodes.insert(new_id, old_message);
+                last_message_id = Some(new_id);
+            }
+            query_data.chat_nodes = new_chat_nodes;
+            query_data.current_node_id = last_message_id;
+            // The analysis_chat_history Vec is now empty and will not be serialized due to skip_serializing_if
+        }
+        // --- MIGRATION LOGIC END ---
+
+        // Apply the update function to the potentially migrated data
         update_fn(&mut query_data);
 
         // Save the updated query data

@@ -9,7 +9,7 @@ use actix_web::{post, web, HttpResponse};
 use std::path::Path;
 use crate::services::utils::html_utils::{escape_html, unescape_html};
 use std::env;
-use crate::routes::llm::chat_analysis::ChatMessageMetadata;
+use serde_json::json; // <--- ADD THIS LINE to allow creating JSON response
 
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
@@ -61,6 +61,9 @@ pub async fn chat_analysis(
         }
         let unescaped_content = unescape_html(message.content.clone());
         unescaped_history.push(ChatMessage {
+            // id and parent_id are part of the stored message, but we're re-creating here.
+            // When passing to LLM, these are not directly used, but the overall structure matters.
+            // For the LLM context, it's just content and role.
             role: message.role.clone(),
             content: unescaped_content,
             hidden: message.hidden,
@@ -70,6 +73,7 @@ pub async fn chat_analysis(
             provider: message.provider.clone(),
             model: message.model.clone(),
             hidden_context: message.hidden_context.clone(),
+            ..Default::default() // Fill id and parent_id from default (though they'll be ignored for LLM prompt)
         });
     }
 
@@ -166,38 +170,32 @@ pub async fn chat_analysis(
     // Escape the user's message
     let escaped_message = escape_html(data.message.clone()).await;
 
-    // Capture metadata for the user message
-    let user_message_metadata = ChatMessageMetadata {
-        timestamp: Some(chrono::Utc::now()),
-        context_files: Some(context_files.clone()), // Clone the context files
-        provider: Some(project.provider.clone()),
-        model: project.specific_model.clone(),
-        hidden_context: Some(hidden_context.clone()),
-    };
-
+    // Create user message for LLM (unescaped)
     let user_message_for_llm = ChatMessage {
         role: "user".to_string(),
         content: data.message.clone(),
         hidden: false,
-        commit_hash: commit_hash_for_user_message.clone(), // Assign the commit hash here
-        timestamp: user_message_metadata.timestamp,
-        context_files: user_message_metadata.context_files.clone(),
-        provider: user_message_metadata.provider.clone(),
-        model: user_message_metadata.model.clone(),
-        hidden_context: user_message_metadata.hidden_context.clone(),
+        commit_hash: commit_hash_for_user_message.clone(),
+        timestamp: Some(chrono::Utc::now()), // Set timestamp here
+        context_files: Some(context_files.clone()),
+        provider: Some(project.provider.clone()),
+        model: project.specific_model.clone(),
+        hidden_context: Some(hidden_context.clone()),
+        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
     };
 
-    // Create user message to save, with the determined commit_hash
+    // Create user message to save (escaped), with the determined commit_hash
     let user_message_to_save = ChatMessage {
         role: "user".to_string(),
         content: escaped_message.to_string(),
         hidden: false,
-        commit_hash: commit_hash_for_user_message.clone(), // Assign the commit hash here
-        timestamp: user_message_metadata.timestamp,
-        context_files: user_message_metadata.context_files,
-        provider: user_message_metadata.provider,
-        model: user_message_metadata.model,
-        hidden_context: user_message_metadata.hidden_context,
+        commit_hash: commit_hash_for_user_message.clone(),
+        timestamp: user_message_for_llm.timestamp, // Use the same timestamp
+        context_files: user_message_for_llm.context_files.clone(),
+        provider: user_message_for_llm.provider.clone(),
+        model: user_message_for_llm.model.clone(),
+        hidden_context: user_message_for_llm.hidden_context.clone(),
+        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
     };
 
     // Format messages for LLM with system prompt and existing history + new user message
@@ -208,35 +206,39 @@ pub async fn chat_analysis(
         .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
         .await;
 
-    // Capture metadata for the assistant message
-    let assistant_message_metadata = ChatMessageMetadata {
-        timestamp: Some(chrono::Utc::now()),
-        context_files: Some(context_files.clone()), // Clone the context files
-        provider: Some(project.provider.clone()),
-        model: project.specific_model.clone(),
-        hidden_context: Some(hidden_context), 
-    };
-
-    // Create response message (LLM response doesn't directly cause a commit here)
-    let assistant_message = ChatMessage {
+    // Create assistant message
+    let assistant_message_to_save = ChatMessage { // Renamed variable to avoid conflict
         role: "model".to_string(),
         content: llm_response.clone(),
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(), // Associate LLM response with same commit
-        timestamp: assistant_message_metadata.timestamp,
-        context_files: assistant_message_metadata.context_files,
-        provider: assistant_message_metadata.provider,
-        model: assistant_message_metadata.model,
-        hidden_context: assistant_message_metadata.hidden_context,
+        timestamp: Some(chrono::Utc::now()), // Set timestamp here
+        context_files: Some(context_files.clone()),
+        provider: Some(project.provider.clone()),
+        model: project.specific_model.clone(),
+        hidden_context: Some(hidden_context), 
+        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
     };
 
-    // Add messages to chat
+    // Add user message to chat history
+    // For regular conversation flow, parent_id_override is None, so it appends to current_node_id
     project_service.chat_manager
-        .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id)
+        .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id, None) // <--- UPDATED CALL
         .unwrap();
-    project_service.chat_manager
-        .add_chat_message(&project_service.query_manager,&project_dir, assistant_message, query_id)
+    
+    // Add assistant message to chat history
+    // Its parent will be the newly added user message. We need the ID of the user message to be explicit,
+    // but since add_chat_message already sets `current_node_id` to the user message, this next call
+    // will implicitly link to the user message unless we want to override.
+    // However, the `add_chat_message` function returns the ID of the message it just added,
+    // which is what we need for the frontend response.
+    let model_message_id_for_response = project_service.chat_manager
+        .add_chat_message(&project_service.query_manager,&project_dir, assistant_message_to_save, query_id, None) // <--- UPDATED CALL
         .unwrap();
 
-    HttpResponse::Ok().body(llm_response)
+    // Return the content AND the ID of the model message
+    HttpResponse::Ok().json(json!({
+        "message_id": model_message_id_for_response,
+        "content": llm_response
+    }))
 }

@@ -148,6 +148,9 @@ pub async fn analyze_query(
         }
     };
 
+    // Load the full query data to get access to all chat_nodes
+    let full_query_data = project_service.query_manager.load_query_data(&project_dir, &query_id).unwrap_or_default();
+
     // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(
         &form.project,
@@ -156,6 +159,7 @@ pub async fn analyze_query(
         &saved_context_files,
         &project,
         &existing_chat_history, // Pass the Vec<ChatMessage>
+        &full_query_data, // Pass the full QueryData
         &available_queries,
         &query_id,
         include_file_descriptions,

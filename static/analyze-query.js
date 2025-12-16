@@ -7,7 +7,7 @@ import {
   resetChat,
   toggleEditMode,
   toggleHideMessage,
-  regenerateLastMessage,
+  regenerateMessage, // Corrected from regenerateLastMessage
   addMessageToChat
 } from "./analyze-query/chat.js";
 import {
@@ -37,7 +37,7 @@ async function initAnalysisChat() {
     querySelector.addEventListener("change", function () {
       const selectedQueryId = this.value;
 
-      const chatContainer = document.getElementById("analysis-chat-container");
+      // Clear the chat container to prepare for new query's history
       if (chatContainer) {
         chatContainer.innerHTML = "";
       }
@@ -64,32 +64,29 @@ async function initAnalysisChat() {
     });
   }
 
-  document.querySelectorAll(".edit-message-btn").forEach((button) => {
-    button.addEventListener("click", function () {
-      const messageDiv = button.closest(".chat-message");
-      toggleEditMode(messageDiv);
-    });
-  });
-  document.querySelectorAll(".hide-message-btn").forEach((button) => {
-    button.addEventListener("click", function () {
-      const messageDiv = button.closest(".chat-message");
-      toggleHideMessage(messageDiv);
-    });
-  });
-  document.querySelectorAll(".regenerate-message-btn").forEach((button) => {
-    button.addEventListener("click", function () {
-      const messageDiv = button.closest(".chat-message");
-      regenerateLastMessage(messageDiv);
-    });
-  });
-
-  // Format existing messages from Markdown to HTML and store original content
+  // --- Initializing existing chat messages (from server-rendered HTML) ---
   const chatMessages = chatContainer.querySelectorAll(".chat-message");
   for (const messageDiv of chatMessages) {
     const messageContent = messageDiv.querySelector(".message-content");
-    const rawContent = messageContent.innerHTML;
-    messageDiv.dataset.originalContent = rawContent;
-    messageContent.innerHTML = formatMessage(rawContent);
+    const rawContent = messageDiv.dataset.originalContent || messageContent.innerHTML; // Get original content from dataset or innerHTML
+    messageDiv.dataset.originalContent = rawContent; // Ensure it's stored
+
+    messageContent.innerHTML = formatMessage(rawContent); // Apply formatting on load
+
+    // Setup event listeners for existing buttons
+    // These listeners now pass the messageDiv directly, and the functions will extract data-message-id
+    const editButton = messageDiv.querySelector('.edit-message-btn');
+    if (editButton) {
+        editButton.addEventListener('click', () => toggleEditMode(messageDiv));
+    }
+    const hideButton = messageDiv.querySelector('.hide-message-btn');
+    if (hideButton) {
+        hideButton.addEventListener('click', () => toggleHideMessage(messageDiv));
+    }
+    const regenerateButton = messageDiv.querySelector('.regenerate-message-btn');
+    if (regenerateButton) {
+        regenerateButton.addEventListener('click', () => regenerateMessage(messageDiv)); // Corrected function call
+    }
   }
 
   await applySyntaxHighlighting();
@@ -107,10 +104,10 @@ async function initAnalysisChat() {
   searchButton.textContent = "Search Files";
   chatInputContainer.appendChild(searchButton);
 
-  const optimizePromptButton = document.createElement("button"); // Renamed button variable
-  optimizePromptButton.id = "optimize-prompt-button"; // Renamed ID
-  optimizePromptButton.textContent = "Optimize Prompt"; // Renamed text
-  chatInputContainer.appendChild(optimizePromptButton); // Add next to search button
+  const optimizePromptButton = document.createElement("button");
+  optimizePromptButton.id = "optimize-prompt-button";
+  optimizePromptButton.textContent = "Optimize Prompt";
+  chatInputContainer.appendChild(optimizePromptButton);
 
   const searchModal = document.createElement("div");
   searchModal.id = "search-results-analysis-modal";
@@ -131,8 +128,8 @@ async function initAnalysisChat() {
   optimizePromptModal.style.display = "none";
   optimizePromptModal.innerHTML = `<div class="analysis-search-modal-content">
                         <div class="modal-header">
-                            <h3>Optimize Prompt</h3> <!-- Renamed header text -->
-                            <span class="close-optimize-prompt-modal">&times;</span> <!-- Renamed close button class -->
+                            <h3>Optimize Prompt</h3>
+                            <span class="close-optimize-prompt-modal">&times;</span>
                         </div>
                         <div class="modal-body">
                             <p><strong>Original Prompt:</strong></p>
@@ -141,7 +138,7 @@ async function initAnalysisChat() {
                             <p><strong>Optimization Direction (Optional):</strong></p>
                             <textarea id="optimization-direction-input" class="text-area-fmt" rows="4" placeholder="e.g., Make it more concise, focus on code structure, simplify technical jargon, include specific keywords..."></textarea>
 
-                            <div class="checkbox-group"> <!-- New container for checkboxes -->
+                            <div class="checkbox-group">
                                 <label>
                                     <input type="checkbox" id="include-chat-history-checkbox">
                                     Include Chat Conversation History
@@ -164,41 +161,7 @@ async function initAnalysisChat() {
                             <button id="close-optimize-prompt-modal" class="secondary">Close</button>
                         </div>
                     </div>`;
-  document.body.appendChild(optimizePromptModal); // Appending new modal variable
-
-  // Event listener for Search Files button
-  searchButton.addEventListener("click", async () => {
-    const projectName = document.getElementById("project-name").value;
-    const promptText = document.getElementById("analysis-message-input").value; // Variable rename for clarity
-
-    const response = await fetch("/search-related-files", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        project: projectName,
-        query: promptText, // Backend still expects 'query' for search, which is fine
-      }),
-    });
-
-    const data = await response.json();
-
-    let searchResultsContent = document.getElementById(
-      "search-results-content-files-modal"
-    );
-    searchResultsContent.innerHTML = "";
-
-    if (data.success) {
-      searchResultsContent.innerHTML = data.html;
-      // Optional: If you want to link paths in search results as well, uncomment:
-      // linkFilePathsInElement(searchResultsContent);
-    } else {
-      searchResultsContent.textContent = "Error: " + data.error;
-    }
-
-    searchModal.style.display = "block";
-  });
+  document.body.appendChild(optimizePromptModal);
 
   const defaultOptimizationDirections = `
 The goal is to make the queries more effective, precise, and clear.
@@ -211,30 +174,62 @@ Consider the following aspects when optimizing:
 - **Searchability:** Think about what terms would best match code files.
   `
 
+  // Event listener for Search Files button
+  searchButton.addEventListener("click", async () => {
+    const projectName = document.getElementById("project-name").value;
+    const promptText = document.getElementById("analysis-message-input").value;
+
+    const response = await fetch("/search-related-files", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        project: projectName,
+        query: promptText,
+      }),
+    });
+
+    const data = await response.json();
+
+    let searchResultsContent = document.getElementById(
+      "search-results-content-files-modal"
+    );
+    searchResultsContent.innerHTML = "";
+
+    if (data.success) {
+      searchResultsContent.innerHTML = data.html;
+    } else {
+      searchResultsContent.textContent = "Error: " + data.error;
+    }
+
+    searchModal.style.display = "block";
+  });
+
   // Event listener for Optimize Prompt button
-  optimizePromptButton.addEventListener("click", () => { // Changed variable name
+  optimizePromptButton.addEventListener("click", () => {
     const originalPromptInput = document.getElementById("analysis-message-input");
-    document.getElementById("original-prompt-display").value = originalPromptInput.value; // Changed ID
-    document.getElementById("optimization-direction-input").value = defaultOptimizationDirections; // Clear previous direction
-    document.getElementById("optimized-prompt-output").value = ""; // Changed ID
-    document.getElementById("optimized-prompt-loading").style.display = "none"; // Changed ID
-    document.getElementById("optimized-prompt-error").style.display = "none"; // Changed ID
-    document.getElementById("use-optimized-prompt-btn").style.display = "none"; // Changed ID
-    optimizePromptModal.style.display = "block"; // Changed modal variable
+    document.getElementById("original-prompt-display").value = originalPromptInput.value;
+    document.getElementById("optimization-direction-input").value = defaultOptimizationDirections;
+    document.getElementById("optimized-prompt-output").value = "";
+    document.getElementById("optimized-prompt-loading").style.display = "none";
+    document.getElementById("optimized-prompt-error").style.display = "none";
+    document.getElementById("use-optimized-prompt-btn").style.display = "none";
+    optimizePromptModal.style.display = "block";
   });
 
   // Event listener for Generate Optimized Prompt button inside the modal
-  document.getElementById("generate-optimized-prompt-btn").addEventListener("click", async () => { // Changed ID
+  document.getElementById("generate-optimized-prompt-btn").addEventListener("click", async () => {
     const projectName = document.getElementById("project-name").value;
-    const queryId = document.getElementById("query-id").value; // Get query_id for context
-    const originalPrompt = document.getElementById("original-prompt-display").value; // Changed ID and variable name
+    const queryId = document.getElementById("query-id").value;
+    const originalPrompt = document.getElementById("original-prompt-display").value;
     const optimizationDirection = document.getElementById("optimization-direction-input").value;
     const includeChatHistory = document.getElementById("include-chat-history-checkbox").checked;
     const includeContextFiles = document.getElementById("include-context-files-checkbox").checked;
-    const optimizedPromptOutput = document.getElementById("optimized-prompt-output"); // Changed ID and variable name
-    const loadingDiv = document.getElementById("optimized-prompt-loading"); // Changed ID
-    const errorDiv = document.getElementById("optimized-prompt-error"); // Changed ID
-    const useOptimizedButton = document.getElementById("use-optimized-prompt-btn"); // Changed ID
+    const optimizedPromptOutput = document.getElementById("optimized-prompt-output");
+    const loadingDiv = document.getElementById("optimized-prompt-loading");
+    const errorDiv = document.getElementById("optimized-prompt-error");
+    const useOptimizedButton = document.getElementById("use-optimized-prompt-btn");
 
     optimizedPromptOutput.value = "";
     loadingDiv.style.display = "block";
@@ -242,7 +237,7 @@ Consider the following aspects when optimizing:
     useOptimizedButton.style.display = "none";
 
     try {
-      const response = await fetch("/optimize-prompt", { // Changed endpoint
+      const response = await fetch("/optimize-prompt", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -250,7 +245,7 @@ Consider the following aspects when optimizing:
         body: JSON.stringify({
           project: projectName,
           query_id: queryId,
-          original_prompt: originalPrompt, // Changed field name
+          original_prompt: originalPrompt,
           optimization_direction: optimizationDirection,
           include_chat_history: includeChatHistory,
           include_context_files: includeContextFiles,
@@ -260,14 +255,14 @@ Consider the following aspects when optimizing:
       const data = await response.json();
 
       if (data.success) {
-        optimizedPromptOutput.value = data.optimized_prompt; // Changed field name
+        optimizedPromptOutput.value = data.optimized_prompt;
         useOptimizedButton.style.display = "block";
       } else {
         errorDiv.textContent = "Error: " + data.error;
         errorDiv.style.display = "block";
       }
     } catch (error) {
-      console.error("Error optimizing prompt:", error); // Changed log message
+      console.error("Error optimizing prompt:", error);
       errorDiv.textContent = "Network error or unexpected response.";
       errorDiv.style.display = "block";
     } finally {
@@ -276,10 +271,10 @@ Consider the following aspects when optimizing:
   });
 
   // Event listener for Use Optimized Prompt button inside the modal
-  document.getElementById("use-optimized-prompt-btn").addEventListener("click", () => { // Changed ID
-    const optimizedPrompt = document.getElementById("optimized-prompt-output").value; // Changed ID and variable name
+  document.getElementById("use-optimized-prompt-btn").addEventListener("click", () => {
+    const optimizedPrompt = document.getElementById("optimized-prompt-output").value;
     document.getElementById("analysis-message-input").value = optimizedPrompt;
-    optimizePromptModal.style.display = "none"; // Close the modal after using the prompt
+    optimizePromptModal.style.display = "none";
   });
 
   // Event listener for closing Search modal
@@ -288,10 +283,10 @@ Consider the following aspects when optimizing:
   });
 
   // Event listener for closing Optimize Prompt modal
-  optimizePromptModal.querySelector(".close-optimize-prompt-modal").addEventListener("click", () => { // Changed class
+  optimizePromptModal.querySelector(".close-optimize-prompt-modal").addEventListener("click", () => {
     optimizePromptModal.style.display = "none";
   });
-  document.getElementById("close-optimize-prompt-modal").addEventListener("click", () => { // Changed ID
+  document.getElementById("close-optimize-prompt-modal").addEventListener("click", () => {
     optimizePromptModal.style.display = "none";
   });
 
@@ -301,7 +296,7 @@ Consider the following aspects when optimizing:
     if (event.target === searchModal) {
       searchModal.style.display = "none";
     }
-    if (event.target === optimizePromptModal) { // Changed modal variable
+    if (event.target === optimizePromptModal) {
       optimizePromptModal.style.display = "none";
     }
   });
@@ -350,6 +345,44 @@ Consider the following aspects when optimizing:
           updateContext(projectName, queryText);
       }
   });
+
+    // Handle branch navigation clicks
+    chatContainer.addEventListener('click', async (event) => {
+        const branchNavButton = event.target.closest('.branch-nav-btn');
+        if (branchNavButton && !branchNavButton.disabled) {
+            const newCurrentNodeId = branchNavButton.dataset.navTargetId;
+            const projectName = document.getElementById('project-name').value;
+            const queryId = document.getElementById('query-id').value;
+
+            try {
+                const response = await fetch('/set-current-chat-node', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        project_name: projectName,
+                        query_id: queryId,
+                        new_current_node_id: newCurrentNodeId
+                    })
+                });
+
+                if (response.ok) {
+                    console.log(`Current chat node set to: ${newCurrentNodeId}. Reloading chat.`);
+                    // Trigger a full page reload to reflect the new chat branch
+                    location.reload(); 
+                } else {
+                    const errorText = await response.text();
+                    console.error('Error setting current chat node:', errorText);
+                    alert(`Failed to switch branch: ${errorText}`);
+                }
+            } catch (error) {
+                console.error('Network error switching branch:', error);
+                alert(`A network error occurred: ${error.message}`);
+            }
+        }
+    });
+
 
     // Scroll to bottom of chat
     if (chatContainer) {

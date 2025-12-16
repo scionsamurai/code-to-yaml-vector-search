@@ -7,6 +7,7 @@ use crate::services::git_service::GitService;
 use git2::Repository;
 use actix_web::web;
 use std::path::Path;
+// No need to add use uuid::Uuid; here
 
 pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
     // Get selected context files from project
@@ -81,23 +82,15 @@ pub fn format_messages_for_llm(system_prompt: &str, full_history: &Vec<ChatMessa
             role: "user".to_string(),
             content: system_prompt.to_string(),
             hidden: false,
-            commit_hash: None,
-            timestamp: None,
-            context_files: None,
-            provider: None,
-            model: None,
-            hidden_context: None,
+            // Use default for id, parent_id, etc.
+            ..Default::default()
         },
         ChatMessage {
             role: "model".to_string(),
             content: "I confirm that I'll follow your instructions carefully throughout our conversation. I'm here to assist you according to your specific requirements and will respond to your future requests for code analysis appropriately when needed.\n\nPlease feel free to share your next request when you're ready, and I'll provide the analysis or other assistance you're looking for.".to_string(),
             hidden: false,
-            commit_hash: None,
-            timestamp: None,
-            context_files: None,
-            provider: None,
-            model: None,
-            hidden_context: None,
+            // Use default for id, parent_id, etc.
+            ..Default::default()
         }
     ];
 
@@ -188,13 +181,8 @@ pub async fn generate_commit_message(
         role: "user".to_string(),
         content: user_messsage_for_commit,
         hidden: false,
-        commit_hash: None,
-        timestamp: None,
-        context_files: None,
-        provider: None,
-        model: None,
-        hidden_context: None,
-        
+        // Use default for id, parent_id, etc.
+        ..Default::default()
     });
 
     let generated_message_llm_response = llm_service

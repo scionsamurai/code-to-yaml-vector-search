@@ -1,17 +1,21 @@
 // src/services/template/render_analyze_query_page.rs
-use crate::models::{Project, ChatMessage};
+use crate::models::{Project, ChatMessage, QueryData, BranchDisplayData};
 use super::TemplateService;
 use crate::shared;
+use std::collections::HashMap; // <--- ADD this for HashMap
+use uuid::Uuid; // <--- ADD this for Uuid
+use std::collections::BTreeMap; // For sorted children if needed, or just sort Vec
 
 impl TemplateService {
     pub fn render_analyze_query_page(
         &self,
         project_name: &str,
         query: &str,
-        relevant_files: &[String], 
+        relevant_files: &[String],
         saved_context_files: &[String],
         project: &Project,
         existing_chat_history: &[ChatMessage],
+        full_query_data: &QueryData, // <--- NEW: Pass the full QueryData
         available_queries: &[(String, String)],
         current_query_id: &str,
         include_file_descriptions: bool,
@@ -29,23 +33,89 @@ impl TemplateService {
         } else {
             current_query_id
         };
-        
+
         let llm_suggested_files_html = self.generate_llm_suggested_files_list(llm_suggested_files, saved_context_files, project);
         let relevant_files_html = self.generate_relevant_files_list(saved_context_files, &vector_files, project);
-        
+
         // Combine all excluded files for the 'other files' list
         let mut all_excluded_files: Vec<String> = Vec::new();
         all_excluded_files.extend(llm_suggested_files.iter().cloned());
         // Use the `relevant_files` passed in (which is already filtered) for further exclusion
-        all_excluded_files.extend(relevant_files.iter().cloned()); 
+        all_excluded_files.extend(relevant_files.iter().cloned());
 
         let other_files_html = self.generate_other_files_list(project, &all_excluded_files, saved_context_files);
-        
+
         let query_selector_html = self.generate_query_selector(available_queries, query_id);
-        let last_model_message_index = existing_chat_history.iter().rposition(|msg| msg.role == "model");
-        let chat_messages_html = existing_chat_history.iter().enumerate().map(|(index, msg)| {
-            self.gen_chat_message_html(msg, index, last_model_message_index.map(|i| i == index).unwrap_or(false))
-        }).collect::<Vec<_>>().join("\n");
+
+        // Pre-compute branching data for all potential parents
+        let mut branch_display_map: HashMap<Uuid, BranchDisplayData> = HashMap::new();
+        let current_node_id = full_query_data.current_node_id;
+
+        // Group all messages by their parent_id
+        let mut children_map: HashMap<Option<Uuid>, Vec<&ChatMessage>> = HashMap::new();
+        for msg in full_query_data.chat_nodes.values() {
+            children_map.entry(msg.parent_id).or_default().push(msg);
+        }
+
+        // Iterate through all messages to find parents with multiple children
+        for (parent_id_option, children) in children_map {
+            if let Some(parent_id) = parent_id_option { // Only consider actual parents, not root messages
+                if children.len() > 1 {
+                    let mut sorted_siblings: Vec<&ChatMessage> = children.clone();
+                    // Sort siblings by timestamp to maintain a consistent order across page loads
+                    sorted_siblings.sort_by_key(|s_msg| s_msg.timestamp.unwrap_or_else(chrono::Utc::now));
+
+                    let sibling_ids: Vec<Uuid> = sorted_siblings.iter().map(|s_msg| s_msg.id).collect();
+                    let total_siblings = sorted_siblings.len();
+
+                    // Determine the current_index for this specific branch selector
+                    // The current_index is the position of the sibling that is an ancestor of the active current_node_id.
+                    let mut current_index_for_branch = 0;
+                    for (idx, sibling) in sorted_siblings.iter().enumerate() {
+                        // Check if this sibling is on the active path to current_node_id
+                        let mut temp_current_id = current_node_id;
+                        while let Some(ancestor_id) = temp_current_id {
+                            if ancestor_id == sibling.id {
+                                current_index_for_branch = idx;
+                                break;
+                            }
+                            temp_current_id = full_query_data.chat_nodes.get(&ancestor_id).and_then(|m| m.parent_id);
+                            if temp_current_id.is_none() && ancestor_id != sibling.id { // Reached root without finding sibling, break loop
+                                break;
+                            }
+                        }
+                    }
+
+                    let branch_data = BranchDisplayData {
+                        current_index: current_index_for_branch,
+                        total_siblings,
+                        sibling_ids,
+                    };
+                    branch_display_map.insert(parent_id, branch_data);
+                }
+            }
+        }
+
+
+        let mut chat_messages_html_parts = Vec::new();
+        let last_model_message_id = existing_chat_history.iter().rev()
+                                         .find(|msg| msg.role == "model")
+                                         .map(|msg| msg.id);
+
+        for msg in existing_chat_history {
+            let is_last_model_message = last_model_message_id.map_or(false, |id| id == msg.id);
+
+            // After the message, check if it's a parent that branches, and if so, add the navigation
+            if let Some(bd) = branch_display_map.get(&msg.id) {
+                // Generate the message HTML itself
+                chat_messages_html_parts.push(self.gen_chat_message_html(msg, is_last_model_message, self.gen_branch_navigation_html(bd).as_str())); // <--- UPDATED CALL, no branch_data
+            } else {
+                // Just generate the message HTML without navigation
+                chat_messages_html_parts.push(self.gen_chat_message_html(msg, is_last_model_message, ""));
+            }
+        }
+        let chat_messages_html = chat_messages_html_parts.join("\n");
+
 
         // Determine if the checkbox should be checked
         let descriptions_checked_attr = if include_file_descriptions { "checked" } else { "" };
@@ -97,7 +167,7 @@ impl TemplateService {
                 r#"
                 <div class="file-list">
                     <h3>
-                        LLM Suggested Files 
+                        LLM Suggested Files
                         <button id="toggle-llm-suggested-files" class="toggle-button">Toggle All</button>
                     </h3>
                     <div id="llm-suggested-files-list">
@@ -155,7 +225,7 @@ impl TemplateService {
         {}
                 </head>
                 <body>
-                
+
                 <div class="analysis-container">
                     <div class="editable-query">
                         <p>Project: {}</p>
@@ -169,8 +239,8 @@ impl TemplateService {
                         </div>
                             <h2>Files for Analysis</h2>
                         <div class="file-snippets">
-                            
-                            <div id="context-status" style="display: none; margin: 10px 0; padding: 5px; 
+
+                            <div id="context-status" style="display: none; margin: 10px 0; padding: 5px;
                                 background-color: #f0f0f0; border-radius: 4px; transition: opacity 0.5s;">
                             </div>
 
@@ -180,7 +250,7 @@ impl TemplateService {
                             </div>
 
                             {} <!-- LLM Suggested Files Section -->
-                            
+
                             <div class="file-list">
                                 <h3>
                                     Other Relevant Files?
@@ -190,7 +260,7 @@ impl TemplateService {
                                     {}
                                 </div>
                             </div>
-                            
+
                             <div class="file-list">
                                 <h3>
                                     Other Project Files
@@ -199,10 +269,10 @@ impl TemplateService {
                                     {}
                                 </div>
                             </div>
-                            
+
                         </div>
                     </div>
-                    
+
                     <div class="chat-interface">
                         <div class="chat-header">
                             <h2>Chat about your code</h2>
@@ -214,11 +284,11 @@ impl TemplateService {
                         <input type="hidden" id="project-name" value="{}">
                         <input type="hidden" id="query-text" value="{}">
                         <input type="hidden" id="project-source-dir" value="{}">
-                        
+
                         <div id="analysis-chat-container" class="chat-container">
                             {}
                         </div>
-                        
+
                         <div class="chat-input">
                             <textarea id="analysis-message-input" placeholder="Ask a question about the code..."></textarea>
                             <button id="analysis-send-button">Send</button>

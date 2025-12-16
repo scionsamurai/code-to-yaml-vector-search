@@ -8,6 +8,7 @@ pub mod apply_code_to_file;
 pub mod utils;
 pub mod models;
 pub mod suggest_branch_name;
+pub mod set_current_chat_node;
 
 use actix_web::web;
 
@@ -27,6 +28,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_chat_message::update_chat_message)
         .service(apply_code_to_file::apply_code_to_file) // New service for applying code to a file
         .service(regenerate_chat_message::regenerate_chat_message)
-        .service(suggest_branch_name::suggest_branch_name);
+        .service(suggest_branch_name::suggest_branch_name)
+        .service(set_current_chat_node::set_current_chat_node);
 
 }
