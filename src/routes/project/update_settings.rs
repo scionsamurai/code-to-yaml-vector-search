@@ -14,6 +14,7 @@ pub struct ProjectSettings {
     pub provider: String,
     pub default_use_yaml: Option<bool>,
     pub specific_model: Option<String>,
+    pub yaml_model: Option<String>, // New YAML model field
     pub git_integration_enabled: Option<bool>,
 }
 
@@ -39,6 +40,7 @@ pub async fn update_settings(
             project.provider = form.provider.clone();
             project.default_use_yaml = form.default_use_yaml.unwrap_or(false);
             project.specific_model = form.specific_model.clone();
+            project.yaml_model = form.yaml_model.clone(); // Save the new YAML model
             project.git_integration_enabled = form.git_integration_enabled.unwrap_or(false);
             let new_default_use_yaml = project.default_use_yaml;
 

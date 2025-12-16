@@ -56,8 +56,12 @@ impl TemplateService {
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label for="specific_model">Specific Model (optional):</label>
+                                <label for="specific_model">Chat Model (optional):</label> <!-- LABEL CHANGE HERE -->
                                 <input type="text" id="specific_model" name="specific_model" value="{}">
+                            </div>
+                            <div class="form-group">
+                                <label for="yaml_model">YAML Model (optional):</label> <!-- NEW FIELD HERE -->
+                                <input type="text" id="yaml_model" name="yaml_model" value="{}">
                             </div>
                             <div class="form-group">
                                 <label for="default_use_yaml">Default Use YAML:</label>
@@ -116,6 +120,7 @@ impl TemplateService {
             if project.provider == "openai" { "selected" } else { "" },
             if project.provider == "anthropic" { "selected" } else { "" },
             project.specific_model.as_deref().unwrap_or(""),
+            project.yaml_model.as_deref().unwrap_or(""), // Pass the new yaml_model value
             if project.default_use_yaml { "checked" } else { "" },
             if project.git_integration_enabled { "checked" } else { "" },
             project.name,

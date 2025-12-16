@@ -59,7 +59,7 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
             embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &markdown_content, git_blob_hash_for_file.clone()).await;
         } else if use_yaml && needs_update {
             println!("YAML update needed for: {}", &file.path);
-            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.provider, project.specific_model.as_deref()).await;
+            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.provider, project.specific_model.as_deref(), project.yaml_model.as_deref()).await;
 
             // Write YAML to file
             write(&yaml_path, combined_content.clone().unwrap()).unwrap();

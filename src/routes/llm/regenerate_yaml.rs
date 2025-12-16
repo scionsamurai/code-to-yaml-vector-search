@@ -35,7 +35,8 @@ pub async fn regenerate_yaml(
             };
             
             let yaml_management = YamlManagement::new();
-            let combined_content = yaml_management.create_yaml_with_imports(&project_file, &project.provider, project.specific_model.as_deref()).await;
+            // Pass specific_model (chat_model) and yaml_model from project
+            let combined_content = yaml_management.create_yaml_with_imports(&project_file, &project.provider, project.specific_model.as_deref(), project.yaml_model.as_deref()).await;
 
             write(&yaml_path, &combined_content.clone().unwrap()).unwrap();
             return HttpResponse::Ok().body(combined_content.unwrap());

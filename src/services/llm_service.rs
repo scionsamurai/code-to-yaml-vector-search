@@ -128,8 +128,11 @@ impl LlmService {
     }
 
 
-    // Updated signature: takes provider and specific_model as separate arguments
-    pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, specific_model: Option<&str>) -> String {
+    // Updated signature: takes provider and specific_model (for chat) AND yaml_model as separate arguments
+    pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, chat_model: Option<&str>, yaml_model: Option<&str>) -> String { // NEW: Added yaml_model
+        // Use yaml_model if provided, otherwise fallback to chat_model, then to None (default LLM model for API access if none specified)
+        let model_to_use = yaml_model.or(chat_model);
+
         // Determine the target model based on provider string
         let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
@@ -160,8 +163,8 @@ impl LlmService {
             },
         ];
 
-        // Pass specific_model directly to the llm_api_access crate
-        let llm_response = target_model.send_convo_message(messages, specific_model).await;
+        // Pass the determined model directly to the llm_api_access crate
+        let llm_response = target_model.send_convo_message(messages, model_to_use).await;
 
         // remove backticks and extract the YAML content
         let yaml_content = match llm_response {

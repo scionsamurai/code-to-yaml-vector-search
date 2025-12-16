@@ -27,6 +27,8 @@ pub struct Project {
     pub provider: String,
     #[serde(default)]
     pub specific_model: Option<String>,
+    #[serde(default)] // Default to None if not present (for backward compatibility)
+    pub yaml_model: Option<String>, // New field for YAML conversion model
     #[serde(default)]
     pub embeddings: HashMap<String, EmbeddingMetadata>,
     #[serde(default)]

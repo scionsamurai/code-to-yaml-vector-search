@@ -31,10 +31,12 @@ impl YamlManagement {
         &self, // Added self
         project_file: &ProjectFile,
         provider: &str,
-        specific_model: Option<&str>,
+        chat_model: Option<&str>, // Existing specific_model, now conceptually chat_model
+        yaml_model: Option<&str>, // New parameter for YAML model
     ) -> Option<String> {
 
-        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, specific_model).await;
+        // Pass both chat_model (specific_model) and yaml_model to llm_service.convert_to_yaml
+        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, chat_model, yaml_model).await;
 
         let language = Path::new(&project_file.path)
             .extension()
