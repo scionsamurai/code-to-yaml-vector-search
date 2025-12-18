@@ -39,18 +39,18 @@ impl TemplateService {
         ));
 
         if query_id != "transient_query_id" {
-            // Update the analyze button to use the new endpoint
+            // --- MODIFIED START ---
+            // Update the form to use method="get" and build the URL with path parameters
             search_results_html.push_str(&format!(
                 r#"<div class="query-actions">
-                <form action="/analyze-query" method="post">
-                    <input type="hidden" name="query_id" value="{}">
-                    <input type="hidden" name="project" value="{}">
+                <form action="/analyze-query/{}/{}" method="get">
                     <input type="hidden" name="query" value="{}">
                     <button type="submit" class="analyze-button">Chat with Analysis</button>
                 </form>
             </div>"#,
-                query_id, project_name, query_text
+                project_name, query_id, query_text // project_name and query_id are now in the URL path
             ));
+            // --- MODIFIED END ---
         }
 
         search_results_html

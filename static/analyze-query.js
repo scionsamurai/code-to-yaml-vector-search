@@ -7,7 +7,7 @@ import {
   resetChat,
   toggleEditMode,
   toggleHideMessage,
-  regenerateMessage, // Corrected from regenerateLastMessage
+  regenerateMessage,
   addMessageToChat
 } from "./analyze-query/chat.js";
 import {
@@ -37,30 +37,15 @@ async function initAnalysisChat() {
     querySelector.addEventListener("change", function () {
       const selectedQueryId = this.value;
 
-      // Clear the chat container to prepare for new query's history
+      // Clear the chat container to prepare for new query's history (optional, as page will reload)
       if (chatContainer) {
         chatContainer.innerHTML = "";
       }
 
-      const form = document.createElement("form");
-      form.method = "post";
-      form.action = "/analyze-query";
-
-      // Add the project
-      const projectInput = document.createElement("input");
-      projectInput.type = "hidden";
-      projectInput.name = "project";
-      projectInput.value = projectName;
-      form.appendChild(projectInput);
-
-      const queryIdInput = document.createElement("input");
-      queryIdInput.type = "hidden";
-      queryIdInput.name = "query_id";
-      queryIdInput.value = selectedQueryId;
-      form.appendChild(queryIdInput);
-
-      document.body.appendChild(form);
-      form.submit();
+      // --- MODIFIED START ---
+      // Keeping this as a full page reload for now due to complexity of re-rendering entire page context
+      window.location.href = `/analyze-query/${projectName}/${selectedQueryId}`;
+      // --- MODIFIED END ---
     });
   }
 
@@ -83,9 +68,22 @@ async function initAnalysisChat() {
     if (hideButton) {
         hideButton.addEventListener('click', () => toggleHideMessage(messageDiv));
     }
-    const regenerateButton = messageDiv.querySelector('.regenerate-message-btn');
+    // Check if a regenerate button already exists, if not, add it for model messages
+    // This is to ensure pre-rendered model messages also have the button
+    let regenerateButton = messageDiv.querySelector('.regenerate-message-btn');
+    if (!regenerateButton && messageDiv.classList.contains('model-message')) {
+        // Find message controls and append the button if it's a model message
+        const messageControls = messageDiv.querySelector('.message-controls');
+        if (messageControls) {
+            regenerateButton = document.createElement('button'); // createRegenerateButton is not directly exposed to analyze-query.js
+            regenerateButton.className = 'regenerate-message-btn';
+            regenerateButton.textContent = 'Regenerate';
+            regenerateButton.title = 'Regenerate response';
+            messageControls.appendChild(regenerateButton);
+        }
+    }
     if (regenerateButton) {
-        regenerateButton.addEventListener('click', () => regenerateMessage(messageDiv)); // Corrected function call
+        regenerateButton.addEventListener('click', () => regenerateMessage(messageDiv));
     }
   }
 
@@ -370,7 +368,7 @@ Consider the following aspects when optimizing:
                 if (response.ok) {
                     console.log(`Current chat node set to: ${newCurrentNodeId}. Reloading chat.`);
                     // Trigger a full page reload to reflect the new chat branch
-                    location.reload(); 
+                    location.reload(); // Keeping reload here for full branch context update
                 } else {
                     const errorText = await response.text();
                     console.error('Error setting current chat node:', errorText);

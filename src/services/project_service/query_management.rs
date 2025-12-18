@@ -320,4 +320,18 @@ impl QueryManager {
             Err(_e) => Some(Vec::new()),
         }
     }
+
+    pub fn get_chat_node(
+        &self,
+        project_dir: &Path,
+        query_filename: &str,
+        message_id: &Uuid,
+    ) -> Option<ChatMessage> {
+        match self.load_query_data_by_filename(project_dir, query_filename) {
+            Ok(Some(query_data)) => {
+                query_data.chat_nodes.get(message_id).cloned()
+            }
+            _ => None,
+        }
+    }
 }

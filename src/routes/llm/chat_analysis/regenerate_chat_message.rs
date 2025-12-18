@@ -6,9 +6,9 @@ use crate::models::ChatMessage;
 use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
+// Removed: use actix_web::http::header;
 use std::path::Path;
-use crate::services::utils::html_utils::unescape_html;
-use serde_json::json; // <--- ADD THIS for JSON response
+// Removed: use crate::services::utils::html_utils::unescape_html;
 
 #[post("/regenerate-chat-message")]
 pub async fn regenerate_chat_message(
@@ -43,7 +43,7 @@ pub async fn regenerate_chat_message(
         if model_msg.role != "model" {
             return HttpResponse::BadRequest().body("Can only regenerate model messages.");
         }
-        model_msg.parent_id // This should be the user message's ID
+        model_msg.parent_id
     } else {
         return HttpResponse::BadRequest().body("Message to regenerate not found.");
     };
@@ -60,10 +60,11 @@ pub async fn regenerate_chat_message(
     }
     let user_message_index = user_message_index.unwrap();
 
-    let actual_user_message_escaped = full_history[user_message_index].clone();
-    let actual_user_message_unescaped = ChatMessage {
-        content: unescape_html(actual_user_message_escaped.content.clone()),
-        ..actual_user_message_escaped.clone() // Copy other fields, id, parent_id are ignored for LLM prompt
+    let actual_user_message_from_history = full_history[user_message_index].clone();
+    // Content is already assumed to be raw markdown, no unescape needed.
+    let actual_user_message_for_llm = ChatMessage {
+        content: actual_user_message_from_history.content.clone(), // Raw markdown
+        ..actual_user_message_from_history.clone()
     };
 
     // Truncate the history for the LLM prompt to include only messages *before* the user message
@@ -92,10 +93,10 @@ pub async fn regenerate_chat_message(
         if !code.is_empty() {
             hidden_context.push(code.to_string());
         }
-        let unescaped_content = unescape_html(message.content.clone());
+        // Content is assumed to be raw markdown, no unescape needed.
         unescaped_history_for_llm.push(ChatMessage {
             role: message.role.clone(),
-            content: unescaped_content,
+            content: message.content.clone(), // Raw markdown
             hidden: message.hidden,
             commit_hash: message.commit_hash.clone(),
             timestamp: message.timestamp,
@@ -106,32 +107,32 @@ pub async fn regenerate_chat_message(
             ..Default::default()
         });
     }
-    
-    let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message_unescaped);
+
+    let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message_for_llm);
 
     let llm_response = llm_service
         .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
         .await;
 
-    // Create a NEW assistant message for the regenerated response
+    // Create a NEW assistant message for the regenerated response (raw markdown)
     let new_assistant_message = ChatMessage {
         role: "model".to_string(),
-        content: llm_response.clone(),
+        content: llm_response.clone(), // Raw markdown
         hidden: false,
-        commit_hash: actual_user_message_escaped.commit_hash.clone(), // Associate with same commit as user message
+        commit_hash: actual_user_message_from_history.commit_hash.clone(),
         timestamp: Some(chrono::Utc::now()),
-        context_files: actual_user_message_escaped.context_files.clone(),
-        provider: actual_user_message_escaped.provider.clone(),
-        model: actual_user_message_escaped.model.clone(),
-        hidden_context: actual_user_message_escaped.hidden_context.clone(),
-        ..Default::default() // id and parent_id will be overwritten by add_chat_message
+        context_files: actual_user_message_from_history.context_files.clone(),
+        provider: actual_user_message_from_history.provider.clone(),
+        model: actual_user_message_from_history.model.clone(),
+        hidden_context: actual_user_message_from_history.hidden_context.clone(),
+        ..Default::default()
     };
 
     // Add the new message, explicitly setting its parent_id to the user message
     // This creates a new branch point from the user message.
-    let new_message_id = match project_service.chat_manager.add_chat_message(
-        &project_service.query_manager, 
-        &project_dir, 
+    let new_assistant_message_id = match project_service.chat_manager.add_chat_message(
+        &project_service.query_manager,
+        &project_dir,
         new_assistant_message,
         query_id,
         Some(user_message_id) // The parent is the user message
@@ -140,9 +141,28 @@ pub async fn regenerate_chat_message(
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to save regenerated message as new branch: {}", e)),
     };
 
-    // Frontend needs the new message ID and content
-    HttpResponse::Ok().json(json!({
-        "message_id": new_message_id,
-        "content": llm_response
-    }))
+    // --- NEW: Update the QueryData's current_node_id to point to the new message ---
+    let mut query_data = match project_service.query_manager.load_query_data(&project_dir, query_id) {
+        Ok(qd) => qd,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data for current_node_id update: {}", e)),
+    };
+    query_data.current_node_id = Some(new_assistant_message_id);
+    if let Err(e) = project_service.query_manager.save_query_data(&project_dir, &query_data, query_id) {
+        eprintln!("Failed to save query data after regenerating message: {}", e);
+        return HttpResponse::InternalServerError().body(format!("Failed to update query's current node: {}", e));
+    }
+    // --- END NEW ---
+
+    // Fetch the newly created message to return its full data
+    let new_model_message_to_return = project_service.query_manager.get_chat_node(&project_dir, query_id, &new_assistant_message_id)
+        .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve new regenerated model message."));
+
+
+    // Return JSON response instead of redirect
+    HttpResponse::Ok().json(RegenerateChatMessageResponse {
+        success: true,
+        new_model_message: new_model_message_to_return.unwrap(),
+        new_current_node_id: new_assistant_message_id,
+        user_message_id, // Pass the ID of the user message that was the parent
+    })
 }

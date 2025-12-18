@@ -16,7 +16,7 @@ pub async fn apply_code_to_file(
 
     // Load the project
     let output_dir = Path::new(&app_state.output_dir);
-    let project_dir = output_dir.join(&data.project);
+    let project_dir = output_dir.join(&data.project_name);
 
     let project = match project_service.load_project(&project_dir) {
         Ok(p) => p,
@@ -27,7 +27,7 @@ pub async fn apply_code_to_file(
     };
 
     // Call the FileService to write the content
-    match file_service.write_file_content(&project, &data.file_path, &data.content) {
+    match file_service.write_file_content(&project, &data.file_path, &data.code_content) {
         Ok(_) => {
             println!("Server Debug: Successfully wrote content to {}", data.file_path); // Added this for explicit success logging
             HttpResponse::Ok().body(format!("Successfully applied code to {}", data.file_path))

@@ -3,104 +3,25 @@ import { formatMessage, linkFilePathsInElement } from './utils.js';
 import { applySyntaxHighlighting } from './syntax-highlighting.js';
 import { initCodeBlockActions } from './code-block-actions.js';
 
-export function sendMessage(chatContainer) {
-    const messageInput = document.getElementById('analysis-message-input');
-    const message = messageInput.value.trim();
-    if (message) {
-        // Add user message to chat. We don't have an ID yet, so messageId is null.
-        const userMessageDiv = addMessageToChat('user', message, chatContainer); // Capture the created div
-
-        messageInput.value = '';
-
-        if (chatContainer) {
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
-
-        const projectName = document.getElementById('project-name').value;
-        const queryId = document.getElementById('query-id').value;
-
-        fetch('/chat-analysis', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                project: projectName,
-                message: message,
-                query_id: queryId
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(text => { throw new Error(text); });
-            }
-            // Expect JSON object with user_message_id, model_message_id, and model_content
-            return response.json();
-        })
-        .then(async data => {
-            // Update the user message div with its actual ID from the backend
-            if (data.user_message_id) {
-                userMessageDiv.dataset.messageId = data.user_message_id;
-            }
-
-            // --- No longer dynamically adding/removing regenerate buttons or branch navigators here ---
-            // --- The entire chat will reload to reflect the new state, including branch navigators. ---
-            location.reload(); // Full reload to ensure correct branch state and button placement
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            addMessageToChat('model', `Error: Could not get a response. ${error.message}`, chatContainer);
-            if (chatContainer) {
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-        });
+/**
+ * Scrolls the given chat container to the bottom.
+ * @param {HTMLElement} chatContainer
+ */
+function scrollToBottom(chatContainer) {
+    if (chatContainer) {
+        chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 }
 
-export function resetChat(chatContainer) {
-    // Clear chat display immediately for UX
-    while (chatContainer.firstChild) {
-        chatContainer.removeChild(chatContainer.firstChild);
-    }
-
-    const projectName = document.getElementById('project-name').value;
-    const queryIdInput = document.getElementById('query-id');
-
-    fetch('/reset-analysis-chat', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            project: projectName,
-            query_id: queryIdInput.value
-        })
-    })
-    .then(response => response.text()) // Expect the new query_id (filename) as text
-    .then(async responseText => {
-        console.log('Chat reset successfully:', responseText);
-        const querySelector = document.getElementById('query-selector');
-        const newQueryId = responseText;
-
-        // Clear existing options in the query selector
-        querySelector.innerHTML = '';
-        // Add the new query_id as an option
-        const option = document.createElement('option');
-        option.value = newQueryId;
-        option.text = newQueryId.replace(".json", ""); // Display without .json
-        querySelector.appendChild(option);
-        querySelector.value = newQueryId; // Select the new query
-
-        queryIdInput.value = newQueryId; // Update the hidden input with the new query ID
-        location.reload(); // Reload to reflect the reset chat and new query_id
-    })
-    .catch(error => {
-        console.error('Error resetting chat:', error);
-        addMessageToChat('model', `Error resetting chat: ${error.message}`, chatContainer);
-    });
-}
-
-// Updated to accept an optional messageId
+/**
+ * Appends a message div to the chat, applies formatting and event listeners.
+ * @param {string} role 'user' or 'model'
+ * @param {string} content Raw markdown content
+ * @param {HTMLElement} chatContainer
+ * @param {boolean} hidden Whether the message is initially hidden
+ * @param {string} messageId UUID of the message
+ * @returns {HTMLElement} The created message div
+ */
 export function addMessageToChat(role, content, chatContainer, hidden = false, messageId = null) {
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${role}-message`;
@@ -120,9 +41,7 @@ export function addMessageToChat(role, content, chatContainer, hidden = false, m
     editButton.className = 'edit-message-btn';
     editButton.textContent = 'Edit';
     editButton.title = 'Edit message';
-    // Event listener now directly on button, retrieves ID from parent
     editButton.addEventListener('click', (event) => toggleEditMode(event.target.closest('.chat-message')));
-
     messageControls.appendChild(editButton);
 
     const hideButton = document.createElement('button');
@@ -130,19 +49,164 @@ export function addMessageToChat(role, content, chatContainer, hidden = false, m
     hideButton.textContent = hidden ? 'Unhide' : 'Hide';
     hideButton.title = hidden ? 'Unhide message' : 'Hide message';
     hideButton.dataset.hidden = hidden; // Store hidden state
-    // Event listener now directly on button, retrieves ID from parent
     hideButton.addEventListener('click', (event) => toggleHideMessage(event.target.closest('.chat-message')));
-
     messageControls.appendChild(hideButton);
+
+    // Only add regenerate button for model messages
+    if (role === 'model') {
+        const regenerateButton = createRegenerateButton();
+        messageControls.appendChild(regenerateButton);
+    }
 
     messageDiv.appendChild(messageContent);
     messageDiv.appendChild(messageControls);
     chatContainer.appendChild(messageDiv);
 
-    // The actual linking will happen AFTER applySyntaxHighlighting in the .then() block of sendMessage
-    // or for initial messages, directly in initAnalysisChat. This ensures order of operations.
+    // Apply post-processing
+    applySyntaxHighlighting(messageDiv);
+    linkFilePathsInElement(messageContent);
+    initCodeBlockActions(messageDiv); // Init actions for new code blocks
 
-    return messageDiv; // <-- Ensure this returns the messageDiv
+    return messageDiv;
+}
+
+/**
+ * Updates an existing message div's content and re-applies formatting/actions.
+ * @param {HTMLElement} messageDiv The target message div
+ * @param {string} newContent Raw markdown content
+ */
+function updateMessageInChat(messageDiv, newContent) {
+    const messageContent = messageDiv.querySelector('.message-content');
+    messageContent.innerHTML = formatMessage(newContent);
+    messageDiv.dataset.originalContent = newContent; // Update original content for future edits
+
+    applySyntaxHighlighting(messageDiv);
+    linkFilePathsInElement(messageContent);
+    initCodeBlockActions(messageDiv);
+}
+
+// NOTE: The `replaceMessageWithNew` function has been removed as it was not used and the new
+// dynamic update logic for regeneration and branching on edit directly handles message insertion.
+
+
+export async function sendMessage(chatContainer) {
+    const messageInput = document.getElementById('analysis-message-input');
+    const message = messageInput.value.trim();
+    if (message) {
+        // Add user message to chat immediately for UX. messageId is temporary for now.
+        const tempUserMessageDiv = addMessageToChat('user', message, chatContainer);
+        // Clear input and scroll before API call
+        messageInput.value = '';
+        scrollToBottom(chatContainer);
+
+        const projectName = document.getElementById('project-name').value;
+        const queryId = document.getElementById('query-id').value;
+
+        try {
+            const response = await fetch('/chat-analysis', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    project: projectName,
+                    message: message,
+                    query_id: queryId
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText);
+            }
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Update the temporary user message with its actual ID from backend
+                tempUserMessageDiv.dataset.messageId = data.user_message.id;
+                // Update its content in case backend processed it or for consistency
+                updateMessageInChat(tempUserMessageDiv, data.user_message.content);
+
+                // Add model message
+                const modelMessageDiv = addMessageToChat(
+                    data.model_message.role,
+                    data.model_message.content,
+                    chatContainer,
+                    data.model_message.hidden,
+                    data.model_message.id
+                );
+                scrollToBottom(chatContainer);
+
+                // Optionally, update the branch UI here if a specific message's children count changed
+                // This would involve finding the parent of the user message (which is `current_node_id` before this interaction)
+                // and re-rendering its branch navigation controls. This is complex, will defer for now.
+
+            } else {
+                addMessageToChat('model', `Error: ${data.message || 'Unknown error during chat analysis.'}`, chatContainer);
+                scrollToBottom(chatContainer);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            addMessageToChat('model', `Error: Could not get a response. ${error.message}`, chatContainer);
+            scrollToBottom(chatContainer);
+        } finally {
+            // Re-enable input if needed or other final UI touches
+            // If the temp message wasn't replaced, clean it up or keep for error.
+            // Current approach keeps it and just adds a model error below it.
+        }
+    }
+}
+
+export async function resetChat(chatContainer) {
+    // Clear chat display immediately for UX
+    while (chatContainer.firstChild) {
+        chatContainer.removeChild(chatContainer.firstChild);
+    }
+
+    const projectName = document.getElementById('project-name').value;
+    const queryId = document.getElementById('query-id').value;
+
+    try {
+        const response = await fetch('/reset-analysis-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: projectName,
+                query_id: queryId
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Populate chat with new history
+            data.initial_chat_history.forEach(msg => {
+                addMessageToChat(msg.role, msg.content, chatContainer, msg.hidden, msg.id);
+            });
+            scrollToBottom(chatContainer);
+            // Re-render query data / page for the new current_node_id and potential branch changes
+            // For full UI context update, a reload is simpler for now, similar to query selection.
+            // This is a trade-off. If only chat needs update, it's fine.
+            // If other UI elements depend on `current_node_id` this would need a partial reload or JS to update everything.
+            // Keeping reload here for full context reset due to complexity of re-rendering full page state (branch UI, etc.).
+            location.reload();
+        } else {
+            addMessageToChat('model', `Error resetting chat: ${data.message || 'Unknown error.'}`, chatContainer);
+        }
+    } catch (error) {
+        console.error('Error resetting chat:', error);
+        addMessageToChat('model', `Error resetting chat: ${error.message}`, chatContainer);
+    } finally {
+        scrollToBottom(chatContainer);
+    }
 }
 
 function createRegenerateButton() {
@@ -152,7 +216,7 @@ function createRegenerateButton() {
     regenerateButton.title = 'Regenerate response';
     regenerateButton.addEventListener('click', (event) => {
         const messageDiv = event.target.closest('.chat-message');
-        regenerateMessage(messageDiv); // Changed name to be more general if we allow regenerating any message
+        regenerateMessage(messageDiv);
     });
     return regenerateButton;
 }
@@ -172,16 +236,14 @@ export function toggleEditMode(messageDiv) {
         const editedContent = editor.value;
         const createNewBranch = messageDiv.querySelector('.create-branch-on-edit-checkbox')?.checked || false;
 
-        messageDiv.dataset.originalContent = editedContent;
-
-        // Temporarily clear content to show "Saving..." or similar if desired,
-        // but for now we'll just re-render after saving
+        // Temporarily show loading state
+        messageContent.innerHTML = '<em>Saving changes...</em>';
 
         messageDiv.classList.remove('editing');
         if (editor) editor.remove();
         if (messageDiv.querySelector('.edit-controls')) messageDiv.querySelector('.edit-controls').remove();
 
-        saveEditedMessage(messageId, editedContent, createNewBranch, messageDiv); // Pass messageDiv to handle updates
+        saveEditedMessage(messageId, editedContent, createNewBranch, messageDiv);
     } else {
         messageDiv.classList.add('editing');
 
@@ -206,9 +268,7 @@ export function toggleEditMode(messageDiv) {
             editor.remove();
             editControls.remove();
             // Re-render original content if editing was cancelled after changes but before save
-            messageContent.innerHTML = formatMessage(originalContent);
-            applySyntaxHighlighting(messageDiv);
-            linkFilePathsInElement(messageContent);
+            updateMessageInChat(messageDiv, originalContent);
         });
 
         const createBranchCheckbox = document.createElement('input');
@@ -223,57 +283,87 @@ export function toggleEditMode(messageDiv) {
         createBranchContainer.appendChild(createBranchCheckbox);
         createBranchContainer.appendChild(createBranchLabel);
 
+        messageDiv.insertBefore(editor, messageContent.nextSibling);
+        messageDiv.insertBefore(editControls, editor.nextSibling);
         editControls.appendChild(saveButton);
         editControls.appendChild(cancelButton);
         editControls.appendChild(createBranchContainer); // Add the checkbox
-
-        messageDiv.insertBefore(editor, messageContent.nextSibling);
-        messageDiv.insertBefore(editControls, editor.nextSibling);
     }
 }
 
-// Updated to accept messageId, content, createNewBranch flag, and messageDiv for UI update
-function saveEditedMessage(messageId, content, createNewBranch, originalMessageDiv) {
+async function saveEditedMessage(messageId, content, createNewBranch, originalMessageDiv) {
     const projectName = document.getElementById('project-name').value;
     const chatContainer = originalMessageDiv.parentElement;
 
-    fetch('/update-chat-message', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            project: projectName,
-            content: content,
-            message_id: messageId,
-            query_id: document.getElementById('query-id').value,
-            create_new_branch: createNewBranch // Pass the new flag
-        })
-    })
-    .then(response => {
+    try {
+        const response = await fetch('/update-chat-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: projectName,
+                content: content,
+                message_id: messageId,
+                query_id: document.getElementById('query-id').value,
+                create_new_branch: createNewBranch
+            })
+        });
+
         if (!response.ok) {
-            return response.text().then(text => { throw new Error(text); });
+            const errorText = await response.text();
+            throw new Error(errorText);
         }
-        return response.json(); // Expect JSON with message_id and content
-    })
-    .then(async data => {
-        // --- Full reload to reflect the new state, including branch navigators. ---
-        location.reload();
-    })
-    .catch(error => {
+
+        const data = await response.json();
+
+        if (data.success) {
+            if (createNewBranch) {
+                // Remove the original message from the DOM
+                originalMessageDiv.remove();
+
+                // Find the parent message div for insertion
+                // The backend sends back `parent_message_id`. If null, it's a root message.
+                const parentMessageDiv = data.parent_message_id
+                    ? chatContainer.querySelector(`.chat-message[data-message-id="${data.parent_message_id}"]`)
+                    : null;
+
+                const newMessageDiv = addMessageToChat(
+                    data.message.role,
+                    data.message.content,
+                    chatContainer, // Will append to end initially
+                    data.message.hidden,
+                    data.message.id
+                );
+
+                if (parentMessageDiv) {
+                    parentMessageDiv.insertAdjacentElement('afterend', newMessageDiv);
+                }
+                // If no parent, it was a root message or appended to end by addMessageToChat, which is fine.
+
+                alert('Message edited and new branch created successfully. Note: Branch navigation controls may require a page reload to update visually.');
+            } else {
+                // In-place update
+                updateMessageInChat(originalMessageDiv, data.message.content);
+            }
+            scrollToBottom(chatContainer);
+        } else {
+            alert(`Failed to save edited message: ${data.message || 'Unknown error.'}`);
+            // Revert UI if an error occurred
+            updateMessageInChat(originalMessageDiv, originalMessageDiv.dataset.originalContent); // Revert to previous content
+        }
+    } catch (error) {
         console.error('Error saving edited message:', error);
         alert(`Failed to save edited message: ${error.message}.`);
-        // Re-enable edit mode or revert UI if an error occurred
-        originalMessageDiv.classList.add('editing');
-        const messageContent = originalMessageDiv.querySelector('.message-content');
-        messageContent.innerHTML = formatMessage(originalMessageDiv.dataset.originalContent); // Revert to previous content
-        applySyntaxHighlighting(originalMessageDiv);
-        linkFilePathsInElement(messageContent);
-    });
+        // Revert UI if a network error occurred
+        updateMessageInChat(originalMessageDiv, originalMessageDiv.dataset.originalContent); // Revert to previous content
+    } finally {
+        originalMessageDiv.classList.remove('editing'); // Ensure edit mode is off
+    }
 }
 
 
-export function toggleHideMessage(messageDiv) {
+export async function toggleHideMessage(messageDiv) {
     const hideButton = messageDiv.querySelector('.hide-message-btn');
     const messageId = messageDiv.dataset.messageId;
 
@@ -293,34 +383,53 @@ export function toggleHideMessage(messageDiv) {
 }
 
 // Updated to accept messageId
-function saveHiddenMessage(messageId, hidden) {
+async function saveHiddenMessage(messageId, hidden) {
     const projectName = document.getElementById('project-name').value;
 
-    fetch('/update-message-visibility', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            project: projectName,
-            message_id: messageId,
-            query_id: document.getElementById('query-id').value,
-            hidden: hidden
-        })
-    })
-    .catch(error => {
+    try {
+        const response = await fetch('/update-message-visibility', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: projectName,
+                message_id: messageId,
+                query_id: document.getElementById('query-id').value,
+                hidden: hidden
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
+        // No UI update needed beyond button text, as visibility changes primarily affect LLM context,
+        // which would require a regeneration or new message to become apparent.
+        // If a message should visually be hidden/shown, that logic would go here.
+        // For now, it's just updating the button and backend state.
+        console.log(`Message ${messageId} visibility updated to hidden=${hidden}.`);
+    } catch (error) {
         console.error('Error saving hidden message:', error);
-    });
+        alert(`Failed to update message visibility: ${error.message}`);
+        // Revert UI if error (e.g., button text)
+        const messageDiv = document.querySelector(`.chat-message[data-message-id="${messageId}"]`);
+        if (messageDiv) {
+            const hideButton = messageDiv.querySelector('.hide-message-btn');
+            hideButton.dataset.hidden = (!hidden).toString();
+            hideButton.textContent = (!hidden) ? 'Unhide' : 'Hide';
+            hideButton.title = (!hidden) ? 'Unhide message' : 'Hide message';
+        }
+    }
 }
 
-// Renamed from regenerateLastMessage to regenerateMessage to be more general
 export async function regenerateMessage(messageDiv) {
     const chatContainer = messageDiv.parentElement;
     const projectName = document.getElementById('project-name').value;
-    const queryId = document.getElementById('query-id').value;
-    const messageId = messageDiv.dataset.messageId; // Retrieve messageId of the MODEL message
+    const queryId = document.getElementById('query-id').value; // This is the analysis query ID, not chat message ID
+    const messageIdToRegenerate = messageDiv.dataset.messageId; // ID of the MODEL message being regenerated FROM
 
-    if (!messageId) {
+    if (!messageIdToRegenerate) {
         console.error("Attempted to regenerate message without a message ID.");
         return;
     }
@@ -332,7 +441,7 @@ export async function regenerateMessage(messageDiv) {
     }
     const messageContent = messageDiv.querySelector('.message-content');
     const originalContent = messageDiv.dataset.originalContent;
-    messageContent.innerHTML = '<em>Regenerating response...</em>';
+    messageContent.innerHTML = '<em>Regenerating response...</em>'; // Show loading state
 
     try {
         const response = await fetch('/regenerate-chat-message', {
@@ -343,28 +452,56 @@ export async function regenerateMessage(messageDiv) {
             body: JSON.stringify({
                 project: projectName,
                 query_id: queryId,
-                message_id: messageId // Pass the ID of the MODEL message to regenerate from
+                message_id: messageIdToRegenerate // Send the ID of the model message to regenerate from
             })
         });
 
-        if (response.ok) {
-            const data = await response.json(); // Expect JSON with message_id and content
-            // --- Full reload to reflect the new state, including branch navigators. ---
-            location.reload();
-        } else {
+        if (!response.ok) {
             const errorText = await response.text();
-            console.error('Error regenerating message:', errorText);
-            messageContent.innerHTML = formatMessage(originalContent);
-            alert(`Failed to regenerate response: ${errorText}. Please check server logs.`);
+            throw new Error(errorText);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            // Remove the old model message from the DOM
+            messageDiv.remove();
+
+            // Find the parent user message div for correct insertion point
+            const userMessageDiv = chatContainer.querySelector(`.chat-message[data-message-id="${data.user_message_id}"]`);
+
+            if (userMessageDiv) {
+                // Insert the new model message immediately after its parent user message.
+                const newModelMessageDiv = addMessageToChat(
+                    data.new_model_message.role,
+                    data.new_model_message.content,
+                    chatContainer, // Temporarily append to chatContainer
+                    data.new_model_message.hidden,
+                    data.new_model_message.id
+                );
+                // Move the newly added message to the correct position
+                userMessageDiv.insertAdjacentElement('afterend', newModelMessageDiv);
+
+            } else {
+                // Fallback if parent user message is not found (shouldn't happen if history is consistent)
+                console.warn(`Parent user message with ID ${data.user_message_id} not found for regenerated message. Appending to end.`);
+                // If it was already appended by `addMessageToChat`, it's at the end, which is an acceptable fallback.
+            }
+
+
+        } else {
+            messageContent.innerHTML = formatMessage(originalContent); // Revert on error
+            alert(`Failed to regenerate response: ${data.message || 'Unknown error.'}`);
         }
     } catch (error) {
         console.error('Network error during regeneration:', error);
-        messageContent.innerHTML = formatMessage(originalContent);
+        messageContent.innerHTML = formatMessage(originalContent); // Revert on network error
         alert(`A network error occurred during regeneration: ${error.message}.`);
     } finally {
         if (regenerateButton) {
             regenerateButton.disabled = false;
             regenerateButton.textContent = 'Regenerate';
         }
+        scrollToBottom(chatContainer);
     }
 }

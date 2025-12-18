@@ -6,10 +6,10 @@ use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};
+use actix_web::http::header; // Header is no longer needed for redirects
 use std::path::Path;
-use crate::services::utils::html_utils::{escape_html, unescape_html};
+// Removed: use crate::services::utils::html_utils::{escape_html, unescape_html}; // NO LONGER ESCAPING HTML HERE
 use std::env;
-use serde_json::json; // <--- ADD THIS LINE to allow creating JSON response
 
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
@@ -42,6 +42,8 @@ pub async fn chat_analysis(
     let mut commit_hash_for_user_message: Option<String> = None;
 
     // Get existing chat history from project structure *before* the current user message
+    // Note: get_full_history returns ChatMessage where content might be HTML escaped if saved that way.
+    // For LLM interaction, it needs to be unescaped. For storage, it should be raw markdown.
     let full_history = get_full_history(&project, &app_state, &query_id);
     let mut unescaped_history: Vec<ChatMessage> = Vec::new();
     let mut hidden_context: Vec<String> = Vec::new();
@@ -59,13 +61,12 @@ pub async fn chat_analysis(
         if !code.is_empty() {
             hidden_context.push(code.to_string());
         }
-        let unescaped_content = unescape_html(message.content.clone());
+        // Removed unescape_html here because content should be raw markdown now if stored correctly.
+        // If content was HTML escaped in history, this implies previous backend bug.
+        // Assuming raw markdown is stored now.
         unescaped_history.push(ChatMessage {
-            // id and parent_id are part of the stored message, but we're re-creating here.
-            // When passing to LLM, these are not directly used, but the overall structure matters.
-            // For the LLM context, it's just content and role.
             role: message.role.clone(),
-            content: unescaped_content,
+            content: message.content.clone(), // Content is now assumed to be raw markdown
             hidden: message.hidden,
             commit_hash: message.commit_hash.clone(), // Ensure commit_hash is carried over
             timestamp: message.timestamp,
@@ -73,7 +74,7 @@ pub async fn chat_analysis(
             provider: message.provider.clone(),
             model: message.model.clone(),
             hidden_context: message.hidden_context.clone(),
-            ..Default::default() // Fill id and parent_id from default (though they'll be ignored for LLM prompt)
+            ..Default::default()
         });
     }
 
@@ -83,7 +84,6 @@ pub async fn chat_analysis(
         // Load project-specific .env for Git author/email
         if let Err(e) = project_service.load_project_env(&project_dir) {
             eprintln!("Warning: Failed to load project .env for Git author/email for project '{}': {}", data.project, e);
-            // This is a warning. Git operations will proceed with defaults or fail if env vars are required.
         }
 
         let git_author_name = env::var("GIT_AUTHOR_NAME").unwrap_or_else(|_| "LLM Assistant".to_string());
@@ -93,8 +93,6 @@ pub async fn chat_analysis(
             Ok(r) => r,
             Err(GitError::Git2(e)) if e.code() == git2::ErrorCode::NotFound => {
                 eprintln!("Git integration enabled for project '{}', but no Git repository found at {:?}. Skipping Git operations for this chat.", data.project, project_dir);
-                // We could try to init here, but per your initial plan, we expect repo to exist.
-                // If the project level setting is enabled, but no repo, this is an error state.
                 return HttpResponse::InternalServerError().body(format!("Git integration enabled, but repository not found for project '{}'.", data.project));
             },
             Err(e) => {
@@ -103,8 +101,6 @@ pub async fn chat_analysis(
             }
         };
 
-        // If a branch is active for this query, ensure we're on it.
-        // If no specific branch for this chat, ensure we are on the default branch (e.g., main)
         let target_branch_name = if git_branch_name.is_empty() {
             GitService::get_default_branch_name(&repo).unwrap_or_else(|_| "main".to_string())
         } else {
@@ -121,11 +117,9 @@ pub async fn chat_analysis(
             println!("Already on branch: {}", target_branch_name);
         }
 
-
         if auto_commit_for_chat == "true" {
             match GitService::has_uncommitted_changes(&repo) {
                 Ok(true) => {
-                    // Ensure it starts with "Auto:" as requested by the user
                     let commit_message = generate_commit_message(
                         &llm_service,
                         &repo,
@@ -144,8 +138,6 @@ pub async fn chat_analysis(
                 },
                 Ok(false) => {
                     println!("No uncommitted changes for auto-commit in chat '{}'.", query_id);
-                    // Still assign the latest commit hash if there was a previous commit,
-                    // so the message is linked to a valid state.
                     if let Ok(latest_commit) = GitService::get_latest_commit(&repo) {
                         commit_hash_for_user_message = Some(latest_commit.id().to_string());
                     }
@@ -153,13 +145,11 @@ pub async fn chat_analysis(
                 Err(e) => eprintln!("Failed to check for uncommitted changes in chat '{}': {:?}", query_id, e),
             }
         } else {
-            // If auto-commit is off, but git is enabled, still try to associate with latest commit
             if let Ok(latest_commit) = GitService::get_latest_commit(&repo) {
                 commit_hash_for_user_message = Some(latest_commit.id().to_string());
             }
         }
     }
-
 
     // Get selected context files and file contents
     let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
@@ -167,35 +157,35 @@ pub async fn chat_analysis(
     // Create context prompt with the loaded file contents, project, and description flag
     let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
 
-    // Escape the user's message
-    let escaped_message = escape_html(data.message.clone()).await;
+    // No HTML escaping needed for storing user message, store as raw markdown
+    let user_message_content_raw = data.message.clone();
 
-    // Create user message for LLM (unescaped)
+    // Create user message for LLM (unescaped) - content is raw markdown
     let user_message_for_llm = ChatMessage {
         role: "user".to_string(),
-        content: data.message.clone(),
+        content: user_message_content_raw.clone(), // Raw markdown
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(),
-        timestamp: Some(chrono::Utc::now()), // Set timestamp here
+        timestamp: Some(chrono::Utc::now()),
         context_files: Some(context_files.clone()),
         provider: Some(project.provider.clone()),
         model: project.specific_model.clone(),
         hidden_context: Some(hidden_context.clone()),
-        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
+        ..Default::default()
     };
 
-    // Create user message to save (escaped), with the determined commit_hash
+    // Create user message to save (raw markdown), with the determined commit_hash
     let user_message_to_save = ChatMessage {
         role: "user".to_string(),
-        content: escaped_message.to_string(),
+        content: user_message_content_raw.clone(), // Raw markdown
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(),
-        timestamp: user_message_for_llm.timestamp, // Use the same timestamp
+        timestamp: user_message_for_llm.timestamp,
         context_files: user_message_for_llm.context_files.clone(),
         provider: user_message_for_llm.provider.clone(),
         model: user_message_for_llm.model.clone(),
         hidden_context: user_message_for_llm.hidden_context.clone(),
-        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
+        ..Default::default()
     };
 
     // Format messages for LLM with system prompt and existing history + new user message
@@ -206,39 +196,54 @@ pub async fn chat_analysis(
         .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
         .await;
 
-    // Create assistant message
-    let assistant_message_to_save = ChatMessage { // Renamed variable to avoid conflict
+    // Create assistant message (raw markdown)
+    let assistant_message_to_save = ChatMessage {
         role: "model".to_string(),
-        content: llm_response.clone(),
+        content: llm_response.clone(), // LLM response is raw markdown
         hidden: false,
-        commit_hash: commit_hash_for_user_message.clone(), // Associate LLM response with same commit
-        timestamp: Some(chrono::Utc::now()), // Set timestamp here
+        commit_hash: commit_hash_for_user_message.clone(),
+        timestamp: Some(chrono::Utc::now()),
         context_files: Some(context_files.clone()),
         provider: Some(project.provider.clone()),
         model: project.specific_model.clone(),
-        hidden_context: Some(hidden_context), 
-        ..Default::default() // Use default for id and parent_id. These will be overwritten by add_chat_message.
+        hidden_context: Some(hidden_context),
+        ..Default::default()
     };
 
     // Add user message to chat history
-    // For regular conversation flow, parent_id_override is None, so it appends to current_node_id
-    project_service.chat_manager
-        .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id, None) // <--- UPDATED CALL
-        .unwrap();
-    
-    // Add assistant message to chat history
-    // Its parent will be the newly added user message. We need the ID of the user message to be explicit,
-    // but since add_chat_message already sets `current_node_id` to the user message, this next call
-    // will implicitly link to the user message unless we want to override.
-    // However, the `add_chat_message` function returns the ID of the message it just added,
-    // which is what we need for the frontend response.
-    let model_message_id_for_response = project_service.chat_manager
-        .add_chat_message(&project_service.query_manager,&project_dir, assistant_message_to_save, query_id, None) // <--- UPDATED CALL
+    let user_message_new_id = project_service.chat_manager
+        .add_chat_message(&project_service.query_manager,&project_dir, user_message_to_save, query_id, None) // parent_id will be set to current_node_id if not None
         .unwrap();
 
-    // Return the content AND the ID of the model message
-    HttpResponse::Ok().json(json!({
-        "message_id": model_message_id_for_response,
-        "content": llm_response
-    }))
+    // Add assistant message to chat history
+    let assistant_message_new_id = project_service.chat_manager
+        .add_chat_message(&project_service.query_manager,&project_dir, assistant_message_to_save, query_id, Some(user_message_new_id))
+        .unwrap();
+
+    // --- NEW: Update the QueryData's current_node_id to point to the new assistant message ---
+    let mut query_data = match project_service.query_manager.load_query_data(&project_dir, query_id) {
+        Ok(qd) => qd,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data for current_node_id update: {}", e)),
+    };
+    query_data.current_node_id = Some(assistant_message_new_id);
+    if let Err(e) = project_service.query_manager.save_query_data(&project_dir, &query_data, query_id) {
+        eprintln!("Failed to save query data after sending chat message: {}", e);
+        return HttpResponse::InternalServerError().body(format!("Failed to update query's current node: {}", e));
+    }
+    // --- END NEW ---
+
+    // Load the actual saved messages to return to the frontend, including their new UUIDs.
+    let final_user_message = project_service.query_manager.get_chat_node(&project_dir, query_id, &user_message_new_id)
+        .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve saved user message.")).unwrap();
+    let final_model_message = project_service.query_manager.get_chat_node(&project_dir, query_id, &assistant_message_new_id)
+        .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve saved model message.")).unwrap();
+
+
+    // Return JSON response instead of redirect
+    HttpResponse::Ok().json(ChatAnalysisResponse {
+        success: true,
+        user_message: final_user_message,
+        model_message: final_model_message,
+        new_current_node_id: assistant_message_new_id,
+    })
 }

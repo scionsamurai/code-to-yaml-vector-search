@@ -2,24 +2,23 @@
 use crate::models::AppState;
 use crate::services::project_service::ProjectService;
 use crate::services::template::TemplateService;
-use actix_web::{post, web, HttpResponse, Responder};
+use actix_web::{get, web, HttpResponse, Responder};
 use std::path::{Path, PathBuf};
 use serde_json::Value;
 use crate::services::utils::html_utils::unescape_html;
 use crate::services::git_service::GitService;
 
 #[derive(serde::Deserialize, Debug)]
-pub struct AnalyzeQueryForm {
+pub struct AnalyzeQueryPath {
     project: String,
     query_id: String,
 }
 
-// New helper function to encapsulate the LLM analysis parsing logic
 fn process_llm_analysis_suggestions(
     project_service: &ProjectService,
     project_dir: &Path,
     query_id: &str,
-    project_source_dir: &Path, // NEW: Added project_source_dir
+    project_source_dir: &Path,
     original_relevant_files: Vec<String>,
 ) -> (Vec<String>, Vec<String>) {
     let mut llm_suggested_files: Vec<String> = Vec::new();
@@ -67,18 +66,19 @@ fn process_llm_analysis_suggestions(
     (llm_suggested_files, actual_relevant_files)
 }
 
-
-#[post("/analyze-query")]
+#[get("/analyze-query/{project}/{query_id}")]
 pub async fn analyze_query(
     app_state: web::Data<AppState>,
-    form: web::Form<AnalyzeQueryForm>,
+    path: web::Path<AnalyzeQueryPath>,
 ) -> impl Responder {
     let project_service = ProjectService::new();
     let template_service = TemplateService::new();
 
-    // Load the project
+    let project_name = path.project.clone();
+    let query_id = path.query_id.clone();
+
     let output_dir = Path::new(&app_state.output_dir);
-    let project_dir = output_dir.join(&form.project);
+    let project_dir = output_dir.join(&project_name);
 
     let mut project = match project_service.load_project(&project_dir) {
         Ok(p) => p,
@@ -88,16 +88,12 @@ pub async fn analyze_query(
         }
     };
 
-
-    let query_id = form.query_id.clone();
-    // Fetch the original vector_results from the query data
     let original_relevant_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "vector_results").unwrap_or_default();
     let saved_context_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "context_files").unwrap_or_default();
     let existing_chat_history = project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, &query_id);
     let last_query_text = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
     let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
     let auto_commit = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "auto_commit").unwrap_or_else(|| "false".to_string()) == "true";
-
 
     let mut all_branches: Vec<String> = Vec::new();
     let mut current_repo_branch_name: Option<String> = None;
@@ -112,10 +108,8 @@ pub async fn analyze_query(
                 match GitService::get_current_branch_name(&repo) {
                     Ok(branch) => {
                         current_repo_branch_name = Some(branch.clone());
-                        // If project's git_branch_name is not set or differs from actual repo branch, update it
                         if project.git_branch_name.is_none() || project.git_branch_name.as_ref() != Some(&branch) {
                             project.git_branch_name = Some(branch);
-                            // Save the updated project to persist this change
                             if let Err(e) = project_service.save_project(&project, &project_dir) {
                                 eprintln!("Failed to save project after updating git_branch_name: {}", e);
                             }
@@ -130,7 +124,6 @@ pub async fn analyze_query(
         }
     }
 
-    // Call the new helper function
     let (llm_suggested_files, actual_relevant_files) = process_llm_analysis_suggestions(
         &project_service,
         &project_dir,
@@ -139,7 +132,6 @@ pub async fn analyze_query(
         original_relevant_files,
     );
 
-    // Get the list of available queries
     let available_queries = match project_service.query_manager.get_query_filenames(&project_dir) {
         Ok(queries) => queries,
         Err(e) => {
@@ -148,22 +140,20 @@ pub async fn analyze_query(
         }
     };
 
-    // Load the full query data to get access to all chat_nodes
     let full_query_data = project_service.query_manager.load_query_data(&project_dir, &query_id).unwrap_or_default();
 
-    // Use the template service to render the HTML
     let html = template_service.render_analyze_query_page(
-        &form.project,
+        &project_name,
         &last_query_text,
-        &actual_relevant_files, // Pass the filtered relevant files
+        &actual_relevant_files,
         &saved_context_files,
         &project,
-        &existing_chat_history, // Pass the Vec<ChatMessage>
-        &full_query_data, // Pass the full QueryData
+        &existing_chat_history,
+        &full_query_data,
         &available_queries,
         &query_id,
         include_file_descriptions,
-        &llm_suggested_files, // PASS THE NEW LLM SUGGESTED FILES
+        &llm_suggested_files,
         auto_commit,
         current_repo_branch_name.unwrap_or_default(),
         all_branches,
@@ -173,18 +163,11 @@ pub async fn analyze_query(
 }
 
 pub fn _format_message(content: &str) -> String {
-    // Create a regex to match triple backtick code blocks
     let re = regex::Regex::new(r"```([a-zA-Z]*)([\s\S]*?)```").unwrap();
-
-    // Replace triple backtick code blocks with formatted HTML
     let formatted_content = re.replace_all(&content, |caps: &regex::Captures| {
         let language = &caps[1];
         let code = caps[2].trim();
         format!("<pre class=\"shiki-block\" data-language=\"{}\" data-original-code=\"{}\"><code class=\"language-{}\">{}</code></pre>", language, code, language, code)
     });
-
-    // Replace newlines with <br> tags for normal text (outside of code blocks)
-    // let formatted_content = formatted_content.replace("\n", "<br>");
-
     formatted_content.to_string()
 }
