@@ -4,3 +4,4 @@
 /output
 .env
 /ignore
+/frontend/node_modules

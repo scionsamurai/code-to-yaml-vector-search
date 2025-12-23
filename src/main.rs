@@ -12,6 +12,55 @@ pub mod shared;
 const IP_ADDRESS: &str = "127.0.0.1"; // Localhost for testing on host machine
 const PORT: u16 = 8080;
 
+use actix_web::{HttpResponse, Responder, get};
+use serde::Serialize;
+use std::fs;
+
+pub fn render_svelte<T: Serialize>(
+    component: &str, 
+    title: Option<&str>, 
+    extra_data: Option<T>
+) -> impl Responder {
+    // 1. Load the single "master" template
+    let mut html = fs::read_to_string("static/index.html")
+        .expect("Failed to find static/index.html");
+
+    // 2. Prepare dynamic strings
+    let page_title = title.unwrap_or("Svelte 5 App");
+    let json_data = match extra_data {
+        Some(data) => serde_json::to_string(&data).unwrap_or_else(|_| "null".to_string()),
+        None => "null".to_string(),
+    };
+
+    // 3. Simple String Replacement (The "No-Tera" approach)
+    html = html.replace("{{title}}", page_title);
+    html = html.replace("{{component}}", component);
+    html = html.replace("{{extra_data}}", &json_data);
+
+    HttpResponse::Ok()
+        .content_type("text/html; charset=utf-8")
+        .body(html)
+}
+
+#[derive(Serialize)]
+struct UserInfo {
+    id: i32,
+    name: String,
+}
+
+#[get("/profile")]
+async fn profile_page() -> impl Responder {
+    let data = UserInfo { id: 42, name: "Rustacean".to_string() };
+    
+    // Usage: render_svelte(component, title, extra_data)
+    render_svelte("Profile", Some("Test Title Input"), Some(data))
+}
+
+#[get("/index")]
+async fn index_page() -> impl Responder {
+    render_svelte("Index", Some("Home Page"), None::<()>)
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
@@ -31,6 +80,8 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::llm::configure) 
             .configure(routes::query::configure)
             .configure(routes::git::configure)
+            .service(profile_page)
+            .service(index_page)
             .service(Files::new("/static", "./static"))
             
     })

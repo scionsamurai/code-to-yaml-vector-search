@@ -8,7 +8,7 @@ use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};
 use actix_web::http::header; // Header is no longer needed for redirects
 use std::path::Path;
-// Removed: use crate::services::utils::html_utils::{escape_html, unescape_html}; // NO LONGER ESCAPING HTML HERE
+use crate::services::utils::html_utils::{escape_html, unescape_html}; // NO LONGER ESCAPING HTML HERE
 use std::env;
 
 #[post("/chat-analysis")]
@@ -42,8 +42,6 @@ pub async fn chat_analysis(
     let mut commit_hash_for_user_message: Option<String> = None;
 
     // Get existing chat history from project structure *before* the current user message
-    // Note: get_full_history returns ChatMessage where content might be HTML escaped if saved that way.
-    // For LLM interaction, it needs to be unescaped. For storage, it should be raw markdown.
     let full_history = get_full_history(&project, &app_state, &query_id);
     let mut unescaped_history: Vec<ChatMessage> = Vec::new();
     let mut hidden_context: Vec<String> = Vec::new();
@@ -61,12 +59,11 @@ pub async fn chat_analysis(
         if !code.is_empty() {
             hidden_context.push(code.to_string());
         }
-        // Removed unescape_html here because content should be raw markdown now if stored correctly.
-        // If content was HTML escaped in history, this implies previous backend bug.
-        // Assuming raw markdown is stored now.
+        let unescaped_content = unescape_html(message.content.clone());
+
         unescaped_history.push(ChatMessage {
             role: message.role.clone(),
-            content: message.content.clone(), // Content is now assumed to be raw markdown
+            content: unescaped_content, // Content is now assumed to be raw markdown
             hidden: message.hidden,
             commit_hash: message.commit_hash.clone(), // Ensure commit_hash is carried over
             timestamp: message.timestamp,
@@ -159,6 +156,7 @@ pub async fn chat_analysis(
 
     // No HTML escaping needed for storing user message, store as raw markdown
     let user_message_content_raw = data.message.clone();
+    let escaped_message = escape_html(data.message.clone()).await;
 
     // Create user message for LLM (unescaped) - content is raw markdown
     let user_message_for_llm = ChatMessage {
@@ -177,7 +175,7 @@ pub async fn chat_analysis(
     // Create user message to save (raw markdown), with the determined commit_hash
     let user_message_to_save = ChatMessage {
         role: "user".to_string(),
-        content: user_message_content_raw.clone(), // Raw markdown
+        content: escaped_message.to_string(), // Raw markdown
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(),
         timestamp: user_message_for_llm.timestamp,

@@ -1,0 +1,17 @@
+{
+    // added per setup instructions for SvelteKit + TypeScript + Vite
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "types": ["svelte", "vite/client"],
+    "allowJs": true,
+    "checkJs": false
+  },
+  "include": ["src/**/*.ts", "src/**/*.svelte", "src/main.ts"],
+  "exclude": ["node_modules", "dist"]
+}
