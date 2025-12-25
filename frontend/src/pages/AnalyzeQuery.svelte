@@ -1,12 +1,17 @@
 <!-- frontend/src/pages/AnalyzeQuery.svelte -->
 <script lang="ts">
   import { onMount } from 'svelte';
+  import BranchNavigation from '../components/BranchNavigation.svelte';
   import SearchFilesModal from '../components/SearchFilesModal.svelte';
   import OptimizePromptModal from '../components/OptimizePromptModal.svelte';
+  import { formatMessage, setProjectSourceDirectory, linkFilePathsInElement } from "../lib/analyze-query/utils.js";
+import {
+  highlightAction
+} from "../lib/analyze-query/syntax-highlighting.js";
 
   let { extraData } = $props();
 
-  // Destructure props from Rust
+  // Destructure props from Rust (REMOVED existing_chat_history)
   let {
     project_name,
     query_id,
@@ -15,7 +20,6 @@
     relevant_files,
     saved_context_files,
     llm_suggested_files,
-    existing_chat_history,
     available_queries,
     include_file_descriptions,
     auto_commit,
@@ -32,13 +36,25 @@
   let includeDescriptions = $state(include_file_descriptions);
   let currentBranch = $state(current_repo_branch_name);
 
+  let branch_display_data = $state<Record<string, any>>({}); // Initialize as an empty object with proper type
+
   let chatContainer: HTMLElement;
   let selectedFiles = $state([...saved_context_files]); // Convert to state variable
+
+  // --- NEW: Add a state variable for the chat history ---
+  interface ChatMessage {
+    role: string;
+    content: string;
+    id?: string;
+    hidden?: string;
+  }
+  let chatHistory = $state<ChatMessage[]>([]);
 
   // -- Derived States and Functions --
   // Update context whenever selectedFiles changes
   $effect(() => {
-    updateContext(selectedFiles, includeDescriptions);
+    const filesChanged = JSON.stringify(selectedFiles) !== JSON.stringify(saved_context_files);
+    if (filesChanged || includeDescriptions !== include_file_descriptions) updateContext(selectedFiles, includeDescriptions);
   });
 
   async function updateContext(files: string[], includeDescriptions: boolean) {
@@ -78,7 +94,7 @@
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          project_name: project_name,
+          project: project_name,
           query_id: query_id,
           message: messageInput,
         }),
@@ -89,7 +105,7 @@
       }
 
       const newMessage = await response.json();
-      existing_chat_history = [...existing_chat_history, newMessage]; // Update chat history
+      chatHistory = [...chatHistory, newMessage.user_message, newMessage.model_message]; // Update chat history
       messageInput = ''; // Clear input
     } catch (error) {
       console.error('Error sending message:', error);
@@ -169,8 +185,30 @@
         console.log("switching to " + newBranch);
     }
 
-  onMount(() => {
+  // --- NEW: Fetch chat history on component mount ---
+  onMount(async () => {
+    try {
+      const response = await fetch(`/${project_name}/${query_id}/chat_history`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch chat history: ${response.statusText}`);
+      }
+      const data = await response.json();
+      chatHistory = data.history;
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error fetching chat history: ${error.message}`);
+    }
     if (chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
+    try {
+      const response = await fetch(`/get-branching-data?project_name=${project_name}&query_id=${query_id}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch branching data: ${response.statusText}`);
+      }
+      branch_display_data = await response.json();
+    } catch (error) {
+      console.error('Error fetching branching data:', error);
+      if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error fetching branching data: ${error.message}`);
+    }
   });
 
   function switchQuery(e: Event) {
@@ -200,10 +238,16 @@
 
 </script>
 
+<svelte:head>
+  <title>Analyze Query - {project_name}</title>
+  <link rel="stylesheet" href="/static/analysis.css">
+  <link rel="stylesheet" href="/static/global.css">
+</svelte:head>
+
 <style>
   /* You can import your existing CSS or move it here */
-  @import '/static/analysis.css';
-  @import '/static/global.css';
+  /* @import '/static/analysis.css';
+  @import '/static/global.css'; */
 
   .analysis-layout {
     display: grid;
@@ -231,10 +275,11 @@
 
 <div class="analysis-layout">
   <!-- Sidebar: Files and Settings -->
-  <aside class="sidebar">
+  <aside class="editable-query">
     <p><strong>Project:</strong> {project_name}</p>
 
     <div class="query-selector">
+      <label for="query-select"><strong>Select Query:</strong></label>
       <select onchange={switchQuery} value={query_id}>
         {#each available_queries as [id, title]}
           <option value={id}>{title}</option>
@@ -294,7 +339,7 @@
   <!-- Main: Chat Interface -->
   <main class="chat-area">
     <header class="chat-header">
-      <h2>Chat</h2>
+      <h2>Chat about your code</h2>
       {#if git_enabled}
         <div class="git-status">
           Branch:
@@ -304,19 +349,40 @@
             {/each}
           </select>
         </div>
+
+        <div>
+            <label>
+                Auto-Commit:
+                <input type="checkbox" bind:checked={autoCommit} onchange={toggleAutoCommit} />
+            </label>
+            <button onclick={commitChanges}>Commit</button>
+            <button onclick={pushChanges}>Push</button>
+        </div>
       {/if}
-        <button onclick={toggleSearchModal}>Search Files</button>
-        <button onclick={toggleOptimizePromptModal}>Optimize Prompt</button>
+
     </header>
 
-    <div class="messages" bind:this={chatContainer}>
-      {#each existing_chat_history as msg}
-        <div class="message {msg.role}-message">
-          <strong>{msg.role}:</strong>
-          <div class="content">
-            <!-- You would use a markdown/syntax highlighter component here -->
-            {msg.content}
+    <div class="chat-container" bind:this={chatContainer}>
+      {#each chatHistory as msg (msg.id)}
+        <div class="chat-message {msg.role}-message">
+          <!-- <strong>{msg.role}:</strong> -->
+          <div class="message-content" use:highlightAction>
+            {@html formatMessage(msg.content)}
           </div>
+
+          <div class="message-controls">
+              <button class="edit-message-btn" title="Edit message">Edit</button>
+              <button class="hide-message-btn" title="{msg.hidden ? 'Unhide' : 'Hide'} message" data-hidden={msg.hidden}>{msg.hidden ? 'unhide' : 'hide'}</button>
+              <button class="regenerate-message-btn" title="Regenerate response">Regenerate</button>
+   
+          </div>
+          {#if branch_display_data[msg.id as string]}
+            <BranchNavigation
+              branchData={branch_display_data[msg.id as string]}
+              projectName={project_name}
+              queryId={query_id}
+            />
+          {/if}
         </div>
       {/each}
     </div>
@@ -328,18 +394,9 @@
         onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
       ></textarea>
       <button onclick={handleSend}>Send</button>
-      <button onclick={resetChat}>Reset Chat</button>
-
-        {#if git_enabled}
-            <div>
-                <label>
-                    Auto-Commit:
-                    <input type="checkbox" bind:checked={autoCommit} onchange={toggleAutoCommit} />
-                </label>
-                <button onclick={commitChanges}>Commit</button>
-                <button onclick={pushChanges}>Push</button>
-            </div>
-        {/if}
+      <button class="secondary" onclick={resetChat}>Reset Chat</button>
+      <button onclick={toggleSearchModal}>Search Files</button>
+      <button onclick={toggleOptimizePromptModal}>Optimize Prompt</button>
     </div>
   </main>
 </div>

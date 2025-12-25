@@ -148,6 +148,7 @@ impl QueryManager {
     where
         F: FnOnce(&mut QueryData),
     {
+        println!("Updating query data for file: {}", query_filename);
         // Try to load existing query data or create new
         let (mut query_data, filename) = match self.load_query_data_by_filename(project_dir, query_filename) {
             Ok(Some(qd)) => {
@@ -303,6 +304,7 @@ impl QueryManager {
         query_filename: &str,
         field: &str,
     ) -> Option<Vec<String>> {
+        println!("Getting query vec field: {} from file: {}", field, query_filename);
         match self.load_query_data_by_filename(project_dir, query_filename) {
             Ok(Some(query_data)) => {
                 match field {

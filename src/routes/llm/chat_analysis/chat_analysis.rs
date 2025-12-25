@@ -6,7 +6,6 @@ use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};
-use actix_web::http::header; // Header is no longer needed for redirects
 use std::path::Path;
 use crate::services::utils::html_utils::{escape_html, unescape_html}; // NO LONGER ESCAPING HTML HERE
 use std::env;

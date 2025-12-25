@@ -88,6 +88,7 @@ pub async fn analyze_query(
         }
     };
 
+    println!("project_dir: {:?}, query_id: {}", project_dir, query_id);
     let original_relevant_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "vector_results").unwrap_or_default();
     let saved_context_files = project_service.query_manager.get_query_vec_field(&project_dir, &query_id, "context_files").unwrap_or_default();
     let existing_chat_history = project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, &query_id);

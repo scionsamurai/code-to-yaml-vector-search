@@ -74,15 +74,16 @@ async fn main() -> std::io::Result<()> {
     println!("Starting server at http://{}:{}", IP_ADDRESS, PORT);
     HttpServer::new(move || {
         App::new()
+            .service(Files::new("/static", "./static"))
             .app_data(app_state.clone())
             .configure(routes::ui::configure)
             .configure(routes::project::configure)
-            .configure(routes::llm::configure) 
+            .configure(routes::llm::configure)
             .configure(routes::query::configure)
             .configure(routes::git::configure)
+            .configure(routes::analyze::configure) // ADD THIS LINE
             .service(profile_page)
             .service(index_page)
-            .service(Files::new("/static", "./static"))
             
     })
     .bind(format!("{}:{}", IP_ADDRESS, PORT))?

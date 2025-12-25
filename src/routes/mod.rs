@@ -4,4 +4,4 @@ pub mod llm;
 pub mod ui;
 pub mod query;
 pub mod git;
-
+pub mod analyze;

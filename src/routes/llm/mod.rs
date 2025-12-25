@@ -9,6 +9,7 @@ mod update_analysis_query;
 mod update_analysis_title;
 mod search_files;
 mod optimize_prompt;
+mod get_branch_data;
 
 use actix_web::web;
 
@@ -22,5 +23,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_analysis_title::update_analysis_title)
         .service(optimize_prompt::optimize_prompt_route)
         .configure(chat_analysis::configure)
-        .service(search_files::search_related_files);
+        .service(search_files::search_related_files)
+        .service(get_branch_data::get_branching_data);
 }

@@ -148,7 +148,7 @@ pub struct UpdateQuery {
 }
 
 // New struct to pass branching information to the template
-#[derive(Debug)] // Add Debug trait for easier debugging
+#[derive(Debug, Serialize, Deserialize)] // Add Debug trait for easier debugging
 pub struct BranchDisplayData {
     pub current_index: usize, // 0-indexed position of this message among its siblings
     pub total_siblings: usize, // Total number of siblings (including itself)
