@@ -54,8 +54,14 @@ body {
 .analysis-container {
     display: flex;
     gap: 20px;
-    margin: 20px 0;
+    height: 100vh;
     flex-grow: 2;
+}
+
+#svelte-app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 .chat-interface {

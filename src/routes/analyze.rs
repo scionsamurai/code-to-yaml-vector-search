@@ -6,10 +6,12 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use serde_json::Value;
 use crate::services::utils::html_utils::unescape_html;
+use std::collections::HashMap;
 
 use actix_web::{web, get, Responder, HttpResponse};
 use crate::models::{AppState, ChatMessage};
 use crate::services::project_service::ProjectService;
+use crate::services::template::TemplateService;
 
 // --- ADD THIS DATA STRUCTURE ---
 #[derive(Serialize)]
@@ -120,6 +122,8 @@ struct NewAnalyzeQueryProps { // Example data structure
     current_repo_branch_name: String,
     all_branches: Vec<String>,
     git_enabled: bool,
+    file_yaml_override: HashMap<String, bool>,
+    default_use_yaml: bool,
 }
 
 #[get("/{project}/{query_id}")]
@@ -216,12 +220,64 @@ async fn new_analyze_query_route(
         current_repo_branch_name: current_repo_branch_name.unwrap_or_default(),
         all_branches: all_branches.clone(),
         git_enabled: git_enabled,
+        file_yaml_override: project.file_yaml_override.clone(),
+        default_use_yaml: project.default_use_yaml,
     };
 
     render_svelte("AnalyzeQuery", Some("Analyze Query"), Some(props))
 }
 
+
+// --- NEW: Request and Response models for `get_other_project_files` endpoint ---
+#[derive(serde::Deserialize)]
+pub struct GetOtherFilesRequest {
+    project_name: String,
+    excluded_files: Vec<String>,
+}
+
+#[derive(serde::Serialize)]
+pub struct GetOtherFilesResponse {
+    success: bool,
+    files: Vec<String>,
+    message: Option<String>,
+}
+
+#[actix_web::post("/get-other-project-files")]
+async fn get_other_project_files(
+    app_state: web::Data<AppState>,
+    req: web::Json<GetOtherFilesRequest>,
+) -> impl Responder {
+    let project_service = ProjectService::new();
+    let template_service = TemplateService::new();
+    let output_dir = Path::new(&app_state.output_dir);
+    let project_dir = output_dir.join(&req.project_name);
+
+    let project = match project_service.load_project(&project_dir) {
+        Ok(p) => p,
+        Err(e) => {
+            return HttpResponse::InternalServerError().json(GetOtherFilesResponse {
+                success: false,
+                files: Vec::new(),
+                message: Some(format!("Failed to load project: {}", e)),
+            });
+        }
+    };
+
+    let other_files = template_service.get_other_files_list_raw(
+        &project,
+        &req.excluded_files,
+    );
+
+    HttpResponse::Ok().json(GetOtherFilesResponse {
+        success: true,
+        files: other_files,
+        message: None,
+    })
+}
+
+
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(get_chat_history);
     cfg.service(new_analyze_query_route);
+    cfg.service(get_other_project_files);
 }

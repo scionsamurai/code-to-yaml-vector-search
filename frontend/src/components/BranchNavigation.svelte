@@ -1,8 +1,6 @@
 <!-- BranchNavigation.svelte -->
-<script>
-  export let branchData; // BranchDisplayData for this branching point
-  export let projectName;
-  export let queryId;
+<script>  
+  const { branchData, projectName, queryId } = $props();
 
   async function switchBranch(newCurrentNodeId) {
     try {
