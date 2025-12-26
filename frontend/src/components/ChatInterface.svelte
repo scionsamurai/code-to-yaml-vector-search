@@ -2,35 +2,225 @@
 <script lang="ts">
   import BranchNavigation from './BranchNavigation.svelte';
   import { formatMessage, linkFilePathsInElement } from "../lib/analyze-query/utils.js";
-  import {
-    highlightAction
-  } from "../lib/analyze-query/syntax-highlighting.js";
+  import { highlightAction } from "../lib/analyze-query/syntax-highlighting.js";
 
-  let { project_name, query_id, chatHistory, branch_display_data, git_stuff, sendMessage, resetChat, toggleSearchModal, toggleOptimizePromptModal } = $props();
+  let { project_name, query_id, chatHistory, branch_display_data, git_stuff, sendMessage: propsSendMessage, resetChat: propsResetChat, toggleSearchModal, toggleOptimizePromptModal } = $props();
   let messageInput = $state('');
   let chatContainer: HTMLElement;
 
-  function handleSend() {
-    if (messageInput.trim()) {
-      sendMessage(messageInput);
+  // --- Local State ---
+  let scroll_height = $state(0);
+  let editingMessageId: string | null = $state(null); // Track which message is being edited
+
+  // --- Functions ---
+
+  function scrollToBottom() {
+    if (chatContainer) {
+      chatContainer.scrollTop = chatContainer.scrollHeight;
     }
   }
-  let prev_scroll_height = 0;
-  $effect(() => {
-      if (chatContainer && chatHistory) {
-        if (prev_scroll_height) {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-          prev_scroll_height = chatContainer.scrollHeight;
-        } else {
-          chatContainer.scrollTo({
-            top: prev_scroll_height + 100,
-            behavior: 'smooth'
-          });
+
+  // Existing handleSend function
+  async function handleSend() {
+    if (messageInput.trim()) {
+      await sendMessage(messageInput.trim()); // Use the passed down sendMessage
+      messageInput = '';
+      
+      chatContainer.scrollTo({
+        top: scroll_height + 100,
+        behavior: 'smooth'
+      });
+    }
+  }
+  async function sendMessage(message: string) {
+    try {
+        const response = await fetch('/chat-analysis', { // Corrected path
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: project_name,
+                query_id: query_id,
+                message: message,
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        const newMessage = await response.json();
+        chatHistory = [...chatHistory, newMessage.user_message, newMessage.model_message]; // Update chat history
+    } catch (error) {
+        console.error('Error sending message:', error);
+        if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error sending message: ${error.message}`);
+    }
+  }
+  async function resetChat() {
+      if (confirm('Are you sure you want to reset the chat?')) {
+        try {
+          const response = await fetch(`/llm/chat_analysis/reset_analysis_chat?project_name=${project_name}&query_id=${query_id}`, {
+            method: 'POST',
+          });
+
+          if (response.ok) {
+            window.location.reload(); // Simplest way to reset the chat
+          } else {
+            throw new Error(`Failed to reset chat: ${response.statusText}`);
+          }
+        } catch (error) {
+          console.error('Error resetting chat:', error);
+          if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error resetting chat: ${error.message}`);
+        }
+      }
+    }
+    async function saveEditedMessage(messageId: string, content: string, createNewBranch: boolean) {
+      try {
+        const response = await fetch('/update-chat-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: project_name,
+                content: content,
+                message_id: messageId,
+                query_id: query_id,
+                create_new_branch: createNewBranch
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            if (createNewBranch) {
+                chatHistory = chatHistory.filter((msg: any) => msg.id !== messageId);
+
+                chatHistory = [...chatHistory, data.message];
+                //alert('Message edited and new branch created successfully. Note: Branch navigation controls may require a page reload to update visually.');
+            } else {
+                // Find and update the message in chatHistory
+                chatHistory = chatHistory.map((msg: any) => {
+                    if (msg.id === messageId) {
+                        return data.message;
+                    }
+                    return msg;
+                });
+            }
+        } else {
+            alert(`Failed to save edited message: ${data.message || 'Unknown error.'}`);
+        }
+    } catch (error) {
+        console.error('Error saving edited message:', error);
+        if (typeof error === 'object' && error !== null && 'message' in error) alert(`Failed to save edited message: ${error.message}.`);
+    } finally {
+        editingMessageId = null; // Ensure edit mode is off
+    }
+}
+
+  // Edit mode toggle
+  function toggleEditMode(messageId: string) {
+    if (editingMessageId === messageId) {
+      editingMessageId = null; // Exit edit mode
+    } else {
+      editingMessageId = messageId; // Enter edit mode
+    }
+  }
+  async function toggleHideMessage(messageId: string, hidden: boolean) {
+      try {
+        const response = await fetch('/update-message-visibility', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: project_name,
+                message_id: messageId,
+                query_id: query_id,
+                hidden: hidden
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
+
+        chatHistory = chatHistory.map((msg: any) => {
+            if (msg.id === messageId) {
+                return { ...msg, hidden: hidden };
+            }
+            return msg;
+        });
+
+        console.log(`Message ${messageId} visibility updated to hidden=${hidden}.`);
+    } catch (error) {
+        console.error('Error saving hidden message:', error);
+        if (typeof error === 'object' && error !== null && 'message' in error) alert(`Failed to update message visibility: ${error.message}.`);
+    }
+}
+
+async function regenerateMessage(messageId: string) {
+    try {
+        const response = await fetch('/regenerate-chat-message', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: project_name,
+                query_id: query_id,
+                message_id: messageId // Send the ID of the model message to regenerate from
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+            chatHistory = chatHistory.map((msg: any) => {
+                if (msg.id === messageId) {
+                    return data.new_model_message;
+                }
+                return msg;
+            });
+        } else {
+            alert(`Failed to regenerate response: ${data.message || 'Unknown error.'}`);
+        }
+    } catch (error) {
+        console.error('Network error during regeneration', error);
+        if (typeof error === 'object' && error !== null && 'message' in error) alert(`A network error occurred during regeneration ${error.message}.`);
+    }
+}
+
+  // --- Effects ---
+
+  // Scroll to bottom on chatHistory update
+  $effect(() => {
+    if (chatContainer && chatHistory) {
+      if (scroll_height == 0) {
+        scrollToBottom();
+      } else {
+        chatContainer.scrollTo({
+          top: scroll_height + 100,
+          behavior: 'smooth'
+        });
+      }
+
         // Link file paths in the new messages
         const messageElements = chatContainer.querySelectorAll('.message-content');
         messageElements.forEach(el => linkFilePathsInElement(el as HTMLElement));
-      };
+    };
   });
 </script>
 
@@ -43,13 +233,30 @@
   {#each chatHistory as msg (msg.id)}
     <div class="chat-message {msg.role}-message">
       <div class="message-content" use:highlightAction>
-        {@html formatMessage(msg.content)}
+        {#if editingMessageId === msg.id}
+            <textarea
+                class="message-editor text-area-fmt"
+                bind:value={msg.content}
+            ></textarea>
+            <div class="edit-controls">
+                <button class="save-edit-btn primary" onclick={() => saveEditedMessage(msg.id, msg.content, false)}>Save</button>
+                <button class="cancel-edit-btn secondary" onclick={() => toggleEditMode(msg.id)}>Cancel</button>
+                <label>
+                    Create new branch on edit
+                    <input type="checkbox" />
+                </label>
+            </div>
+        {:else}
+            {@html formatMessage(msg.content)}
+        {/if}
       </div>
 
       <div class="message-controls">
-        <button class="edit-message-btn" title="Edit message">Edit</button>
-        <button class="hide-message-btn" title="{msg.hidden ? 'Unhide' : 'Hide'} message" data-hidden={msg.hidden}>{msg.hidden ? 'unhide' : 'hide'}</button>
-        <button class="regenerate-message-btn" title="Regenerate response">Regenerate</button>
+        {#if editingMessageId !== msg.id}
+            <button class="edit-message-btn" title="Edit message" onclick={() => toggleEditMode(msg.id)}>Edit</button>
+        {/if}
+        <button class="hide-message-btn" title="{msg.hidden ? 'Unhide' : 'Hide'} message" data-hidden={msg.hidden} onclick={() => toggleHideMessage(msg.id, !msg.hidden)}>{msg.hidden ? 'unhide' : 'hide'}</button>
+        <button class="regenerate-message-btn" title="Regenerate response" onclick={() => regenerateMessage(msg.id)}>Regenerate</button>
       </div>
       {#if branch_display_data[msg.id as string]}
         <BranchNavigation

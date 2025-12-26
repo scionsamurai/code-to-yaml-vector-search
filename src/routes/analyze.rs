@@ -209,7 +209,7 @@ async fn new_analyze_query_route(
     let props = NewAnalyzeQueryProps {
         project_name: project_name.clone(),
         query_id: query_id.clone(),
-        query_text: query_text,
+        query_text: query_text.replace("&#34;", "\""),
         project_source_dir: project.source_dir.clone(),
         relevant_files: relevant_files.clone(),
         saved_context_files: saved_context_files.clone(),

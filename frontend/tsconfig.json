@@ -1,6 +1,7 @@
 {
     // added per setup instructions for SvelteKit + TypeScript + Vite
   "compilerOptions": {
+    "outDir": "../static",
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",

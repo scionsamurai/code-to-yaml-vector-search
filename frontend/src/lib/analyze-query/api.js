@@ -7,10 +7,10 @@ export async function updateContext(project_name, query_id, files, include_descr
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-                project_name: project_name,
+                project: project_name,
                 query_id: query_id,
                 files: files,
-                include_descriptions: include_descriptions,
+                include_file_descriptions: include_descriptions,
             }),
         });
 
@@ -18,7 +18,6 @@ export async function updateContext(project_name, query_id, files, include_descr
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
-        console.log('Context updated:', data);
         return data;
     } catch (error) {
         console.error('Error updating context:', error);

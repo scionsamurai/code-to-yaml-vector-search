@@ -6,6 +6,7 @@
   import GitActions from '../components/GitActions.svelte';
   import SearchFilesModal from '../components/SearchFilesModal.svelte';
   import OptimizePromptModal from '../components/OptimizePromptModal.svelte';
+  import QueryManagement from '../components/QueryManagement.svelte';
   import { setProjectSourceDirectory } from "../lib/analyze-query/utils.js";
   import { 
     updateContext, fetchChatHistory, fetchOtherProjectFiles, fetchBranchingData, toggleAutoCommitBackend
@@ -57,7 +58,7 @@
 
   function switchQuery(e: Event) {
     const target = e.target as HTMLSelectElement;
-    window.location.href = `/analyze-query/${project_name}/${target.value}`;
+    window.location.href = `/${project_name}/${target.value}`;
   }
 
   // --- Event Handlers ---
@@ -161,19 +162,12 @@
   <aside class="editable-query">
     <p><strong>Project:</strong> {project_name}</p>
 
-    <div class="query-selector">
-      <label for="query-select"><strong>Select Query:</strong></label>
-      <select onchange={switchQuery} value={query_id}>
-        {#each available_queries as [id, title]}
-          <option value={id}>{title}</option>
-        {/each}
-      </select>
-      <button id="edit-title-btn" class="secondary">Edit Title</button>
-    </div>
-    <div class="query-display-container">
-      <p id="query-display">{query_text}</p>
-      <button id="edit-query-btn" class="secondary">Edit Query</button>
-    </div>
+    <QueryManagement
+      project_name={project_name}
+      query_id={query_id}
+      initialQuery={query_text}
+      available_queries={available_queries}
+    />
 
     <hr />
     <FileContextControl
@@ -186,9 +180,9 @@
       {file_yaml_override}
       {default_use_yaml}
       {include_file_descriptions}
-      filesSelected={(e: CustomEvent<string[]>) => handleFileSelectionChange(e.detail)}
+      updatefilesSelected={(e: any) => handleFileSelectionChange(e)}
       fetchOtherProjectFiles={handleOtherFilesFetch}
-      includeDescriptionsToggled={(e: CustomEvent<boolean>) => handleIncludeDescriptionsToggle(e.detail)}
+      includeDescriptionsToggled={(e: any) => handleIncludeDescriptionsToggle(e)}
     />
   </aside>
 

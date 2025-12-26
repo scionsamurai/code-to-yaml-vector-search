@@ -8,6 +8,7 @@ const entry = document.getElementById("svelte-entry") as HTMLElement;
 const componentName = entry.dataset.component;
 const title = entry.dataset.title;
 const rawJson = entry.dataset.json;
+console.log("rawJson", rawJson);
 const extraData = rawJson ? JSON.parse(rawJson) : null;
 console.log("title", title);
 console.log("extraData", extraData);

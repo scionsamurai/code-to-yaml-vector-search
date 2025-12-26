@@ -11,14 +11,13 @@
     selectedFiles,
     file_yaml_override,
     default_use_yaml,
-    include_file_descriptions, filesSelected, fetchOtherProjectFiles, includeDescriptionsToggled
+    include_file_descriptions, updatefilesSelected, fetchOtherProjectFiles, includeDescriptionsToggled
   } = $props();
 
   // --- Event Handlers ---
-  function handleFileCheckboxChange(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const filePath = target.value;
-    const isChecked = target.checked;
+  function handleFileCheckboxChange(value: { filePath: string; isChecked: boolean }) {
+    const filePath = value.filePath;
+    const isChecked = value.isChecked;
 
     let newSelectedFiles = [...selectedFiles]; // Copy the array
 
@@ -29,18 +28,29 @@
     }
 
     selectedFiles = newSelectedFiles; // Update local state
-    filesSelected(newSelectedFiles); // Dispatch the event
+    updatefilesSelected(newSelectedFiles); // Dispatch the event
   }
 
-  function selectAllFiles(fileList: string[]) {
-    const newSelectedFiles = [...fileList];
-    selectedFiles = newSelectedFiles;
-    filesSelected(newSelectedFiles);
-  }
+  // New function to toggle selection for a given list of files
+  function toggleFilesSelection(filesToToggle: string[]) {
+    // Check if ALL files in filesToToggle are currently present in selectedFiles
+    const allCurrentFilesSelected = filesToToggle.every(file => selectedFiles.includes(file));
+    let newSelectedFiles = [...selectedFiles];
 
-  function deselectAllFiles() {
-    selectedFiles = [];
-    filesSelected([]);
+    if (allCurrentFilesSelected) {
+      // If all are currently selected, deselect them all from newSelectedFiles
+      newSelectedFiles = newSelectedFiles.filter(file => !filesToToggle.includes(file));
+    } else {
+      // If not all are selected (or none), add all filesToToggle to newSelectedFiles
+      for (const file of filesToToggle) {
+        if (!newSelectedFiles.includes(file)) { // Avoid duplicates
+          newSelectedFiles.push(file);
+        }
+      }
+    }
+    
+    selectedFiles = newSelectedFiles; // Update local state
+    updatefilesSelected(newSelectedFiles); // Dispatch the event to parent
   }
 
   // Include Description toggle
@@ -56,7 +66,12 @@
     Include descriptions in prompt
   </label>
 
-  <h3>LLM Suggested Files</h3>
+  <h3>
+    LLM Suggested Files
+    <button class="small-button" onclick={() => toggleFilesSelection(llm_suggested_files)}>
+      Toggle All
+    </button>
+  </h3>
   <FileList
     files={llm_suggested_files}
     selectedFiles={selectedFiles}
@@ -64,7 +79,12 @@
     fileChange={handleFileCheckboxChange}
   />
 
-  <h3>Semantic Matches - LLM suggestions</h3>
+  <h3>
+    Semantic Matches - LLM suggestions
+    <button class="small-button" onclick={() => toggleFilesSelection(relevant_files)}>
+      Toggle All
+    </button>
+  </h3>
   <FileList
     files={relevant_files}
     selectedFiles={selectedFiles}
@@ -72,7 +92,9 @@
     fileChange={handleFileCheckboxChange}
   />
   {#if otherProjectFiles.length > 0}
-    <h3>Other Project Files</h3>
+    <h3>
+      Other Project Files
+    </h3>
     <FileList
       files={otherProjectFiles}
       selectedFiles={selectedFiles}
@@ -85,5 +107,10 @@
 <style>
   .file-snippets {
     margin-bottom: 20px;
+  }
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px; /* Space between title and button */
   }
 </style>

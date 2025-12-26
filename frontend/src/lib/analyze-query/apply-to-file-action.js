@@ -1,12 +1,13 @@
-// static/analyze-query/apply-to-file-action.js
+// frontend/src/lib/analyze-query/apply-to-file-action.js
 
 /**
  * Handles the logic for applying code content from a code block to a specified file.
  * @param {Event} event - The click event.
  * @param {HTMLElement} codeBlock - The preformatted code block element.
  * @param {HTMLElement} fileIcon - The icon element for visual feedback.
+ * @param {string} projectName - The name of the current project.
  */
-export async function handleApplyToFile(event, codeBlock, fileIcon) {
+export async function handleApplyToFile(event, codeBlock, fileIcon, projectName) {
   event.preventDefault();
   event.stopPropagation();
 
@@ -56,8 +57,6 @@ export async function handleApplyToFile(event, codeBlock, fileIcon) {
     return;
   }
 
-  const projectName = document.getElementById("project-name").value;
-
   try {
     const response = await fetch("/apply-code-to-file", {
       method: "POST",
@@ -65,7 +64,7 @@ export async function handleApplyToFile(event, codeBlock, fileIcon) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        project: projectName,
+        project: projectName, // Use the passed projectName
         file_path: filePath,
         content: codeContent,
       }),
