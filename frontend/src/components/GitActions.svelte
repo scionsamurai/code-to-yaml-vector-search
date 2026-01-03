@@ -8,6 +8,7 @@
   let autoCommit = $state(initialAutoCommit);
   let currentBranch = $state(initialBranch);
   let hasUnpushed = $state(false);
+  let hasUncommittedChanges = $state(false);
 
 
   onMount(async () => {
@@ -120,6 +121,7 @@
     try {
       const status = await fetchGitStatus(project_name);
       hasUnpushed = status.has_unpushed_commits;
+      hasUncommittedChanges = status.has_uncommitted_changes;
     } catch (error) {
       console.error('Error fetching git status', error);
     }
@@ -136,7 +138,9 @@
 </div>
 
 <div>
-    <button onclick={handleCommitChanges}>Commit</button>
+    {#if hasUncommittedChanges}
+      <button onclick={handleCommitChanges}>Commit</button>
+    {/if}
     {#if hasUnpushed}
       <button onclick={handlePushChanges}>Push</button>
     {/if}
