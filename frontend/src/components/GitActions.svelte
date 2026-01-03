@@ -1,19 +1,129 @@
 <!-- frontend/src/components/GitActions.svelte -->
 <script lang="ts">
-  let { project_name, query_id, auto_commit, currentBranch, all_branches, autoCommitToggled, commitChanges, pushChanges, branchChanged } = $props();
+  import { onMount } from 'svelte';
+  import { toggleAutoCommitBackend, fetchGitStatus } from '../lib/analyze-query/api.js';
 
-    // Branch selecting
-    async function onBranchChange(event: Event) {
+  let { project_name, query_id, initialAutoCommit, initialBranch, all_branches } = $props();
+
+  let autoCommit = $state(initialAutoCommit);
+  let currentBranch = $state(initialBranch);
+  let hasUnpushed = $state(false);
+
+
+  onMount(async () => {
+    await updateGitStatus();
+  });
+
+  async function onBranchChange(event: Event) {
         if (!(event.target instanceof HTMLSelectElement)) return;
         const newBranch = event.target.value;
+        currentBranch = newBranch;
         console.log("child switching to " + newBranch);
-        branchChanged(newBranch);
     }
 
   async function toggleAutoCommit() {
-    autoCommitToggled(!auto_commit);
+    autoCommit = !autoCommit;
+    try {
+      await toggleAutoCommitBackend(project_name, query_id, autoCommit);
+    } catch (error) {
+      console.error('Error updating auto-commit:', error);
+      autoCommit = !autoCommit; // Revert on error
+      if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error updating auto-commit: ${error.message}`);
+    }
   }
 
+  async function handleCreateBranch() {
+    const branchName = prompt('Enter branch name:');
+    if (branchName) {
+      try {
+        const response = await fetch('/create-git-branch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ project_name: project_name, branch_name: branchName }),
+        });
+
+        const createBranchData = await response.json();
+        if (createBranchData.success) {
+            alert(createBranchData.message);
+            window.location.reload();
+        } else {
+          alert('Failed to create branch: ' + createBranchData.message);
+        }
+      } catch (error) {
+        console.error('Error creating branch:', error);
+        alert('Error creating branch.');
+      }
+    }
+  }
+
+  async function handleCommitChanges() {
+    const commitMessage = prompt('Enter commit message:');
+    if (!commitMessage) {
+        alert('Commit cancelled.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/commit-changes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                project_name: project_name,
+                message: commitMessage,
+                query_id: query_id // <--- ADDED: Include queryId in the commit request
+            }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert(data.message);
+            await updateGitStatus(); // ADDED updateGitStatus
+        } else {
+            alert('Commit failed: ' + data.message);
+            await updateGitStatus(); // ADDED updateGitStatus
+        }
+    } catch (error) {
+        console.error('Error committing changes:', error);
+        alert('Error committing changes.');
+        await updateGitStatus(); // ADDED updateGitStatus
+    }
+  };
+
+  async function handlePushChanges() {
+      if (!confirm(`Are you sure you want to push changes for branch '${currentBranch}' to remote?`)) {
+          alert('Push cancelled.');
+          return;
+      }
+
+      try {
+          const response = await fetch('/push-git-changes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ project_name: project_name }),
+          });
+
+          const data = await response.json();
+          if (data.success) {
+              alert(data.message);
+              await updateGitStatus(); // ADDED updateGitStatus
+          } else {
+              alert('Push failed: ' + data.message);
+              await updateGitStatus(); // ADDED updateGitStatus
+          }
+      } catch (error) {
+          console.error('Error pushing changes:', error);
+          alert('Error pushing changes.');
+          await updateGitStatus(); // ADDED updateGitStatus
+      }
+  };
+  async function updateGitStatus() {
+    try {
+      const status = await fetchGitStatus(project_name);
+      hasUnpushed = status.has_unpushed_commits;
+    } catch (error) {
+      console.error('Error fetching git status', error);
+    }
+  }
 </script>
 
 <div class="git-status">
@@ -26,10 +136,13 @@
 </div>
 
 <div>
+    <button onclick={handleCommitChanges}>Commit</button>
+    {#if hasUnpushed}
+      <button onclick={handlePushChanges}>Push</button>
+    {/if}
     <label>
         <strong>Auto-Commit for this chat:</strong>
-        <input type="checkbox" bind:checked={auto_commit} onchange={toggleAutoCommit} />
+        <input type="checkbox" bind:checked={autoCommit} onchange={toggleAutoCommit} />
     </label>
-    <button onclick={commitChanges}>Commit</button>
-    <button onclick={pushChanges}>Push</button>
+    <button onclick={handleCreateBranch}>Start New Branch</button>
 </div>

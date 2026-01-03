@@ -1,6 +1,7 @@
 // frontend/src/lib/analyze-query/syntax-highlighting.js
 import { codeToHtml } from "shiki";
 import { handleApplyToFile } from "./apply-to-file-action.js";
+import { linkFilePathsInElement } from "./utils.js";
 
 /**
  * Fallback for older browsers for copy to clipboard.
@@ -119,9 +120,10 @@ export function decodeHtmlEntities(str) {
   return textarea.value;
 }
 
-export function highlightAction(node) {
+export function highlightAction(node, selectedFiles) {
   // Access project_name from the component's context
   // component is not available from actions.  Need some other solution
+  linkFilePathsInElement(node, selectedFiles);
 
   const process = async (projectName) => {
     const blocks = node.querySelectorAll('.shiki-block:not(.highlighted)');

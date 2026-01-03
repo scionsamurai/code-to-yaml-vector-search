@@ -1,10 +1,24 @@
 <!-- frontend/src/components/ChatInterface.svelte -->
 <script lang="ts">
+  import { onMount } from 'svelte'; // Import onMount
   import BranchNavigation from './BranchNavigation.svelte';
-  import { formatMessage, linkFilePathsInElement } from "../lib/analyze-query/utils.js";
+  import { formatMessage } from "../lib/analyze-query/utils.js";
   import { highlightAction } from "../lib/analyze-query/syntax-highlighting.js";
 
-  let { project_name, query_id, chatHistory, branch_display_data, git_stuff, sendMessage: propsSendMessage, resetChat: propsResetChat, toggleSearchModal, toggleOptimizePromptModal } = $props();
+  let { 
+    project_name, 
+    query_id, 
+    chatHistory, 
+    branch_display_data, 
+    git_stuff, 
+    selectedFiles,
+    sendMessage: propsSendMessage, 
+    resetChat: propsResetChat, 
+    toggleSearchModal, 
+    toggleOptimizePromptModal,
+    onFileCheckboxChange,
+  } = $props();
+  
   let messageInput = $state('');
   let chatContainer: HTMLElement;
 
@@ -205,6 +219,47 @@ async function regenerateMessage(messageId: string) {
 
   // --- Effects ---
 
+  onMount(() => {
+    // VS Code iframe opening logic
+    chatContainer.addEventListener('click', (event) => {
+        const link = (event.target as HTMLElement).closest('a.file-path-link') as HTMLAnchorElement;
+        console.log('link clicked:', link, event);
+        if (link) {
+            event.preventDefault(); // Prevent default browser navigation
+
+            // Create an invisible iframe
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none'; // Keep it hidden
+            document.body.appendChild(iframe);
+
+            // Set the iframe's source to the VS Code URI
+            iframe.src = link.href;
+
+            // Clean up the iframe after a short delay
+            setTimeout(() => {
+                try {
+                    document.body.removeChild(iframe);
+                } catch (e) {
+                    console.warn("Could not remove temporary iframe:", e);
+                }
+            }, 500);
+        }
+    });
+
+    // File path checkbox change logic
+    chatContainer.addEventListener('change', (event) => {
+        const target = event.target as HTMLInputElement;
+        if (target.classList.contains('file-path-checkbox')) {
+            const filePath = target.value;
+            const isChecked = target.checked;
+            onFileCheckboxChange({ filePath, isChecked }); // Call the prop function
+        }
+    });
+
+
+
+  });
+
   // Scroll to bottom on chatHistory update
   $effect(() => {
     if (chatContainer && chatHistory) {
@@ -216,10 +271,6 @@ async function regenerateMessage(messageId: string) {
           behavior: 'smooth'
         });
       }
-
-        // Link file paths in the new messages
-        const messageElements = chatContainer.querySelectorAll('.message-content');
-        messageElements.forEach(el => linkFilePathsInElement(el as HTMLElement));
     };
   });
 </script>
@@ -232,7 +283,7 @@ async function regenerateMessage(messageId: string) {
 <div class="chat-container" bind:this={chatContainer}>
   {#each chatHistory as msg (msg.id)}
     <div class="chat-message {msg.role}-message">
-      <div class="message-content" use:highlightAction>
+      <div class="message-content" use:highlightAction={selectedFiles}>
         {#if editingMessageId === msg.id}
             <textarea
                 class="message-editor text-area-fmt"

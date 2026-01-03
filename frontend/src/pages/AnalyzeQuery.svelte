@@ -9,7 +9,7 @@
   import QueryManagement from '../components/QueryManagement.svelte';
   import { setProjectSourceDirectory } from "../lib/analyze-query/utils.js";
   import { 
-    updateContext, fetchChatHistory, fetchOtherProjectFiles, fetchBranchingData, toggleAutoCommitBackend
+    updateContext, fetchChatHistory, fetchOtherProjectFiles, fetchBranchingData
   } from '../lib/analyze-query/api.js';
 
 
@@ -32,10 +32,9 @@
   let messageInput = $state('');
   let isSearchModalOpen = $state(false);
   let isOptimizePromptModalOpen = $state(false);
-  let autoCommit = $state(auto_commit); // Local copy of the auto-commit state
   let includeDescriptions = $state(include_file_descriptions);
-  let currentBranch = $state(current_repo_branch_name);
   let branch_display_data = $state<Record<string, any>>({}); // Initialize as an empty object with proper type
+
   
   let selectedFiles = $state([...saved_context_files]);
   let otherProjectFiles = $state<string[]>([]);
@@ -46,7 +45,7 @@
     setProjectSourceDirectory(project_source_dir);
     chatHistory = await fetchChatHistory(project_name, query_id);
     otherProjectFiles = await fetchOtherProjectFiles(project_name, llm_suggested_files, relevant_files);
-    branch_display_data = await fetchBranchingData(project_name, query_id);
+    await fetchBranchingData(project_name, query_id);
   });
 
   // --- Derived States and Functions ---
@@ -65,6 +64,21 @@
   const handleFileSelectionChange = (newSelectedFiles: string[]) => {
     selectedFiles = newSelectedFiles;
   };
+
+  const handleChatFileCheckboxChange = (value: { filePath: string; isChecked: boolean }) => {
+    const { filePath, isChecked } = value;
+    let newSelectedFiles = [...selectedFiles];
+
+    if (isChecked) {
+      if (!newSelectedFiles.includes(filePath)) {
+        newSelectedFiles.push(filePath);
+      }
+    } else {
+      newSelectedFiles = newSelectedFiles.filter(file => file !== filePath);
+    }
+    selectedFiles = newSelectedFiles; // This will trigger the $effect to update context
+  };
+
 
   async function handleSendMessage(message: string) {
     messageInput = ''; // Clear input immediately
@@ -111,32 +125,10 @@
       }
     }
   }
-  const handleAutoCommitToggle = async (newValue: boolean) => {
-        autoCommit = newValue;
-        try {
-          await toggleAutoCommitBackend(project_name, query_id, newValue);
-        } catch (error) {
-          console.error('Error updating auto-commit:', error);
-          autoCommit = !newValue;
-          if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error updating auto-commit: ${error.message}`);
-        }
-    };
 
   const handleIncludeDescriptionsToggle = async (newValue: boolean) => {
     includeDescriptions = newValue;
     await updateContext(project_name, query_id, selectedFiles, newValue);
-  };
-  const handleBranchChange = (newBranch: string) => {
-      currentBranch = newBranch;
-      console.log("Parent switching to " + newBranch);
-  }
-
-  const handleCommitChanges = () => {
-    console.log('Commit changes clicked');
-  };
-
-  const handlePushChanges = () => {
-    console.log('Push changes clicked');
   };
 
   const handleOtherFilesFetch = async () => {
@@ -192,29 +184,28 @@
       {query_id}
       {chatHistory}
       {branch_display_data}
+      {selectedFiles}
       sendMessage={(e: CustomEvent<string>) => handleSendMessage(e.detail)}
       resetChat={handleResetChat}
       toggleSearchModal={toggleSearchModal}
       toggleOptimizePromptModal={toggleOptimizePromptModal}
+      onFileCheckboxChange={handleChatFileCheckboxChange}
     >
       {#snippet git_stuff()}
         {#if git_enabled}
             <GitActions
                 {project_name}
                 {query_id}
-                {auto_commit}
-                {currentBranch}
+                initialAutoCommit={auto_commit}
+                initialBranch={current_repo_branch_name}
                 {all_branches}
-                autoCommitToggled={(e: CustomEvent<boolean>) => handleAutoCommitToggle(e.detail)}
-                branchChanged={(e: CustomEvent<string>) => handleBranchChange(e.detail)}
-                commitChanges={handleCommitChanges}
-                pushChanges={handlePushChanges}
             />
         {/if}
       {/snippet}
     </ChatInterface>
   </main>
 </div>
+
 
 {#if isSearchModalOpen}
   <SearchFilesModal {project_name} onClose={() => (isSearchModalOpen = false)} />

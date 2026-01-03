@@ -4,7 +4,7 @@ import App from './App.svelte';
 
 const entry = document.getElementById("svelte-entry") as HTMLElement;
 
-// Extract variables from the data attributes we set in Rust
+// Extract variables from the data attributes we set
 const componentName = entry.dataset.component;
 const title = entry.dataset.title;
 const rawJson = entry.dataset.json;

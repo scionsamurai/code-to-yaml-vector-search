@@ -43,7 +43,7 @@ impl TemplateService {
             // Update the form to use method="get" and build the URL with path parameters
             search_results_html.push_str(&format!(
                 r#"<div class="query-actions">
-                        <a href="/analyze-query/{}/{}" class="analyze-button">Chat with Analysis</a>
+                        <a href="/{}/{}" class="analyze-button">Chat with Analysis</a>
                     </div>"#,
                 project_name, query_id // project_name and query_id are now in the URL path
             ));

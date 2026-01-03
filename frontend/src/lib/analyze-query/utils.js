@@ -74,7 +74,7 @@ function createVsCodeLink(filePath, baseProjectSourceDir) {
 }
 
 
-export function linkFilePathsInElement(element) {
+export function linkFilePathsInElement(element, selected_files) {
   if (!projectSourceDirectory) {
     console.warn(
       "projectSourceDirectory is not set. File links will not be generated."
@@ -117,8 +117,7 @@ export function linkFilePathsInElement(element) {
 
       // Check if the file is currently selected in the file list
       const fileId = match.replace(/[/\\.]/g, '-'); // Create a unique ID
-      const isChecked = document.querySelector(`.file-list input[type="checkbox"][value="${normalizedMatch}"]`)?.checked || false;
-      
+      const isChecked = selected_files.includes(normalizedMatch);
 
       return `<label class="file-link-container"><input type="checkbox" class="file-path-checkbox" data-file-path="${escapedMatch}" value="${normalizedMatch}" id="checkbox-${fileId}" ${isChecked ? 'checked' : ''}><a href="${vscodeUri}" class="file-path-link">${escapedMatch}</a></label>`;
     });
