@@ -4,7 +4,6 @@ use super::TemplateService;
 use crate::shared;
 use std::collections::HashMap; // <--- ADD this for HashMap
 use uuid::Uuid; // <--- ADD this for Uuid
-use std::collections::BTreeMap; // For sorted children if needed, or just sort Vec
 
 impl TemplateService {
     pub fn render_analyze_query_page(

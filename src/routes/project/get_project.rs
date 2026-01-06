@@ -132,6 +132,8 @@ pub async fn get_project(
         }
     };
 
+    project_service.cleanup_embeddings_on_load(&mut project, &output_dir);
+
     // Render full page
     let html = template_service.render_project_page(
         &project,

@@ -6,7 +6,6 @@ mod render_analyze_query_page;
 mod file_list_generator;
 
 use crate::models::{ChatMessage, BranchDisplayData};
-use uuid::Uuid; // <--- ADD THIS LINE
 
 pub struct TemplateService;
 

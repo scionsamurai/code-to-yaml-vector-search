@@ -2,8 +2,10 @@
 use crate::models::Project;
 use crate::services::yaml::YamlService;
 use crate::services::template::TemplateService;
+use crate::services::yaml::management::cleanup::clean_up_orphaned_files;
 use std::fs::read_to_string;
 use std::path::Path;
+use crate::services::yaml::processing::gitignore_handler::is_file_ignored; // Import the function
 
 pub mod query_management;
 pub mod chat_management;
@@ -22,6 +24,33 @@ impl ProjectService {
             query_manager: QueryManager::new(),
             chat_manager: ChatManager::new(),
         }
+    }
+
+
+    pub fn cleanup_embeddings_on_load(&self, project: &mut Project, output_dir: &Path) {
+        let source_dir_str = project.source_dir.clone();
+        let mut files_to_remove: Vec<String> = Vec::new();
+
+        for file_path in project.embeddings.keys() {
+            let file_exists = Path::new(file_path).exists();
+            let should_be_ignored = is_file_ignored(&source_dir_str, file_path, Path::new(file_path));
+
+            if !file_exists || should_be_ignored {
+                files_to_remove.push(file_path.clone());
+                println!("Detected file to remove during cleanup: {}", file_path);
+            }
+        }
+
+        clean_up_orphaned_files(&project.name, files_to_remove.clone());
+        
+        // remove files from embeddings after cleanup
+        for file_path in files_to_remove {
+            project.embeddings.remove(&file_path);
+        }
+        self.save_project(project, output_dir).unwrap_or_else(|e| {
+            eprintln!("Failed to save project after cleanup: {}", e);
+        });
+        
     }
 
     pub fn load_project(&self, output_dir: &Path) -> Result<Project, String> {
