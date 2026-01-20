@@ -63,8 +63,7 @@ fn process_yaml_entry(
 
     if !original_source_path.exists()
         || gitignore_handler::is_file_ignored(
-            &project.source_dir,
-            &source_path,
+            &Path::new(&project.source_dir),
             &original_source_path,
         )
     {

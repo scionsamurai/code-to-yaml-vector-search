@@ -42,7 +42,11 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
         let needs_update = if force {
             true // Force update overrides all checks
         } else {
-            yaml_management.file_service.needs_yaml_update(project, &repo_result, source_path_buf, &yaml_path)
+            if file_extension != "md" {
+                yaml_management.file_service.needs_yaml_update(project, &repo_result, source_path_buf, &yaml_path)
+            } else {
+                false // Markdown files are always processed, no YAML update needed
+            }
         };
         
         // Get blob hash if git is enabled and repo is open for the current file

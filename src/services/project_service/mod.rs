@@ -33,7 +33,7 @@ impl ProjectService {
 
         for file_path in project.embeddings.keys() {
             let file_exists = Path::new(file_path).exists();
-            let should_be_ignored = is_file_ignored(&source_dir_str, file_path, Path::new(file_path));
+            let should_be_ignored = is_file_ignored(&Path::new(&source_dir_str), Path::new(file_path));
 
             if !file_exists || should_be_ignored {
                 files_to_remove.push(file_path.clone());
