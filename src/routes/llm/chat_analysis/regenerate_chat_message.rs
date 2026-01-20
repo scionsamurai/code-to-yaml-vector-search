@@ -3,12 +3,10 @@ use super::models::*;
 use super::utils::*;
 use crate::models::AppState;
 use crate::models::ChatMessage;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
-// Removed: use actix_web::http::header;
 use std::path::Path;
-// Removed: use crate::services::utils::html_utils::unescape_html;
 
 #[post("/regenerate-chat-message")]
 pub async fn regenerate_chat_message(
@@ -110,8 +108,13 @@ pub async fn regenerate_chat_message(
 
     let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message_for_llm);
 
+    // Determine LLM config for this conversation. For now, a default LlmServiceConfig.
+    // This is also a prime candidate for where to read the 'grounding_with_search' setting from the UI
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+
     let llm_response = llm_service
-        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
+        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
         .await;
 
     // Create a NEW assistant message for the regenerated response (raw markdown)
@@ -163,6 +166,6 @@ pub async fn regenerate_chat_message(
         success: true,
         new_model_message: new_model_message_to_return.unwrap(),
         new_current_node_id: new_assistant_message_id,
-        user_message_id, // Pass the ID of the user message that was the parent
+        user_message_id, // The user message this model message is a child of
     })
 }

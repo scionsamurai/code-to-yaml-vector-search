@@ -1,6 +1,6 @@
 // src/services/yaml/management/mod.rs
 use crate::services::file::FileService;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::models::{
     Project,
     ProjectFile,
@@ -35,8 +35,11 @@ impl YamlManagement {
         yaml_model: Option<&str>, // New parameter for YAML model
     ) -> Option<String> {
 
+        // ADD LLMSERVICECONFIG
+        let llm_config = LlmServiceConfig::new(); // Default config
+
         // Pass both chat_model (specific_model) and yaml_model to llm_service.convert_to_yaml
-        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, chat_model, yaml_model).await;
+        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, chat_model, yaml_model, Some(llm_config)).await;
 
         let language = Path::new(&project_file.path)
             .extension()

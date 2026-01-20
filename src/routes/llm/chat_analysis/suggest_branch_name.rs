@@ -2,7 +2,7 @@
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::Deserialize;
 use crate::models::{AppState, ChatMessage};
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::project_service::ProjectService;
 use std::path::Path;
 use serde_json::json;
@@ -44,7 +44,12 @@ pub async fn suggest_branch_name(
     });
     messages.extend(chat_history);
 
-    let llm_response = llm_service.send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref()).await;
+    // Determine LLM config for this conversation. For now, a default LlmServiceConfig.
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+
+
+    let llm_response = llm_service.send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option).await;
 
     HttpResponse::Ok().json(json!({ "branch_name": llm_response }))
 }

@@ -1,6 +1,6 @@
 // src/routes/llm/optimize_prompt.rs
 use crate::models::AppState;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig};
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse, Result};
 use serde::{Deserialize, Serialize};
@@ -71,6 +71,9 @@ pub async fn optimize_prompt_route(
 
     let escaped_original_prompt = escape_html(req.original_prompt.clone()).await;
     let escaped_optimization_direction = escape_html(req.optimization_direction.clone()).await;
+
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
     
     let optimized_prompt_result = llm_service.get_optimized_prompt(
         &escaped_original_prompt,
@@ -79,6 +82,7 @@ pub async fn optimize_prompt_route(
         file_context_for_prompt.as_deref(),
         provider,
         specific_model,
+        llm_config_option
     ).await;
 
     match optimized_prompt_result {

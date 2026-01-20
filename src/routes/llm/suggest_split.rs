@@ -1,7 +1,7 @@
 // src/routes/llm/suggest_split.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::{AppState, Project};
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig};
 use std::fs::read_to_string;
 use std::path::Path;
 
@@ -57,7 +57,11 @@ pub async fn suggest_split(
     
     // Use the LLM service to get the analysis
     let llm_service = LlmService::new();
-    let analysis = llm_service.get_analysis(&initial_prompt, &project.provider, project.specific_model.as_deref()).await;
+
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+
+    let analysis = llm_service.get_analysis(&initial_prompt, &project.provider, project.specific_model.as_deref(), llm_config_option).await;
 
     // Create HTML response with chat interface
     let html = format!(

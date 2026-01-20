@@ -2,7 +2,7 @@
 use crate::models::Project;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
 use crate::models::QueryData;
@@ -72,6 +72,9 @@ impl SearchService {
         let llm_service = LlmService::new();
         let file_service = FileService {};
         let llm_provider = project.provider.clone();
+
+        // ADD LLMSERVICECONFIG
+        let llm_config = LlmServiceConfig::new(); // Default config
         
         // Extract code from similar files
         let mut file_code = String::new();
@@ -109,7 +112,7 @@ impl SearchService {
         );
         
         // Get LLM analysis
-        let llm_response = llm_service.get_analysis(&prompt, &llm_provider, project.specific_model.as_deref()).await;
+        let llm_response = llm_service.get_analysis(&prompt, &llm_provider, project.specific_model.as_deref(), Some(llm_config)).await;
 
         Ok(llm_response)
     }

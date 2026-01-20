@@ -1,7 +1,7 @@
 // src/routes/llm/chat_split.rs
 use actix_web::{post, web, HttpResponse, Responder};
 use crate::models::AppState;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig};
 use crate::services::project_service::ProjectService;
 use std::path::Path;
 use serde::Deserialize;
@@ -51,7 +51,14 @@ pub async fn chat_split(
     
     // Use the LLM service to get the response
     let llm_service = LlmService::new();
-    let response = llm_service.get_analysis(&prompt, &project.provider, project.specific_model.as_deref()).await;
+
+
+
+    // Determine LLM config for this conversation. For now, a default LlmServiceConfig.
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+    
+    let response = llm_service.get_analysis(&prompt, &project.provider, project.specific_model.as_deref(), llm_config_option).await;
 
     HttpResponse::Ok().body(response)
 }

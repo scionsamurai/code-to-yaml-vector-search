@@ -2,7 +2,7 @@
 use crate::models::{Project, ChatMessage, AppState};
 use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::git_service::GitService;
 use git2::Repository;
 use actix_web::web;
@@ -36,8 +36,8 @@ pub fn create_system_prompt(
     query: &str,
     context_files: &Vec<String>,
     file_contents: &str,
-    project: &Project, // Add project here
-    include_file_descriptions: bool, // Add this flag
+    project: &Project,
+    include_file_descriptions: bool,
 ) -> String {
     let mut prompt = format!("You are an AI assistant helping with code analysis for a project. In this chat the user controls which files you see and which messages you see with every prompt. \
         The user's original query was: \"{}\"", query);
@@ -64,7 +64,7 @@ pub fn create_system_prompt(
 
  pub fn get_full_history(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> Vec<ChatMessage> {
     let project_dir = Path::new(&app_state.output_dir).join(&project.name);
-    let project_service = ProjectService::new(); // Create an instance of ProjectService
+    let project_service = ProjectService::new();
     project_service.chat_manager.get_analysis_chat_history(&project_service.query_manager, &project_dir, query_id)
 }
 
@@ -185,11 +185,16 @@ pub async fn generate_commit_message(
         ..Default::default()
     });
 
+    // Determine LLM config for this conversation. For now, a default LlmServiceConfig.
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+
     let generated_message_llm_response = llm_service
         .send_conversation(
             &commit_llm_messages,
             &project.provider.clone(),
             project.specific_model.as_deref(),
+            llm_config_option, // Pass the config here
         )
         .await;
 

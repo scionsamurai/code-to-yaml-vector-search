@@ -6,6 +6,59 @@ use std::fs::read_to_string;
 use std::path::Path;
 use crate::services::utils::html_utils::escape_html;
 use std::io::Error; // Import std::io::Error
+use llm_api_access::config::LlmConfig;
+
+#[derive(Debug, Clone, Default)]
+pub struct LlmServiceConfig {
+    pub temperature: Option<f64>,
+    pub thinking_budget: Option<i32>,
+    pub grounding_with_search: Option<bool>,
+}
+
+impl LlmServiceConfig {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_temperature(mut self, temperature: f64) -> Self {
+        self.temperature = Some(temperature);
+        self
+    }
+
+    pub fn with_thinking_budget(mut self, thinking_budget: i32) -> Self {
+        self.thinking_budget = Some(thinking_budget);
+        self
+    }
+
+    pub fn with_grounding_with_search(mut self, grounding_with_search: bool) -> Self {
+        self.grounding_with_search = Some(grounding_with_search);
+        self
+    }
+
+    //Converts to the llm_api_access LlmConfig type.
+    pub fn to_llm_config(&self) -> Option<LlmConfig> {
+        let mut config = LlmConfig::new();
+
+        if let Some(temperature) = self.temperature {
+            config = config.with_temperature(temperature);
+        }
+
+        if let Some(thinking_budget) = self.thinking_budget {
+            config = config.with_thinking_budget(thinking_budget);
+        }
+
+        if let Some(grounding_with_search) = self.grounding_with_search {
+            config = config.with_grounding_with_search(grounding_with_search);
+        }
+
+        if config.temperature.is_some() || config.thinking_budget.is_some() || config.grounding_with_search.is_some() {
+            Some(config)
+        } else {
+            None
+        }
+    }
+}
+
 
 pub struct LlmService;
 
@@ -14,8 +67,8 @@ impl LlmService {
         LlmService {}
     }
 
-    // Updated signature: takes provider and specific_model as separate arguments
-    pub async fn get_analysis(&self, prompt: &str, provider: &str, specific_model: Option<&str>) -> String {
+    // Updated signature to accept LlmServiceConfig
+    pub async fn get_analysis(&self, prompt: &str, provider: &str, specific_model: Option<&str>, config: Option<LlmServiceConfig>) -> String {
         // Determine the target model based on provider string
         let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
@@ -23,8 +76,11 @@ impl LlmService {
             "gemini" | _ => LLM::Gemini,
         };
 
-        // Pass specific_model directly to the llm_api_access crate
-        let llm_response = target_model.send_single_message(prompt, specific_model).await;
+        // Convert LlmServiceConfig to LlmConfig
+        let llm_config = config.and_then(|c| c.to_llm_config());
+
+        // Pass specific_model and LlmConfig to the llm_api_access crate
+        let llm_response = target_model.send_single_message(prompt, specific_model, llm_config.as_ref()).await;
 
         match llm_response {
             Ok(content) => {
@@ -35,8 +91,8 @@ impl LlmService {
         }
     }
 
-    // Updated signature: takes provider and specific_model as separate arguments
-    pub async fn send_conversation(&self, messages: &[ChatMessage], provider: &str, specific_model: Option<&str>) -> String {
+    // Updated signature to accept LlmServiceConfig
+    pub async fn send_conversation(&self, messages: &[ChatMessage], provider: &str, specific_model: Option<&str>, config: Option<LlmServiceConfig>) -> String {
         // Determine the target model based on provider string
         let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
@@ -53,8 +109,12 @@ impl LlmService {
             })
             .collect();
 
-        // Pass specific_model directly to the llm_api_access crate
-        let llm_response = target_model.send_convo_message(api_messages, specific_model).await;
+        // Convert LlmServiceConfig to LlmConfig
+        let llm_config = config.and_then(|c| c.to_llm_config());
+
+
+        // Pass specific_model and LlmConfig to the llm_api_access crate
+        let llm_response = target_model.send_convo_message(api_messages, specific_model, llm_config.as_ref()).await;
 
         match llm_response {
             Ok(content) => {
@@ -65,16 +125,17 @@ impl LlmService {
         }
     }
 
-    // NEW: Method to optimize a prompt with optional direction, chat history, and file context
+    // Updated signature to accept LlmServiceConfig
     pub async fn get_optimized_prompt(
         &self,
         original_prompt: &str,
         optimization_direction: Option<&str>,
-        chat_history_str: Option<&str>, // New parameter
-        file_context_str: Option<&str>, // New parameter
+        chat_history_str: Option<&str>,
+        file_context_str: Option<&str>,
         provider: &str,
         specific_model: Option<&str>,
-    ) -> Result<String, Error> { // Changed return type to Result<String, Error>
+        config: Option<LlmServiceConfig>, // New config parameter
+    ) -> Result<String, Error> {
         // Determine the target model based on provider string
         let target_model = match provider.to_lowercase().as_str() {
             "openai" => LLM::OpenAI,
@@ -116,7 +177,11 @@ impl LlmService {
             },
         ];
 
-        let llm_response = target_model.send_convo_message(messages, specific_model).await;
+
+        // Convert LlmServiceConfig to LlmConfig
+        let llm_config = config.and_then(|c| c.to_llm_config());
+
+        let llm_response = target_model.send_convo_message(messages, specific_model, llm_config.as_ref()).await;
 
         match llm_response {
             Ok(content) => {
@@ -128,8 +193,8 @@ impl LlmService {
     }
 
 
-    // Updated signature: takes provider and specific_model (for chat) AND yaml_model as separate arguments
-    pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, chat_model: Option<&str>, yaml_model: Option<&str>) -> String { // NEW: Added yaml_model
+    // Updated signature to accept LlmServiceConfig
+    pub async fn convert_to_yaml(&self, file: &ProjectFile, provider: &str, chat_model: Option<&str>, yaml_model: Option<&str>, config: Option<LlmServiceConfig>) -> String { // NEW: Added yaml_model and config
         // Use yaml_model if provided, otherwise fallback to chat_model, then to None (default LLM model for API access if none specified)
         let model_to_use = yaml_model.or(chat_model);
 
@@ -163,8 +228,11 @@ impl LlmService {
             },
         ];
 
-        // Pass the determined model directly to the llm_api_access crate
-        let llm_response = target_model.send_convo_message(messages, model_to_use).await;
+        // Convert LlmServiceConfig to LlmConfig
+        let llm_config = config.and_then(|c| c.to_llm_config());
+
+        // Pass the determined model and LlmConfig directly to the llm_api_access crate
+        let llm_response = target_model.send_convo_message(messages, model_to_use, llm_config.as_ref()).await;
 
         // remove backticks and extract the YAML content
         let yaml_content = match llm_response {
@@ -192,25 +260,8 @@ impl LlmService {
 
                 let final_content_lines: Vec<&str> = if let (Some(s_idx), Some(e_idx)) = (start_index, end_index) {
                     // Block found: content between the first and last delimiters
-                    if s_idx == e_idx {
-                        // This case should not be hit if `delimiter_line_indices.len() >= 2`
-                        // is properly handled, but as a safeguard.
-                        lines.iter().enumerate()
-                            .filter(|&(i, _)| i != s_idx) // Remove the single delimiter line
-                            .map(|(_, line)| *line) // Dereference here
-                            .collect()
-                    } else {
-                        lines[s_idx + 1..e_idx].to_vec()
-                    }
-                } else if delimiter_line_indices.len() == 1 {
-                    // Exactly one delimiter found, remove that line and keep the rest
-                    let single_delimiter_idx = delimiter_line_indices[0];
-                    lines.iter().enumerate()
-                         .filter(|&(i, _)| i != single_delimiter_idx) // Keep all lines except the delimiter
-                         .map(|(_, line)| *line) // Dereference here
-                         .collect()
+                    lines[s_idx + 1..e_idx].to_vec()
                 } else {
-                    // No delimiters found, assume the entire content is the YAML
                     lines.to_vec()
                 };
 

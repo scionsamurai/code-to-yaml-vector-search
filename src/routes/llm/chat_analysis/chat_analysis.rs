@@ -2,12 +2,12 @@
 use super::models::*;
 use super::utils::*;
 use crate::models::{AppState, ChatMessage};
-use crate::services::llm_service::LlmService;
+use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};
 use std::path::Path;
-use crate::services::utils::html_utils::{escape_html, unescape_html}; // NO LONGER ESCAPING HTML HERE
+use crate::services::utils::html_utils::{escape_html, unescape_html};
 use std::env;
 
 #[post("/chat-analysis")]
@@ -188,9 +188,14 @@ pub async fn chat_analysis(
     // Format messages for LLM with system prompt and existing history + new user message
     let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
 
-    // Send to LLM
+    // Determine LLM config for this conversation. For now, a default LlmServiceConfig
+    // This is a prime candidate for where to read the 'grounding_with_search' setting from the UI
+    let llm_config = LlmServiceConfig::new(); 
+    let llm_config_option = Some(llm_config); 
+
+    // Send to LLM, passing the new config parameter
     let llm_response = llm_service
-        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref())
+        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
         .await;
 
     // Create assistant message (raw markdown)
