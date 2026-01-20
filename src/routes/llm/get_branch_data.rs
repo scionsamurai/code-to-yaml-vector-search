@@ -24,14 +24,6 @@ pub async fn get_branching_data(
     let output_dir = Path::new(&app_state.output_dir);
     let project_dir = output_dir.join(&project_name);
 
-    let project = match project_service.load_project(&project_dir) {
-        Ok(p) => p,
-        Err(e) => {
-            return HttpResponse::InternalServerError()
-                .body(format!("Failed to load project: {}", e))
-        }
-    };
-
     let full_query_data = project_service.query_manager.load_query_data(&project_dir, &query_id).unwrap_or_default();
 
     // Pre-compute branching data for all potential parents

@@ -34,28 +34,10 @@ pub struct RegenerateChatMessageRequest {
 }
 
 #[derive(Deserialize)]
-pub struct SuggestBranchNameRequest {
-    pub project_name: String,
-    pub query_id: String,
-}
-
-#[derive(Deserialize)]
 pub struct ApplyCodeToFileRequest {
     pub project_name: String,
     pub file_path: String,
     pub code_content: String,
-    pub query_id: String,
-    pub commit_message: String,
-    pub create_new_branch: bool,
-    pub branch_name: Option<String>,
-}
-
-#[derive(Deserialize)]
-pub struct UpdateMessageVisibilityRequest {
-    pub project: String,
-    pub message_id: Uuid,
-    pub query_id: Option<String>,
-    pub hidden: bool,
 }
 
 // --- NEW RESPONSE STRUCTS FOR DYNAMIC UPDATES ---

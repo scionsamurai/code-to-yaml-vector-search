@@ -1,5 +1,5 @@
 // src/routes/ui/home.rs
-use actix_web::{get, web, HttpResponse, Responder};
+use actix_web::{get, web, Responder};
 use crate::models::AppState;
 use crate::services::file::FileService;
 use crate::services::project_service::ProjectService;
