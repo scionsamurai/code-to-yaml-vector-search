@@ -11,6 +11,7 @@ pub struct UpdateContextRequest {
     files: Vec<String>,
     query_id: String,
     pub include_file_descriptions: bool,
+    pub grounding_with_search: bool, // ADDED: New field for grounding
 }
 
 #[post("/update-analysis-context")]
@@ -47,6 +48,7 @@ pub async fn update_analysis_context(
             // Update the context files and description flag
             query_data.context_files = data.files.clone();
             query_data.include_file_descriptions = data.include_file_descriptions; 
+            query_data.grounding_with_search = data.grounding_with_search; // ADDED: Update grounding flag
 
             // Save the updated QueryData using the provided query_id_to_update as the filename
             match project_service.query_manager.save_query_data(&project_dir, &query_data, query_id_to_update) {

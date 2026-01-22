@@ -26,6 +26,8 @@
     project_name, query_id, query_text, project_source_dir, relevant_files, saved_context_files, 
     llm_suggested_files, available_queries, include_file_descriptions, auto_commit, current_repo_branch_name, 
     all_branches, git_enabled, file_yaml_override, default_use_yaml,
+    grounding_with_search, // Original prop from extraData
+    project_provider, // NEW: Pass project_provider down to ChatInterface
   } = $derived(extraData);
 
   // --- Local UI State ---
@@ -33,6 +35,8 @@
   let isSearchModalOpen = $state(false);
   let isOptimizePromptModalOpen = $state(false);
   let includeDescriptions = $state(include_file_descriptions);
+  // This local state will now be updated by ChatInterface and then trigger the effect
+  let currentGroundingWithSearch = $state(grounding_with_search); // MODIFIED: Use `currentGroundingWithSearch` to track UI state.
   let branch_display_data = $state<Record<string, any>>({}); // Initialize as an empty object with proper type
 
   
@@ -49,10 +53,15 @@
   });
 
   // --- Derived States and Functions ---
-  // Update context whenever selectedFiles changes
+  // Update context whenever selectedFiles, includeDescriptions, or currentGroundingWithSearch changes
   $effect(() => {
     const filesChanged = JSON.stringify(selectedFiles) !== JSON.stringify(saved_context_files);
-    if (filesChanged || includeDescriptions !== include_file_descriptions) updateContext(project_name, query_id, selectedFiles, includeDescriptions);
+    const descriptionsChanged = includeDescriptions !== include_file_descriptions;
+    const groundingChanged = currentGroundingWithSearch !== grounding_with_search; // MODIFIED: Compare with `currentGroundingWithSearch`
+
+    if (filesChanged || descriptionsChanged || groundingChanged) {
+        updateContext(project_name, query_id, selectedFiles, includeDescriptions, currentGroundingWithSearch); // MODIFIED: Pass `currentGroundingWithSearch`
+    }
   });
 
   function switchQuery(e: Event) {
@@ -128,7 +137,13 @@
 
   const handleIncludeDescriptionsToggle = async (newValue: boolean) => {
     includeDescriptions = newValue;
-    await updateContext(project_name, query_id, selectedFiles, newValue);
+    // The $effect will call updateContext with the new value
+  };
+
+  // NEW: Handler for grounding toggle, now receiving from ChatInterface
+  const handleGroundingToggle = async (newValue: boolean) => {
+    currentGroundingWithSearch = newValue;
+    // The $effect will call updateContext with the new value
   };
 
   const handleOtherFilesFetch = async () => {
@@ -176,6 +191,8 @@
       fetchOtherProjectFiles={handleOtherFilesFetch}
       includeDescriptionsToggled={(e: any) => handleIncludeDescriptionsToggle(e)}
     />
+
+    <!-- REMOVED: Grounding with Search Toggle from here -->
   </aside>
 
   <main class="chat-interface">
@@ -185,11 +202,14 @@
       {chatHistory}
       {branch_display_data}
       {selectedFiles}
+      {project_provider}
+      initialGroundingWithSearch={currentGroundingWithSearch}
       sendMessage={(e: CustomEvent<string>) => handleSendMessage(e.detail)}
       resetChat={handleResetChat}
       toggleSearchModal={toggleSearchModal}
       toggleOptimizePromptModal={toggleOptimizePromptModal}
       onFileCheckboxChange={handleChatFileCheckboxChange}
+      onGroundingToggle={handleGroundingToggle}
     >
       {#snippet git_stuff()}
         {#if git_enabled}

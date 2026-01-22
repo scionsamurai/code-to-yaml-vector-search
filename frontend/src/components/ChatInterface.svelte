@@ -12,11 +12,14 @@
     branch_display_data, 
     git_stuff, 
     selectedFiles,
+    project_provider,             // NEW: Receive project_provider
+    initialGroundingWithSearch,   // NEW: Receive initial grounding state
     sendMessage: propsSendMessage, 
     resetChat: propsResetChat, 
     toggleSearchModal, 
     toggleOptimizePromptModal,
     onFileCheckboxChange,
+    onGroundingToggle,            // NEW: Receive callback for grounding changes
   } = $props();
   
   let messageInput = $state('');
@@ -25,8 +28,13 @@
   // --- Local State ---
   let scroll_height = $state(0);
   let editingMessageId: string | null = $state(null); // Track which message is being edited
+  let enableGroundingWithSearch = $state(initialGroundingWithSearch); // NEW: Local state for grounding
 
-  // --- Functions ---
+  // --- Effects ---
+  // NEW: Update local grounding state if initial prop changes (e.g., query switch)
+  $effect(() => {
+    enableGroundingWithSearch = initialGroundingWithSearch;
+  });
 
   function scrollToBottom() {
     if (chatContainer) {
@@ -114,10 +122,9 @@
 
         if (data.success) {
             if (createNewBranch) {
+                // If branching, remove the old message from history and add the new one
                 chatHistory = chatHistory.filter((msg: any) => msg.id !== messageId);
-
                 chatHistory = [...chatHistory, data.message];
-                //alert('Message edited and new branch created successfully. Note: Branch navigation controls may require a page reload to update visually.');
             } else {
                 // Find and update the message in chatHistory
                 chatHistory = chatHistory.map((msg: any) => {
@@ -217,7 +224,13 @@ async function regenerateMessage(messageId: string) {
     }
 }
 
-  // --- Effects ---
+// NEW: Handler for local grounding toggle, emits to parent
+const handleGroundingToggle = async (newValue: boolean) => {
+  enableGroundingWithSearch = newValue;
+  onGroundingToggle(newValue); // Call the parent's callback
+};
+
+  // --- Mount Effect ---
 
   onMount(() => {
     // VS Code iframe opening logic
@@ -327,7 +340,26 @@ async function regenerateMessage(messageId: string) {
     onkeydown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
   ></textarea>
   <button onclick={handleSend}>Send</button>
-  <button class="secondary" onclick={resetChat}>Reset Chat</button>
-  <button onclick={toggleSearchModal}>Search Files</button>
-  <button onclick={toggleOptimizePromptModal}>Optimize Prompt</button>
+  <div class="extra-options">
+    <div class="extra-options__top">
+      <button class="secondary" onclick={resetChat}>Reset Chat</button>
+      <button onclick={toggleSearchModal}>Search Files</button>
+      <button onclick={toggleOptimizePromptModal}>Optimize Prompt</button>
+    </div>
+    <div class="extra-options__bottom">
+      <!-- NEW: Grounding with Search Toggle -->
+      {#if project_provider === "gemini" || project_provider === "Gemini"}
+          <div class="context-option">
+              <label>
+                  <input
+                      type="checkbox"
+                      bind:checked={enableGroundingWithSearch}
+                      onchange={() => handleGroundingToggle(enableGroundingWithSearch)}
+                  />
+                  Grounding with Google Search
+              </label>
+          </div>
+      {/if}
+    </div>
+  </div>
 </div>

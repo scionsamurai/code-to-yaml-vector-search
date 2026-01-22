@@ -32,7 +32,13 @@ pub async fn chat_analysis(
 
     let query_id = data.query_id.as_deref().unwrap();
 
-    let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
+    // Load query data to get grounding_with_search setting
+    let query_data = match project_service.query_manager.load_query_data(&project_dir, query_id) {
+        Ok(qd) => qd,
+        Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data: {}", e)),
+    };
+    let include_file_descriptions = query_data.include_file_descriptions;
+    let enable_grounding = query_data.grounding_with_search; // ADDED: Get grounding setting
 
     let git_branch_name = project.git_branch_name.clone().unwrap_or_default();
 
@@ -190,7 +196,10 @@ pub async fn chat_analysis(
 
     // Determine LLM config for this conversation. For now, a default LlmServiceConfig
     // This is a prime candidate for where to read the 'grounding_with_search' setting from the UI
-    let llm_config = LlmServiceConfig::new(); 
+    let mut llm_config = LlmServiceConfig::new(); 
+    if enable_grounding { // ADDED: Apply grounding setting
+        llm_config = llm_config.with_grounding_with_search(true);
+    }
     let llm_config_option = Some(llm_config); 
 
     // Send to LLM, passing the new config parameter
@@ -223,12 +232,14 @@ pub async fn chat_analysis(
         .unwrap();
 
     // --- NEW: Update the QueryData's current_node_id to point to the new assistant message ---
-    let mut query_data = match project_service.query_manager.load_query_data(&project_dir, query_id) {
+    // The query_data was already loaded at the beginning, but we need to load it again
+    // to ensure we have the very latest version before updating current_node_id and saving.
+    let mut query_data_for_node_update = match project_service.query_manager.load_query_data(&project_dir, query_id) {
         Ok(qd) => qd,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data for current_node_id update: {}", e)),
     };
-    query_data.current_node_id = Some(assistant_message_new_id);
-    if let Err(e) = project_service.query_manager.save_query_data(&project_dir, &query_data, query_id) {
+    query_data_for_node_update.current_node_id = Some(assistant_message_new_id);
+    if let Err(e) = project_service.query_manager.save_query_data(&project_dir, &query_data_for_node_update, query_id) {
         eprintln!("Failed to save query data after sending chat message: {}", e);
         return HttpResponse::InternalServerError().body(format!("Failed to update query's current node: {}", e));
     }

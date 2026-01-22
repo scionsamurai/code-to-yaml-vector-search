@@ -68,6 +68,8 @@ pub struct QueryData {
     pub include_file_descriptions: bool,
     #[serde(default = "default_false")]
     pub auto_commit: bool,
+    #[serde(default = "default_false")] // ADDED FOR GROUNDING WITH SEARCH
+    pub grounding_with_search: bool, // ADDED FOR GROUNDING WITH SEARCH
 }
 
 impl std::fmt::Display for EmbeddingMetadata {

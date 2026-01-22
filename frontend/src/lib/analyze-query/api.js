@@ -1,5 +1,5 @@
 // frontend/src/lib/analyze-query/api.js
-export async function updateContext(project_name, query_id, files, include_descriptions) {
+export async function updateContext(project_name, query_id, files, include_descriptions, grounding_with_search) { // MODIFIED: Added grounding_with_search
     try {
         const response = await fetch('/update-analysis-context', {
             method: 'POST',
@@ -11,6 +11,7 @@ export async function updateContext(project_name, query_id, files, include_descr
                 query_id: query_id,
                 files: files,
                 include_file_descriptions: include_descriptions,
+                grounding_with_search: grounding_with_search, // ADDED: Pass grounding_with_search
             }),
         });
 
