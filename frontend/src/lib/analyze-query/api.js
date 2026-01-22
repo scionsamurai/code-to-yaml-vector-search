@@ -1,6 +1,9 @@
 // frontend/src/lib/analyze-query/api.js
 export async function updateContext(project_name, query_id, files, include_descriptions, grounding_with_search) { // MODIFIED: Added grounding_with_search
     try {
+        // Ensure grounding_with_search is a strict boolean to prevent deserialization issues if it's falsy (e.g., null, undefined)
+        const final_grounding_value = Boolean(grounding_with_search); // ADDED: Coerce to boolean
+
         const response = await fetch('/update-analysis-context', {
             method: 'POST',
             headers: {
@@ -11,18 +14,25 @@ export async function updateContext(project_name, query_id, files, include_descr
                 query_id: query_id,
                 files: files,
                 include_file_descriptions: include_descriptions,
-                grounding_with_search: grounding_with_search, // ADDED: Pass grounding_with_search
+                grounding_with_search: final_grounding_value, // MODIFIED: Use the coerced value
             }),
         });
 
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            // IMPROVED ERROR REPORTING: Get the response body to see detailed error from backend
+            const errorBody = await response.text();
+            throw new Error(`HTTP error! status: ${response.status}. Body: ${errorBody}`);
         }
         const data = await response.json();
         return data;
     } catch (error) {
         console.error('Error updating context:', error);
-        if (typeof error === 'object' && error !== null && 'message' in error) alert(`Error updating context: ${error.message}`);
+        // Display a more detailed error if it's an Error object
+        if (error instanceof Error) {
+            alert(`Error updating context: ${error.message}`);
+        } else {
+            alert(`Error updating context: ${String(error)}`);
+        }
         throw error;
     }
 }
