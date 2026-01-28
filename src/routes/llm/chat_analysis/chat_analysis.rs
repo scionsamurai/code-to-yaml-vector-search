@@ -1,14 +1,16 @@
 // src/routes/llm/chat_analysis/chat_analysis.rs
+
 use super::models::*;
 use super::utils::*;
 use crate::models::{AppState, ChatMessage};
-use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
+use crate::services::llm_service::{LlmService, LlmServiceConfig};
 use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};
 use std::path::Path;
 use crate::services::utils::html_utils::{escape_html, unescape_html};
 use std::env;
+use crate::services::agent_service::AgentService; // Import AgentService
 
 #[post("/chat-analysis")]
 pub async fn chat_analysis(
@@ -32,13 +34,14 @@ pub async fn chat_analysis(
 
     let query_id = data.query_id.as_deref().unwrap();
 
-    // Load query data to get grounding_with_search setting
+    // Load query data to get grounding_with_search and agentic_mode setting
     let query_data = match project_service.query_manager.load_query_data(&project_dir, query_id) {
         Ok(qd) => qd,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data: {}", e)),
     };
     let include_file_descriptions = query_data.include_file_descriptions;
-    let enable_grounding = query_data.grounding_with_search; // ADDED: Get grounding setting
+    let enable_grounding = query_data.grounding_with_search;
+    let agentic_mode_enabled = query_data.agentic_mode_enabled; // Get agentic_mode setting
 
     let git_branch_name = project.git_branch_name.clone().unwrap_or_default();
 
@@ -153,28 +156,78 @@ pub async fn chat_analysis(
         }
     }
 
-    // Get selected context files and file contents
-    let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
-
-    // Create context prompt with the loaded file contents, project, and description flag
-    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
-
     // No HTML escaping needed for storing user message, store as raw markdown
     let user_message_content_raw = data.message.clone();
     let escaped_message = escape_html(data.message.clone()).await;
 
-    // Create user message for LLM (unescaped) - content is raw markdown
-    let user_message_for_llm = ChatMessage {
-        role: "user".to_string(),
-        content: user_message_content_raw.clone(), // Raw markdown
-        hidden: false,
-        commit_hash: commit_hash_for_user_message.clone(),
-        timestamp: Some(chrono::Utc::now()),
-        context_files: Some(context_files.clone()),
-        provider: Some(project.provider.clone()),
-        model: project.specific_model.clone(),
-        hidden_context: Some(hidden_context.clone()),
-        ..Default::default()
+    // Choose logic based on agentic_mode_enabled
+    let model_message_to_save = if agentic_mode_enabled {
+        // Use AgentService
+        match AgentService::handle_agentic_message(
+            &project,
+            &app_state,
+            query_id,
+            &user_message_content_raw,
+            enable_grounding,
+            include_file_descriptions,
+            &unescaped_history,
+            commit_hash_for_user_message.clone(),
+            hidden_context.clone(),
+        ).await {
+            Ok(model_message) => model_message,
+            Err(e) => {
+                return HttpResponse::InternalServerError().body(format!("Agentic mode failed: {}", e));
+            }
+        }
+    } else {
+        // Get selected context files and file contents
+        let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
+
+        // Create context prompt with the loaded file contents, project, and description flag
+        let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
+
+        // Create user message for LLM (unescaped) - content is raw markdown
+        let user_message_for_llm = ChatMessage {
+            role: "user".to_string(),
+            content: user_message_content_raw.clone(), // Raw markdown
+            hidden: false,
+            commit_hash: commit_hash_for_user_message.clone(),
+            timestamp: Some(chrono::Utc::now()),
+            context_files: Some(context_files.clone()),
+            provider: Some(project.provider.clone()),
+            model: project.specific_model.clone(),
+            hidden_context: Some(hidden_context.clone()),
+            ..Default::default()
+        };
+
+        // Format messages for LLM with system prompt and existing history + new user message
+        let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
+
+        // Determine LLM config for this conversation. For now, a default LlmServiceConfig
+        // This is a prime candidate for where to read the 'grounding_with_search' setting from the UI
+        let mut llm_config = LlmServiceConfig::new();
+        if enable_grounding { // ADDED: Apply grounding setting
+            llm_config = llm_config.with_grounding_with_search(true);
+        }
+        let llm_config_option = Some(llm_config);
+
+        // Send to LLM, passing the new config parameter
+        let llm_response = llm_service
+            .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
+            .await;
+
+        ChatMessage {
+            role: "model".to_string(),
+            content: llm_response.clone(), // LLM response is raw markdown
+            hidden: false,
+            commit_hash: commit_hash_for_user_message.clone(),
+            timestamp: Some(chrono::Utc::now()),
+            context_files: Some(context_files.clone()),
+            provider: Some(project.provider.clone()),
+            model: project.specific_model.clone(),
+            hidden_context: Some(hidden_context.clone()),
+            ..Default::default()
+        }
     };
 
     // Create user message to save (raw markdown), with the determined commit_hash
@@ -183,43 +236,14 @@ pub async fn chat_analysis(
         content: escaped_message.to_string(), // Raw markdown
         hidden: false,
         commit_hash: commit_hash_for_user_message.clone(),
-        timestamp: user_message_for_llm.timestamp,
-        context_files: user_message_for_llm.context_files.clone(),
-        provider: user_message_for_llm.provider.clone(),
-        model: user_message_for_llm.model.clone(),
-        hidden_context: user_message_for_llm.hidden_context.clone(),
-        ..Default::default()
-    };
-
-    // Format messages for LLM with system prompt and existing history + new user message
-    let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
-
-    // Determine LLM config for this conversation. For now, a default LlmServiceConfig
-    // This is a prime candidate for where to read the 'grounding_with_search' setting from the UI
-    let mut llm_config = LlmServiceConfig::new(); 
-    if enable_grounding { // ADDED: Apply grounding setting
-        llm_config = llm_config.with_grounding_with_search(true);
-    }
-    let llm_config_option = Some(llm_config); 
-
-    // Send to LLM, passing the new config parameter
-    let llm_response = llm_service
-        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
-        .await;
-
-    // Create assistant message (raw markdown)
-    let assistant_message_to_save = ChatMessage {
-        role: "model".to_string(),
-        content: llm_response.clone(), // LLM response is raw markdown
-        hidden: false,
-        commit_hash: commit_hash_for_user_message.clone(),
         timestamp: Some(chrono::Utc::now()),
-        context_files: Some(context_files.clone()),
+        context_files: Some(vec!["file1.txt".to_string(), "file2.txt".to_string()]), // ADDED: Add two files to the context
         provider: Some(project.provider.clone()),
         model: project.specific_model.clone(),
-        hidden_context: Some(hidden_context),
+        hidden_context: Some(hidden_context.clone()),
         ..Default::default()
     };
+
 
     // Add user message to chat history
     let user_message_new_id = project_service.chat_manager
@@ -227,6 +251,7 @@ pub async fn chat_analysis(
         .unwrap();
 
     // Add assistant message to chat history
+    let assistant_message_to_save = model_message_to_save.clone();
     let assistant_message_new_id = project_service.chat_manager
         .add_chat_message(&project_service.query_manager,&project_dir, assistant_message_to_save, query_id, Some(user_message_new_id))
         .unwrap();

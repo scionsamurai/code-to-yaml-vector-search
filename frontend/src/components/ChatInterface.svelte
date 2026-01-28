@@ -296,6 +296,18 @@ const handleGroundingToggle = async (newValue: boolean) => {
 <div class="chat-container" bind:this={chatContainer}>
   {#each chatHistory as msg (msg.id)}
     <div class="chat-message {msg.role}-message">
+
+      {#if msg.thoughts && msg.thoughts.length > 0}
+        <details class="agent-thoughts">
+          <summary>Agent Thoughts</summary>
+          <ul>
+            {#each msg.thoughts as thought}
+              <li>{thought}</li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
+      
       <div class="message-content" use:highlightAction={selectedFiles}>
         {#if editingMessageId === msg.id}
             <textarea

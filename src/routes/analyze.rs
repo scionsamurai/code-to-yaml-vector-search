@@ -125,6 +125,7 @@ struct NewAnalyzeQueryProps { // Example data structure
     git_enabled: bool,
     file_yaml_override: HashMap<String, bool>,
     default_use_yaml: bool,
+    agentic_mode_enabled: bool,
 }
 
 #[get("/{project}/{query_id}")]
@@ -143,7 +144,7 @@ async fn new_analyze_query_route(
     // Load the project
     let output_dir = Path::new(&app_state.output_dir);
     println!("output_dir: {:?}", output_dir);
-    let project_dir = output_dir.join(&project_name);
+    let project_dir = output_dir.join(&project_name); 
     println!("Loading project from directory: {:?}", project_dir);
 
 
@@ -155,7 +156,7 @@ async fn new_analyze_query_route(
     let last_query_text = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "query").unwrap_or_else(|| "No previous query found".to_string());
     let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
     let auto_commit = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "auto_commit").unwrap_or_else(|| "false".to_string()) == "true";
-
+    let agentic_mode_enabled = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "agentic_mode_enabled").unwrap_or_else(|| "false".to_string()) == "true";
 
     let available_queries = match project_service.query_manager.get_query_filenames(&project_dir) {
         Ok(queries) => queries,
@@ -224,6 +225,7 @@ async fn new_analyze_query_route(
         git_enabled: git_enabled,
         file_yaml_override: project.file_yaml_override.clone(),
         default_use_yaml: project.default_use_yaml,
+        agentic_mode_enabled: agentic_mode_enabled,
     };
 
     render_svelte("AnalyzeQuery", Some("Analyze Query"), Some(props))

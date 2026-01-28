@@ -70,6 +70,8 @@ pub struct QueryData {
     pub auto_commit: bool,
     #[serde(default = "default_false")] // ADDED FOR GROUNDING WITH SEARCH
     pub grounding_with_search: bool, // ADDED FOR GROUNDING WITH SEARCH
+    #[serde(default = "default_false")] // ADDED FOR AGENTIC MODE
+    pub agentic_mode_enabled: bool,
 }
 
 impl std::fmt::Display for EmbeddingMetadata {
@@ -103,6 +105,8 @@ pub struct ChatMessage {
     pub provider: Option<String>,              // Add provider
     pub model: Option<String>,                 // Add model
     pub hidden_context: Option<Vec<String>>,    // Add hidden context representation
+    #[serde(default)] // Ensure backward compatibility
+    pub thoughts: Option<Vec<String>>,
 }
 
 // Implement Default for ChatMessage to ensure new messages get an ID and other defaults
@@ -120,6 +124,7 @@ impl Default for ChatMessage {
             provider: None,
             model: None,
             hidden_context: None,
+            thoughts: None,
         }
     }
 }

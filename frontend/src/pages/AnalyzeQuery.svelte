@@ -26,8 +26,9 @@
     project_name, query_id, query_text, project_source_dir, relevant_files, saved_context_files, 
     llm_suggested_files, available_queries, include_file_descriptions, auto_commit, current_repo_branch_name, 
     all_branches, git_enabled, file_yaml_override, default_use_yaml,
-    grounding_with_search, // Original prop from extraData
-    project_provider, // NEW: Pass project_provider down to ChatInterface
+    grounding_with_search,
+    project_provider,
+    agentic_mode_enabled: initialAgenticModeEnabled
   } = $derived(extraData);
 
   // --- Local UI State ---
@@ -35,6 +36,7 @@
   let isSearchModalOpen = $state(false);
   let isOptimizePromptModalOpen = $state(false);
   let includeDescriptions = $state(include_file_descriptions);
+  let currentAgenticModeEnabled = $state(initialAgenticModeEnabled);
   // This local state will now be updated by ChatInterface and then trigger the effect
   let currentGroundingWithSearch = $state(grounding_with_search); // MODIFIED: Use `currentGroundingWithSearch` to track UI state.
   let branch_display_data = $state<Record<string, any>>({}); // Initialize as an empty object with proper type
@@ -63,6 +65,29 @@
         updateContext(project_name, query_id, selectedFiles, includeDescriptions, currentGroundingWithSearch); // MODIFIED: Pass `currentGroundingWithSearch`
     }
   });
+
+    $effect(() => {
+      if (currentAgenticModeEnabled !== initialAgenticModeEnabled) {
+        // Call API to update agentic_mode_enabled
+        updateAgenticMode(project_name, query_id, currentAgenticModeEnabled);
+      }
+  });
+
+  async function updateAgenticMode(projectName: string, queryId: string, enabled: boolean) {
+    try {
+      const response = await fetch('/llm/chat_analysis/update_agentic_mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project: projectName, query_id: queryId, enabled }),
+      });
+      if (!response.ok) throw new Error('Failed to update agentic mode');
+      initialAgenticModeEnabled = enabled;
+      // Optionally refresh or show success message
+    } catch (error) {
+      console.error('Error updating agentic mode:', error);
+      currentAgenticModeEnabled = !enabled; // Revert UI state on error
+    }
+  }
 
   function switchQuery(e: Event) {
     const target = e.target as HTMLSelectElement;
@@ -176,21 +201,28 @@
       available_queries={available_queries}
     />
 
-    <hr />
-    <FileContextControl
-      {project_name}
-      {query_id}
-      {llm_suggested_files}
-      {relevant_files}
-      {otherProjectFiles}
-      {selectedFiles}
-      {file_yaml_override}
-      {default_use_yaml}
-      {include_file_descriptions}
-      updatefilesSelected={(e: any) => handleFileSelectionChange(e)}
-      fetchOtherProjectFiles={handleOtherFilesFetch}
-      includeDescriptionsToggled={(e: any) => handleIncludeDescriptionsToggle(e)}
-    />
+    <div class="agentic-control">
+      <label>
+        <input type="checkbox" bind:checked={currentAgenticModeEnabled} />
+        Enable Agentic Control
+      </label>
+    </div>
+    {#if !currentAgenticModeEnabled}
+      <FileContextControl
+        {project_name}
+        {query_id}
+        {llm_suggested_files}
+        {relevant_files}
+        {otherProjectFiles}
+        {selectedFiles}
+        {file_yaml_override}
+        {default_use_yaml}
+        {include_file_descriptions}
+        updatefilesSelected={(e: any) => handleFileSelectionChange(e)}
+        fetchOtherProjectFiles={handleOtherFilesFetch}
+        includeDescriptionsToggled={(e: any) => handleIncludeDescriptionsToggle(e)}
+      />
+    {/if}
 
     <!-- REMOVED: Grounding with Search Toggle from here -->
   </aside>
