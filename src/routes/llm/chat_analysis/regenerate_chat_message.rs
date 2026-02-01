@@ -6,7 +6,9 @@ use crate::models::ChatMessage;
 use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
+use crate::services::utils::html_utils::{escape_html, unescape_html};
 use std::path::Path;
+use crate::services::agent_service::AgentService; // Import AgentService
 
 #[post("/regenerate-chat-message")]
 pub async fn regenerate_chat_message(
@@ -36,10 +38,44 @@ pub async fn regenerate_chat_message(
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data: {}", e)),
     };
     let enable_grounding = query_data.grounding_with_search; // ADDED: Get grounding setting
+    let agentic_mode_enabled = query_data.agentic_mode_enabled; // Get agentic_mode setting
 
+    let include_file_descriptions = query_data.include_file_descriptions;
 
     // Get the *full* active branch history
     let full_history = get_full_history(&project, &app_state, &query_id);
+    let mut unescaped_history: Vec<ChatMessage> = Vec::new();
+    let mut hidden_context: Vec<String> = Vec::new();
+    for message in full_history.iter() {
+        if message.role == "git-flag" {
+            continue;
+        }
+        let code = match (message.role.as_str(), message.hidden) {
+            ("user", false) => "P",
+            ("user", true) => "p",
+            ("model", false) => "R",
+            ("model", true) => "r",
+            _ => "", // Handle unexpected roles
+        };
+        if !code.is_empty() {
+            hidden_context.push(code.to_string());
+        }
+        let unescaped_content = unescape_html(message.content.clone());
+
+        unescaped_history.push(ChatMessage {
+            role: message.role.clone(),
+            content: unescaped_content, // Content is now assumed to be raw markdown
+            hidden: message.hidden,
+            commit_hash: message.commit_hash.clone(), // Ensure commit_hash is carried over
+            timestamp: message.timestamp,
+            context_files: message.context_files.clone(),
+            provider: message.provider.clone(),
+            model: message.model.clone(),
+            hidden_context: message.hidden_context.clone(),
+            ..Default::default()
+        });
+    }
+
 
     // Find the message to regenerate by ID
     let message_to_regenerate = full_history.iter().find(|msg| msg.id == message_id_to_regenerate);
@@ -68,78 +104,25 @@ pub async fn regenerate_chat_message(
 
     let actual_user_message_from_history = full_history[user_message_index].clone();
     // Content is already assumed to be raw markdown, no unescape needed.
-    let actual_user_message_for_llm = ChatMessage {
-        content: actual_user_message_from_history.content.clone(), // Raw markdown
-        ..actual_user_message_from_history.clone()
-    };
+    let user_message_content_raw = actual_user_message_from_history.content.clone(); // Get the raw user message content
 
-    // Truncate the history for the LLM prompt to include only messages *before* the user message
-    let history_for_llm_context: Vec<ChatMessage> = full_history[0..user_message_index].to_vec();
-
-    let (context_files, file_contents) = get_context_and_contents(&project, &app_state, &query_id);
-    let query_text = project_service.query_manager
-        .get_query_data_field(&project_dir, &query_id, "query")
-        .unwrap_or_else(|| "No previous query found".to_string());
-    let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
-    let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
-
-    let mut unescaped_history_for_llm: Vec<ChatMessage> = Vec::new();
-    let mut hidden_context: Vec<String> = Vec::new();
-    for message in history_for_llm_context.iter() {
-        if message.role == "git-flag" {
-            continue;
+    // Choose logic based on agentic_mode_enabled
+    let new_assistant_message = match handle_chat_message(
+        &project,
+        &app_state,
+        query_id,
+        &user_message_content_raw,
+        enable_grounding,
+        include_file_descriptions,
+        &unescaped_history,
+        actual_user_message_from_history.commit_hash.clone(),
+        hidden_context.clone(),
+        agentic_mode_enabled,
+    ).await {
+        Ok(model_message) => model_message,
+        Err(e) => {
+            return HttpResponse::InternalServerError().body(format!("Chat message handling failed: {}", e));
         }
-        let code = match (message.role.as_str(), message.hidden) {
-            ("user", false) => "P",
-            ("user", true) => "p",
-            ("model", false) => "R",
-            ("model", true) => "r",
-            _ => "",
-        };
-        if !code.is_empty() {
-            hidden_context.push(code.to_string());
-        }
-        // Content is assumed to be raw markdown, no unescape needed.
-        unescaped_history_for_llm.push(ChatMessage {
-            role: message.role.clone(),
-            content: message.content.clone(), // Raw markdown
-            hidden: message.hidden,
-            commit_hash: message.commit_hash.clone(),
-            timestamp: message.timestamp,
-            context_files: message.context_files.clone(),
-            provider: message.provider.clone(),
-            model: message.model.clone(),
-            hidden_context: message.hidden_context.clone(),
-            ..Default::default()
-        });
-    }
-
-    let messages = format_messages_for_llm(&system_prompt, &unescaped_history_for_llm, &actual_user_message_for_llm);
-
-    // Determine LLM config for this conversation. For now, a default LlmServiceConfig.
-    // This is also a prime candidate for where to read the 'grounding_with_search' setting from the UI
-    let mut llm_config = LlmServiceConfig::new(); 
-    if enable_grounding { // ADDED: Apply grounding setting
-        llm_config = llm_config.with_grounding_with_search(true);
-    }
-    let llm_config_option = Some(llm_config); 
-
-    let llm_response = llm_service
-        .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
-        .await;
-
-    // Create a NEW assistant message for the regenerated response (raw markdown)
-    let new_assistant_message = ChatMessage {
-        role: "model".to_string(),
-        content: llm_response.clone(), // Raw markdown
-        hidden: false,
-        commit_hash: actual_user_message_from_history.commit_hash.clone(),
-        timestamp: Some(chrono::Utc::now()),
-        context_files: actual_user_message_from_history.context_files.clone(),
-        provider: actual_user_message_from_history.provider.clone(),
-        model: actual_user_message_from_history.model.clone(),
-        hidden_context: actual_user_message_from_history.hidden_context.clone(),
-        ..Default::default()
     };
 
     // Add the new message, explicitly setting its parent_id to the user message
@@ -172,7 +155,6 @@ pub async fn regenerate_chat_message(
     // Fetch the newly created message to return its full data
     let new_model_message_to_return = project_service.query_manager.get_chat_node(&project_dir, query_id, &new_assistant_message_id)
         .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve new regenerated model message."));
-
 
     // Return JSON response instead of redirect
     HttpResponse::Ok().json(RegenerateChatMessageResponse {

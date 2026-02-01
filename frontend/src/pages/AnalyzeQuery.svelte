@@ -144,9 +144,18 @@
   async function handleResetChat() {
     if (confirm('Are you sure you want to reset the chat?')) {
       try {
-        const response = await fetch(`/llm/chat_analysis/reset_analysis_chat?project_name=${project_name}&query_id=${query_id}`, {
-          method: 'POST',
+
+        const response = await fetch('/reset-analysis-chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                project: project_name,
+                query_id: query_id
+            })
         });
+
 
         if (response.ok) {
           window.location.reload(); // Simplest way to reset the chat

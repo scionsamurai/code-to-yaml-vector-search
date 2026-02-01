@@ -1,11 +1,12 @@
 // src/services/template/render_search_results.rs
 use super::TemplateService;
+use crate::services::search_service::SearchResult;
 
 impl TemplateService {
     pub fn render_search_results(
         &self,
         query_text: &str,
-        similar_files: &[(String, String, f32, std::option::Option<Vec<f32>>)],
+        similar_files: &[SearchResult],
         llm_analysis: &str,
         project_name: &str,
         query_id: &str,
@@ -17,7 +18,7 @@ impl TemplateService {
             query_text
         );
 
-        for (file_path, _yaml_content, score, _) in similar_files {
+        for SearchResult { file_path, score, .. } in similar_files {
             search_results_html.push_str(&format!(
                 r#"<div class="result-file">
                 <h3>{} (Score: {:.4})</h3>

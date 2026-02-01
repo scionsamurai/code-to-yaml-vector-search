@@ -12,6 +12,7 @@ pub mod cleanup;
 use crate::services::utils::html_utils::unescape_html;
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
+use crate::services::yaml::{YamlService, FileYamlData};
 use std::env;
 
 pub struct YamlManagement {
@@ -51,13 +52,35 @@ impl YamlManagement {
         let yaml_content = unescape_html(yaml_content);
 
         if !imports.is_empty() {
-            let imports_string = imports.join("\n\t- ");
-            Some(format!("{}\n\nimports:\n\t- {}", yaml_content, imports_string))
+            let imports_string = imports.join("\n  - ");
+            Some(format!("{}\n\nimports:\n  - {}", yaml_content, imports_string))
         } else {
             Some(yaml_content)
         }
     }
     
+    pub fn get_parsed_yaml_for_file_sync(
+        &self,
+        project: &Project,
+        source_file_path: &str, // Original source file path (e.g., "src/main.rs")
+        output_dir: &Path, // The base output directory (e.g., "target")
+    ) -> Result<FileYamlData, String> {
+        let yaml_file_name = source_file_path.replace("/", "*");
+        let yaml_file_path = output_dir.join(&project.name).join(yaml_file_name.clone());
+
+        let file_content = self.file_service.read_specific_file(&project, &source_file_path);
+        
+        let file_content = file_content.unwrap();
+        let yaml_data: FileYamlData = serde_yaml::from_str(&file_content)
+            .map_err(|e| format!("Failed to parse YAML file {}: {}", yaml_file_path.display(), e))?;
+        // if parsing fails, print the content for debugging
+        if yaml_data.description.is_empty() && yaml_data.description.is_empty() {
+            eprintln!("Debug: YAML content of file {} is empty or missing expected fields:\n{}", yaml_file_path.display(), file_content);
+        }
+
+        Ok(yaml_data)
+    }
+
     // Move these functions from the standalone to be methods
     pub async fn generate_yaml_files(&self, project: &mut Project, output_dir: &str, force: bool) {
         generation::generate_yaml_files(self, project, output_dir, force).await;

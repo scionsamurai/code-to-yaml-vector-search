@@ -54,7 +54,8 @@ pub async fn search_related_files(
     let escaped_query_text = escape_html(req.query.clone()).await;
 
     // Execute search
-    let search_result = search_service.search_project(&mut project, &escaped_query_text, None).await;
+    let num_search_results = 5;
+    let search_result = search_service.search_project(&mut project, &escaped_query_text, None, num_search_results, true).await;
 
     let search_results_html = match search_result {
         Ok((similar_files, llm_analysis)) => {

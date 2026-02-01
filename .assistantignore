@@ -2,3 +2,5 @@ static/frontend.js
 static/frontend.css
 frontend/vite.config.ts
 frontend/node_modules
+UsageSuggestions.md
+README.md

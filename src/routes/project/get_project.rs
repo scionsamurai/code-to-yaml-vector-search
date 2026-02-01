@@ -1,7 +1,7 @@
 // src/routes/project/get_project.rs
 use crate::models::AppState;
 use crate::services::project_service::ProjectService;
-use crate::services::search_service::SearchService;
+use crate::services::search_service::{ SearchService, SearchResult };
 use crate::services::template::TemplateService;
 use crate::services::yaml::YamlService;
 use actix_web::{get, web, HttpResponse, Responder};
@@ -57,7 +57,8 @@ pub async fn get_project(
         let escaped_query_text = escape_html(query_text.clone()).await;
         if !escaped_query_text.is_empty() {
             // Execute new search
-            match search_service.search_project(&mut project, &escaped_query_text, Some(&output_dir)).await {
+            let num_search_results = 5;
+            match search_service.search_project(&mut project, &escaped_query_text, Some(&output_dir), num_search_results, true).await {
                 Ok((similar_files, llm_analysis)) => {
                     // Save updated project with the new query
                     if let Err(e) = project_service.save_project(&project, &output_dir) {
@@ -90,9 +91,9 @@ pub async fn get_project(
         match most_recent_query {
             Ok(Some(latest_query)) => {
                 let query_text = latest_query.query.clone();
-                let similar_files: Vec<(String, String, f32, std::option::Option<Vec<f32>>)> = latest_query.vector_results
+                let similar_files: Vec<SearchResult> = latest_query.vector_results
                     .iter()
-                    .map(|(path, score)| (path.clone(), "".to_string(), *score, None))
+                    .map(|(path, score)| SearchResult { file_path: path.clone(), file_description: None, score: *score, file_content: "".to_string(), embedding: None })
                     .collect();
 
                 let llm_analysis = latest_query.llm_analysis.clone();

@@ -267,13 +267,15 @@ impl LlmService {
 
                 let mut cleaned_content = final_content_lines.join("\n");
 
-                // If the first line of the extracted content is "yml" or "yaml", remove it.
-                if let Some(first_line) = cleaned_content.lines().next() {
-                    let trimmed_first_line = first_line.trim();
-                    if trimmed_first_line == "yml" || trimmed_first_line == "yaml" {
-                        cleaned_content = cleaned_content.lines().skip(1).collect::<Vec<&str>>().join("\n");
-                    }
-                }
+                // remove any remaining ```yaml or ```yml or ``` or yml or yaml lines
+                cleaned_content = cleaned_content
+                    .lines()
+                    .filter(|line| {
+                        let trimmed_line = line.trim();
+                        trimmed_line != "```" && trimmed_line != "```yaml" && trimmed_line != "```yml" && trimmed_line != "yaml" && trimmed_line != "yml"
+                    })
+                    .collect::<Vec<&str>>()
+                    .join("\n");
 
                 let trimmed_final = cleaned_content.trim().to_string();
                 let escaped_content = escape_html(trimmed_final).await;
