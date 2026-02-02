@@ -218,10 +218,10 @@ pub async fn handle_chat_message(
     project: &Project,
     app_state: &web::Data<AppState>,
     query_id: &str,
-    user_message_content_raw: &str,
+    user_message_content_raw: &str, // Content of the current user message
     enable_grounding: bool,
     include_file_descriptions: bool,
-    unescaped_history: &Vec<ChatMessage>,
+    previous_history_for_llm: &Vec<ChatMessage>, // History *before* the current user message
     commit_hash_for_user_message: Option<String>,
     hidden_context: Vec<String>,
     agentic_mode_enabled: bool,
@@ -231,7 +231,8 @@ pub async fn handle_chat_message(
     let project_service = ProjectService::new();
 
     if agentic_mode_enabled {
-        // Use AgentService
+        // AgentService::handle_agentic_message will now also be updated to construct
+        // `conversational_messages` correctly and call `format_messages_for_llm` with the new signature.
         AgentService::handle_agentic_message(
             project,
             app_state,
@@ -239,7 +240,7 @@ pub async fn handle_chat_message(
             user_message_content_raw,
             enable_grounding,
             include_file_descriptions,
-            unescaped_history,
+            previous_history_for_llm, // History *before* the current user message
             commit_hash_for_user_message,
             hidden_context,
         ).await
@@ -253,8 +254,8 @@ pub async fn handle_chat_message(
             .unwrap_or_else(|| "No previous query found".to_string());
         let system_prompt = create_system_prompt(&query_text, &context_files, &file_contents, &project, include_file_descriptions);
 
-        // Create user message for LLM (unescaped) - content is raw markdown
-        let user_message_for_llm = ChatMessage {
+        // Create the current user message (the one the LLM is responding to)
+        let current_user_message_for_llm = ChatMessage {
             role: "user".to_string(),
             content: user_message_content_raw.to_string(), // Raw markdown
             hidden: false,
@@ -264,21 +265,27 @@ pub async fn handle_chat_message(
             provider: Some(project.provider.clone()),
             model: project.specific_model.clone(),
             hidden_context: Some(hidden_context.clone()),
+            // For this specific message sent to the LLM, we generate a default ID and no parent_id.
+            // When it's *saved* in the chat graph, `add_chat_message` will assign it a proper ID and parent.
             ..Default::default()
         };
 
-        // Format messages for LLM with system prompt and existing history + new user message
-        let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
+        // Construct the full conversational messages for the LLM.
+        // This includes the previous history AND the current user message.
+        let conversational_messages: Vec<ChatMessage> = previous_history_for_llm.clone(); // Clone the history *before* this user message
+        // conversational_messages.push(current_user_message_for_llm.clone()); // Add the current user message to the end
 
-        // Determine LLM config for this conversation. For now, a default LlmServiceConfig
-        // This is a prime candidate for where to read the 'grounding_with_search' setting from the UI
+        // Format messages for LLM with system prompt and the complete conversational history
+        let messages = format_messages_for_llm(&system_prompt, &conversational_messages, &current_user_message_for_llm);
+
+        // Determine LLM config for this conversation.
         let mut llm_config = LlmServiceConfig::new();
-        if enable_grounding { // ADDED: Apply grounding setting
+        if enable_grounding {
             llm_config = llm_config.with_grounding_with_search(true);
         }
         let llm_config_option = Some(llm_config);
 
-        // Send to LLM, passing the new config parameter
+        // Send to LLM
         let llm_response = llm_service
             .send_conversation(&messages, &project.provider.clone(), project.specific_model.as_deref(), llm_config_option)
             .await;
@@ -293,6 +300,7 @@ pub async fn handle_chat_message(
             provider: Some(project.provider.clone()),
             model: project.specific_model.clone(),
             hidden_context: Some(hidden_context.clone()),
+            thoughts: None,
             ..Default::default()
         })
     }

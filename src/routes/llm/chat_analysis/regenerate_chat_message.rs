@@ -3,19 +3,17 @@ use super::models::*;
 use super::utils::*;
 use crate::models::AppState;
 use crate::models::ChatMessage;
-use crate::services::llm_service::{LlmService, LlmServiceConfig}; // Import LlmServiceConfig
 use crate::services::project_service::ProjectService;
 use actix_web::{post, web, HttpResponse};
-use crate::services::utils::html_utils::{escape_html, unescape_html};
+use crate::services::utils::html_utils::unescape_html;
 use std::path::Path;
-use crate::services::agent_service::AgentService; // Import AgentService
+
 
 #[post("/regenerate-chat-message")]
 pub async fn regenerate_chat_message(
     app_state: web::Data<AppState>,
     data: web::Json<RegenerateChatMessageRequest>,
 ) -> HttpResponse {
-    let llm_service = LlmService::new();
     let project_service = ProjectService::new();
 
     let output_dir = Path::new(&app_state.output_dir);
@@ -37,45 +35,13 @@ pub async fn regenerate_chat_message(
         Ok(qd) => qd,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data: {}", e)),
     };
-    let enable_grounding = query_data.grounding_with_search; // ADDED: Get grounding setting
+    let enable_grounding = query_data.grounding_with_search; // Get grounding setting
     let agentic_mode_enabled = query_data.agentic_mode_enabled; // Get agentic_mode setting
 
     let include_file_descriptions = query_data.include_file_descriptions;
 
     // Get the *full* active branch history
     let full_history = get_full_history(&project, &app_state, &query_id);
-    let mut unescaped_history: Vec<ChatMessage> = Vec::new();
-    let mut hidden_context: Vec<String> = Vec::new();
-    for message in full_history.iter() {
-        if message.role == "git-flag" {
-            continue;
-        }
-        let code = match (message.role.as_str(), message.hidden) {
-            ("user", false) => "P",
-            ("user", true) => "p",
-            ("model", false) => "R",
-            ("model", true) => "r",
-            _ => "", // Handle unexpected roles
-        };
-        if !code.is_empty() {
-            hidden_context.push(code.to_string());
-        }
-        let unescaped_content = unescape_html(message.content.clone());
-
-        unescaped_history.push(ChatMessage {
-            role: message.role.clone(),
-            content: unescaped_content, // Content is now assumed to be raw markdown
-            hidden: message.hidden,
-            commit_hash: message.commit_hash.clone(), // Ensure commit_hash is carried over
-            timestamp: message.timestamp,
-            context_files: message.context_files.clone(),
-            provider: message.provider.clone(),
-            model: message.model.clone(),
-            hidden_context: message.hidden_context.clone(),
-            ..Default::default()
-        });
-    }
-
 
     // Find the message to regenerate by ID
     let message_to_regenerate = full_history.iter().find(|msg| msg.id == message_id_to_regenerate);
@@ -95,7 +61,7 @@ pub async fn regenerate_chat_message(
     }
     let user_message_id = user_message_id_for_parent.unwrap();
 
-    // Now, we need the actual user message content and history *up to that user message* for the LLM prompt.
+    // Find the actual user message that is the parent of the message being regenerated.
     let user_message_index = full_history.iter().position(|msg| msg.id == user_message_id);
     if user_message_index.is_none() {
         return HttpResponse::BadRequest().body("Could not find the user message linked to the regeneration target.");
@@ -103,18 +69,48 @@ pub async fn regenerate_chat_message(
     let user_message_index = user_message_index.unwrap();
 
     let actual_user_message_from_history = full_history[user_message_index].clone();
-    // Content is already assumed to be raw markdown, no unescape needed.
-    let user_message_content_raw = actual_user_message_from_history.content.clone(); // Get the raw user message content
+    // Get the raw content of the user message that the LLM needs to respond to.
+    let user_message_content_raw = unescape_html(actual_user_message_from_history.content.clone());
+
+    // --- CRITICAL CHANGE START: Prepare `previous_history_for_llm` ---
+    // This history should include all messages *before* the current user message (user_msg_A in our example).
+    // The `user_message_content_raw` will be treated as the *current* user input.
+    let mut previous_history_for_llm: Vec<ChatMessage> = Vec::new();
+    let mut hidden_context: Vec<String> = Vec::new();
+
+    // Iterate up to (but *not including*) the user message that is the parent of the regenerated message.
+    for message in full_history.iter().take(user_message_index) { // `take(user_message_index)` gets messages from 0 to index-1
+        if message.role == "git-flag" {
+            continue;
+        }
+
+        let code = match (message.role.as_str(), message.hidden) {
+            ("user", false) => "P",
+            ("user", true) => "p",
+            ("model", false) => "R",
+            ("model", true) => "r",
+            _ => "", // Handle unexpected roles
+        };
+        if !code.is_empty() {
+            hidden_context.push(code.to_string());
+        }
+
+        // Clone the message and only unescape its content, preserving other fields like id, parent_id, thoughts.
+        let mut msg_clone = message.clone();
+        msg_clone.content = unescape_html(message.content.clone());
+        previous_history_for_llm.push(msg_clone);
+    }
+    // --- CRITICAL CHANGE END ---
 
     // Choose logic based on agentic_mode_enabled
     let new_assistant_message = match handle_chat_message(
         &project,
         &app_state,
         query_id,
-        &user_message_content_raw,
+        &user_message_content_raw, // The content of the user message to respond to
         enable_grounding,
         include_file_descriptions,
-        &unescaped_history,
+        &previous_history_for_llm, // The history *leading up to* that user message
         actual_user_message_from_history.commit_hash.clone(),
         hidden_context.clone(),
         agentic_mode_enabled,
@@ -132,15 +128,13 @@ pub async fn regenerate_chat_message(
         &project_dir,
         new_assistant_message,
         query_id,
-        Some(user_message_id) // The parent is the user message
+        Some(user_message_id) // The parent is the user message (user_msg_A)
     ) {
         Ok(id) => id,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to save regenerated message as new branch: {}", e)),
     };
 
-    // --- NEW: Update the QueryData's current_node_id to point to the new message ---
-    // The query_data was already loaded at the beginning, but we need to load it again
-    // to ensure we have the very latest version before updating current_node_id and saving.
+    // Update the QueryData's current_node_id to point to the new message
     let mut query_data_for_node_update = match project_service.query_manager.load_query_data(&project_dir, query_id) {
         Ok(qd) => qd,
         Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to load query data for current_node_id update: {}", e)),
@@ -150,11 +144,11 @@ pub async fn regenerate_chat_message(
         eprintln!("Failed to save query data after regenerating message: {}", e);
         return HttpResponse::InternalServerError().body(format!("Failed to update query's current node: {}", e));
     }
-    // --- END NEW ---
 
     // Fetch the newly created message to return its full data
     let new_model_message_to_return = project_service.query_manager.get_chat_node(&project_dir, query_id, &new_assistant_message_id)
-        .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve new regenerated model message."));
+        .ok_or_else(|| HttpResponse::InternalServerError().body("Failed to retrieve new regenerated model message.".to_string()));
+
 
     // Return JSON response instead of redirect
     HttpResponse::Ok().json(RegenerateChatMessageResponse {

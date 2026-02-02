@@ -151,9 +151,10 @@ impl SearchService {
             Related code from vector search:\n\
             ```\n{}\n```\n\n\
             Based on the user query and the provided code, please provide a JSON code block with the following structure:\n\
-            ```json\n{{\n  \"accurate_vector_results\": \"explanation\",\n  \"suggested_files\": [\"file1.rs\", \"file2.rs\", ...]\n}}\n```\n\
+            ```json\n{{\n  \"accurate_vector_results\": \"explanation\",\n  \"suggested_files\": [\"file1.rs\", \"file2.rs\", ...],\n  \"bm25_keywords\": \"space separated keywords for broader search\"\n}}\n```\n\
             - `accurate_vector_results`: A string explaining whether the vector results seem relevant to the query and why.\n\
-            - `suggested_files`: A list of file paths (relative to the project root) that would be needed to fully answer this query. These files should be chosen from the File Descriptions section."
+            - `suggested_files`: A list of file paths (relative to the project root) that would be needed to fully answer this query. These files should be chosen from the File Descriptions section.\n\
+            - `bm25_keywords`: A space-separated string of keywords that represent a broader set of terms that might be relevant for finding additional files via a keyword-based search (BM25F) over YAML summaries."
             ,
             query_text,
             file_descriptions,

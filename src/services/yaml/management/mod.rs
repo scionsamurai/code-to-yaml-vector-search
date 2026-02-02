@@ -70,7 +70,14 @@ impl YamlManagement {
 
         let file_content = self.file_service.read_specific_file(&project, &source_file_path);
         
-        let file_content = file_content.unwrap();
+        let file_content = file_content.ok_or_else(|| {
+            format!(
+                "Failed to read YAML file {} (source {}): {}",
+                yaml_file_path.display(),
+                source_file_path,
+                "file not found"
+            )
+        })?;
         let yaml_data: FileYamlData = serde_yaml::from_str(&file_content)
             .map_err(|e| format!("Failed to parse YAML file {}: {}", yaml_file_path.display(), e))?;
         // if parsing fails, print the content for debugging

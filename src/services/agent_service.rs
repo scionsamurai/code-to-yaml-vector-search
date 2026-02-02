@@ -11,7 +11,7 @@ use crate::models::AppState;
 use crate::services::search_service::{SearchService, SearchResult};
 use crate::services::file::FileService;
 use crate::services::yaml::{YamlService, FileYamlData};
-use crate::services::path_utils::PathUtils; // NEW: Import PathUtils
+use crate::services::path_utils::PathUtils;
 use std::collections::{HashMap, HashSet};
 use serde_json::Value; // To parse Architect LLM's JSON response
 use crate::services::utils::html_utils::unescape_html;
@@ -20,7 +20,9 @@ pub struct AgentService;
 
 impl AgentService {
     // Helper function to create a concise search query for the embedding model
-    fn create_agentic_search_query(
+    /// Generates a comprehensive query string for semantic (vector) search,
+    /// combining the initial query, relevant chat history, and the latest user message.
+    fn generate_contextual_vector_query(
         initial_query: &str,
         unescaped_history: &Vec<ChatMessage>,
         user_message_content: &str,
@@ -28,17 +30,26 @@ impl AgentService {
         let mut query = String::new();
         query.push_str("Consider the following initial task:\n");
         query.push_str(initial_query);
-        query.push_str("\n\nReview the recent conversation history to understand the current context and goal:\n");
 
-        // Take the last few (e.g., 4) messages from history for conciseness
-        let recent_history_len = unescaped_history.len().min(4);
-        for msg in unescaped_history.iter().rev().take(recent_history_len).rev() {
-            query.push_str(&format!("{}: {}\n", msg.role, msg.content));
+        // Take the last few (e.g., 6) messages from history for conciseness and context
+        // Ensure system/model intro messages are not included, only user/model turns
+        let mut relevant_history_for_search: Vec<&ChatMessage> = unescaped_history.iter()
+            .rev()
+            .filter(|msg| msg.role == "user" || msg.role == "model")
+            .take(6) // Adjust number of messages as needed
+            .collect();
+        relevant_history_for_search.reverse();
+
+        if !relevant_history_for_search.is_empty() {
+            query.push_str("\n\nReview the recent conversation history to understand the current context and goal:\n");
+            for msg in relevant_history_for_search {
+                query.push_str(&format!("{}: {}\n", msg.role, msg.content));
+            }
         }
         
-        query.push_str("\nBased on this, and the user's latest message:\n");
+        query.push_str("\n\nBased on this, and the user's latest message:\n");
         query.push_str(user_message_content);
-        query.push_str("\n\nWhat are the most relevant code files for addressing the current request and conversation state?");
+        query.push_str("\n\nWhat are the most relevant details for addressing the current request and conversation state? Provide a comprehensive and focused query for a semantic search. Your output will fill in the details missing from the latest message (since what you generate here will be prepended to the latest message before sending to the vector search).");
         query
     }
 
@@ -141,73 +152,192 @@ impl AgentService {
         let yaml_service = YamlService::new();
         let llm_service = LlmService::new();
         let file_service = FileService {};
+        let search_service = SearchService::new();
         let project_dir = Path::new(&app_state.output_dir).join(&project.name);
         
         let mut thoughts: Vec<String> = Vec::new();
-        let mut context_files: Vec<String> = Vec::new(); // Files for which full content is sent
-        let mut file_contents_map: HashMap<String, String> = HashMap::new(); // Content for context_files
-        let mut proactive_file_descriptions: HashMap<String, String> = HashMap::new(); // YAML summaries
+
+        // These two maps are the core state of what the agent "knows" about files
+        let mut file_contents_map: HashMap<String, String> = HashMap::new(); // path -> full content
+        let mut initial_proactive_yaml_summaries: HashMap<String, String> = HashMap::new(); // path -> YAML description (before filtering/selection)
 
         thoughts.push("Agentic mode is enabled. Starting agent decision process.".to_string());
 
         let initial_query = query_manager
             .get_query_data_field(&project_dir, &query_id, "query")
             .unwrap_or_else(|| "No previous query found".to_string());
-
-        // --- PHASE 1: Initial YAML Search & Pre-fetch ---
-        thoughts.push("Performing initial BM25F search over YAML summaries.".to_string());
-        let num_initial_yaml_results = 15;
-        let initial_yaml_hits = yaml_service.bm25f_search(
-            &project,
-            &Self::create_agentic_search_query(&initial_query, unescaped_history, user_message_content), // Use the specific agentic search query
-            &project_dir,
-            num_initial_yaml_results,
-        ).await?;
-        thoughts.push(format!("BM25F search returned {} YAML hits.", initial_yaml_hits.len()));
-
-        let mut current_yaml_maps: HashMap<String, String> = HashMap::new(); // Store path -> description
-        for (path, _) in &initial_yaml_hits {
-            if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(&project, path, &project_dir) {
-                current_yaml_maps.insert(path.clone(), yaml_data.description);
-            }
-        }
-        thoughts.push(format!("Collected {} YAML summaries.", current_yaml_maps.len()));
-
         
-        // Pre-fetch TOP N source files (e.g., 2) based on initial YAML hits
-        let num_prefetch_source_files = 2;
-        thoughts.push(format!("Pre-fetching top {} source files from initial YAML search.", num_prefetch_source_files));
-        let mut pre_fetched_paths: HashSet<String> = HashSet::new();
+        let mut llm_config = LlmServiceConfig::new();
+        if enable_grounding {
+            llm_config = llm_config.with_grounding_with_search(true);
+            thoughts.push("Grounding with Google Search is enabled for this LLM call.".to_string());
+        }
 
-        for (file_path, _) in initial_yaml_hits.iter().take(num_prefetch_source_files) {
-            if !pre_fetched_paths.contains(file_path) {
-                if let Some(content) = file_service.read_specific_file(project, &file_path) {
+        // --- PHASE 1: Hybrid Search for initial context (Vector + BM25F) ---
+
+        // 1. Generate Contextual Query for Vector Search
+        thoughts.push("Generating contextual query for hybrid search.".to_string());
+        let contextual_vector_query_llm_input = Self::generate_contextual_vector_query(&initial_query, unescaped_history, user_message_content);
+        
+        // Use LLM to generate a more detailed query for vector search, potentially based on history and current message
+        let detailed_vector_query = llm_service.get_analysis(&contextual_vector_query_llm_input, &project.provider.clone(), project.specific_model.as_deref(), Some(llm_config.clone())).await;
+        thoughts.push(format!("Detailed Vector Query from LLM: '{}'", detailed_vector_query));
+
+        // 2. Primary Vector Search
+        thoughts.push("Performing primary vector search over project embeddings.".to_string());
+        let num_vector_results = 5; // Get top 5 vector results
+        let (vector_search_results, llm_analysis_raw) = search_service.search_project(
+            &mut project.clone(), // Pass a clone to avoid mutable borrow issues and keep project state clean
+            &detailed_vector_query, // Use the LLM-generated detailed query
+            None, // No need to save new query data for agent's internal search
+            num_vector_results,
+            true, // Enable LLM analysis for this internal call (suggested files & BM25 keywords)
+        ).await?;
+        thoughts.push(format!("Vector search returned {} results.", vector_search_results.len()));
+
+        // Parse LLM analysis for suggested files and BM25 keywords
+        let llm_analysis_unescaped = unescape_html(llm_analysis_raw);
+        let llm_analysis_json_str = llm_analysis_unescaped
+            .split("```json")
+            .nth(1)
+            .and_then(|s| s.split("```").next())
+            .map(|s| s.trim().to_string())
+            .unwrap_or_else(|| "".to_string());
+        let llm_analysis_json: Value = serde_json::from_str(&llm_analysis_json_str)
+            .map_err(|e| format!("Failed to parse LLM analysis JSON: {}", e))?;
+        
+        let suggested_vector_files: HashSet<String> = llm_analysis_json["suggested_files"]
+            .as_array()
+            .unwrap_or(&vec![])
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+        thoughts.push(format!("LLM Analysis suggested {} files for full source from vector search.", suggested_vector_files.len()));
+
+        let bm25_keywords_str = llm_analysis_json["bm25_keywords"]
+            .as_str()
+            .unwrap_or("");
+        thoughts.push(format!("LLM Analysis provided BM25 keywords: '{}'", bm25_keywords_str));
+
+        // 3. Secondary BM25F Search (using keywords from LLM Analysis)
+        thoughts.push("Performing secondary BM25F search over YAML summaries using LLM-generated keywords.".to_string());
+        let num_bm25_results = 25; // Get top 25 BM25F results
+        let bm25f_results = yaml_service.bm25f_search(
+            project,
+            bm25_keywords_str,
+            &project_dir,
+            num_bm25_results,
+        ).await?;
+        thoughts.push(format!("BM25F search returned {} results.", bm25f_results.len()));
+
+
+        // --- Consolidate all potential relevant file paths into a single set ---
+        let mut all_relevant_file_paths: HashSet<String> = HashSet::new();
+
+        // Add paths from suggested_vector_files (most critical)
+        for file_path in &suggested_vector_files {
+            if let Some(normalized_path) = PathUtils::normalize_project_path(file_path, project) {
+                all_relevant_file_paths.insert(normalized_path);
+            } else {
+                thoughts.push(format!("Could not normalize suggested path from vector search: {}", file_path));
+            }
+        }
+
+        // Add paths from vector_search_results (the raw list from vector DB)
+        for search_result in &vector_search_results {
+            if let Some(normalized_path) = PathUtils::normalize_project_path(&search_result.file_path, project) {
+                all_relevant_file_paths.insert(normalized_path);
+            } else {
+                thoughts.push(format!("Could not normalize path from raw vector search results: {}", search_result.file_path));
+            }
+        }
+
+        // Add paths from bm25f_results
+        for (file_path, _) in &bm25f_results {
+            // split on project_name/ and get the second item of the split
+            let yaml_target_path = file_path.split(&format!("{}/", project.name))
+                .nth(1);
+            let final_yaml_target_path = match yaml_target_path {
+                Some(p) => {
+                    p.replace("*", "/").replace(".yml", "") // Reverse the earlier replacement to get original path
+                },
+                None => {
+                    thoughts.push(format!("Could not extract target path from YAML hit: {}", file_path));
+                    continue; // Skip this hit
+                },
+            };
+            all_relevant_file_paths.insert(final_yaml_target_path.clone());
+        }
+        thoughts.push(format!("Total unique relevant files identified across all searches: {}.", all_relevant_file_paths.len()));
+
+        // --- Populate file_contents_map (Full Source) & initial_proactive_yaml_summaries (YAML descriptions) ---
+
+        let convert_path_to_yaml_location = |path: &str| {
+            project_dir.join(format!("{}.yml", path.replace("/", "*")))
+        };
+
+        println!("All relevant file paths: {:?}", all_relevant_file_paths);
+        // Priority 1: Fetch full source for suggested_vector_files
+        for file_path in &all_relevant_file_paths {
+            if suggested_vector_files.contains(file_path) { // Prioritize files suggested by LLM analysis for full source
+                if let Some(content) = file_service.read_specific_file(project, file_path) {
                     file_contents_map.insert(file_path.clone(), content);
-                    context_files.push(file_path.clone());
-                    pre_fetched_paths.insert(file_path.clone());
-                    thoughts.push(format!("Pre-fetched full source for: {}", file_path));
+                    thoughts.push(format!("Added full source (from LLM vector suggestion): {}", file_path));
+                } else {
+                    thoughts.push(format!("Failed to read suggested file for full source: {}. Trying YAML description.", file_path));
+                    // If source cannot be read, fall back to YAML description
+                    let yaml_loc = convert_path_to_yaml_location(file_path);
+                    if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(project, &yaml_loc.to_string_lossy(), &project_dir) {
+                        initial_proactive_yaml_summaries.insert(file_path.clone(), yaml_data.description);
+                        thoughts.push(format!("Added YAML description (suggested source failed): {}", file_path));
+                    } else {
+                        thoughts.push(format!("Failed to get YAML description for {}: {}", file_path, yaml_loc.display()));
+                    }
                 }
             }
         }
 
-        // Add remaining initial YAML hits (not pre-fetched) to proactive descriptions
-        for (file_path, _) in &initial_yaml_hits {
-            if !pre_fetched_paths.contains(file_path) {
-                if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(&project, &file_path, &project_dir) {
-                    proactive_file_descriptions.insert(file_path.clone(), yaml_data.description);
+        // Priority 2: Get YAML descriptions for other relevant files (if not already full source)
+        for file_path in &all_relevant_file_paths {
+            if !file_contents_map.contains_key(file_path) { // Only process if we don't have full source yet
+                let yaml_loc = convert_path_to_yaml_location(file_path);
+                if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(project, &yaml_loc.to_string_lossy(), &project_dir) {
+                    initial_proactive_yaml_summaries.insert(file_path.clone(), yaml_data.description);
+                } else {
+                    thoughts.push(format!("Failed to get YAML description for {}: {}", file_path, yaml_loc.display()));
                 }
             }
         }
-        thoughts.push(format!("Added {} YAML summaries to proactive descriptions (excluding pre-fetched).", proactive_file_descriptions.len()));
 
-        // --- PHASE 2: Architect Decision Loop (Simplified to one turn for now) ---
+        thoughts.push(format!("Currently have {} files with full source and {} YAML summaries.", file_contents_map.len(), initial_proactive_yaml_summaries.len()));
+
+        // --- PHASE 2: Architect Decision Loop (Simplified to one turn for now, to be extended) ---
+
+        // Prepare context for the Architect LLM:
+        // - active_code: files in file_contents_map
+        // - current_yaml_maps: YAML descriptions *only* for files NOT in file_contents_map, and limited in number.
+        let mut proactive_file_descriptions_for_architect_prompt: HashMap<String, String> = HashMap::new();
+        let max_proactive_descriptions_for_architect = 30; // Tune this number
+
+        let mut sorted_initial_yamls: Vec<(&String, &String)> = initial_proactive_yaml_summaries.iter().collect();
+        // Sort for stable selection if total exceeds max
+        sorted_initial_yamls.sort_by_key(|(path, _)| path.clone());
+
+        for (path, desc) in sorted_initial_yamls.into_iter() {
+            if !file_contents_map.contains_key(path) && proactive_file_descriptions_for_architect_prompt.len() < max_proactive_descriptions_for_architect {
+                proactive_file_descriptions_for_architect_prompt.insert(path.clone(), desc.clone());
+            }
+        }
+        thoughts.push(format!("Refined proactive descriptions for Architect to {} files (not already full source).", proactive_file_descriptions_for_architect_prompt.len()));
+
+
         thoughts.push("Requesting Architect LLM decision on next steps.".to_string());
         let architect_decision = Self::get_architect_decision(
             &llm_service,
             project,
             &initial_query,
             user_message_content,
-            &proactive_file_descriptions, // Pass YAML summaries for architect to review
+            &proactive_file_descriptions_for_architect_prompt, // Pass filtered YAML summaries
             &file_contents_map, // Pass active code files
         ).await?;
         thoughts.push(format!("Architect decision: {:?}", architect_decision));
@@ -232,12 +362,12 @@ impl AgentService {
                 for path_val in paths_to_fetch {
                     let raw_path = path_val.as_str().ok_or_else(|| "Path in 'paths' array is not a string.".to_string())?;
                     if let Some(normalized_path) = PathUtils::normalize_project_path(raw_path, project) {
-                        if !file_contents_map.contains_key(&normalized_path) { // Only fetch if not already in active code
+                        if !file_contents_map.contains_key(&normalized_path) {
                             if let Some(content) = file_service.read_specific_file(project, &normalized_path) {
                                 file_contents_map.insert(normalized_path.clone(), content);
-                                context_files.push(normalized_path.clone());
                                 thoughts.push(format!("Fetched full source for: {}", normalized_path));
-                                proactive_file_descriptions.remove(&normalized_path); // Remove from summaries if now full content
+                                // Remove from initial_proactive_yaml_summaries if it was there, as we now have full source
+                                initial_proactive_yaml_summaries.remove(&normalized_path);
                             } else {
                                 thoughts.push(format!("Failed to read file: {}", normalized_path));
                             }
@@ -258,27 +388,42 @@ impl AgentService {
                 thoughts.push(format!("Performing refined BM25F search with keywords: {}", new_keywords));
                 let num_refined_yaml_results = 10;
                 let refined_yaml_hits = yaml_service.bm25f_search(
-                    &project,
+                    project,
                     new_keywords,
                     &project_dir,
                     num_refined_yaml_results,
                 ).await?;
-                thoughts.push(format!("Refined BM25F search returned {} YAML hits.", refined_yaml_hits.len()));
+                thoughts.push(format!("Refined BM25F search returned: {:?}", refined_yaml_hits));
 
                 for (path, _) in &refined_yaml_hits {
-                    if !file_contents_map.contains_key(path) { // Only add description if not already full content
-                        if let Some(normalized_path) = PathUtils::normalize_project_path(path, project) {
-                            if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(&project, &normalized_path, &project_dir) {
-                                proactive_file_descriptions.insert(normalized_path.clone(), yaml_data.description);
+                    // split on project_name/ and get the second item of the split
+                    let yaml_target_path = path.split(&format!("{}/", project.name))
+                        .nth(1);
+                    let final_yaml_target_path = match yaml_target_path {
+                        Some(p) => {
+                            p.replace("*", "/").replace(".yml", "") // Reverse the earlier replacement to get original path
+                        },
+                        None => {
+                            thoughts.push(format!("Could not extract target path from YAML hit: {}", path));
+                            continue; // Skip this hit
+                        },
+                    };
+                    // Add new YAML hits to our pool of initial_proactive_yaml_summaries if not already full source
+                    if !file_contents_map.contains_key(final_yaml_target_path.as_str()) && !initial_proactive_yaml_summaries.contains_key(&final_yaml_target_path) {
+                        match yaml_service.management.get_parsed_yaml_for_file_sync(project, &path, &project_dir) {
+                            Ok(yaml_data) => {
+                                initial_proactive_yaml_summaries.insert(final_yaml_target_path.clone(), yaml_data.description);
+                                thoughts.push(format!("Added new YAML summary from refined search: {}", final_yaml_target_path));
+                            }
+                            Err(err) => {
+                                thoughts.push(format!("Failed to parse YAML for refined BM25F result: {}. Error: {}", final_yaml_target_path, err));
                             }
                         }
                     }
                 }
-                thoughts.push(format!("Added {} new YAML summaries from refined search.", refined_yaml_hits.len()));
             },
             "GENERATE" => {
                 thoughts.push("Architect decided to GENERATE directly.".to_string());
-                // No additional files to fetch or search, proceed with current context
             },
             _ => {
                 thoughts.push(format!("Architect returned an unknown action: {}. Proceeding with current context.", action));
@@ -286,10 +431,12 @@ impl AgentService {
         }
 
         // --- PHASE 3: Final LLM Generation ---
-        thoughts.push("Proceeding to final LLM generation with gathered context.".to_string());
         
-        // Populate context_files (for full content)
-        context_files = file_contents_map.keys().cloned().collect();
+        // Populate context_files (for full content) - ensure uniqueness and consistent ordering
+        let mut context_files: Vec<String> = file_contents_map.keys().cloned().collect();
+        context_files.sort(); // Consistent order
+        thoughts.push(format!("Final list of files with full source content: {}.", context_files.len()));
+
 
         // Construct file contents string for the main LLM prompt
         let mut file_contents_for_llm = String::new();
@@ -308,11 +455,24 @@ impl AgentService {
         }
 
         // Integrate proactively fetched descriptions into a clone of project's descriptions
+        // Only include YAMLs for files that are *not* included as full source.
         let mut combined_project_file_descriptions = project.file_descriptions.clone();
-        for (path, desc) in proactive_file_descriptions {
+        let max_proactive_descriptions_for_final_llm = 10; // Tune this number
+
+        let mut sorted_final_yamls: Vec<(&String, &String)> = initial_proactive_yaml_summaries.iter().collect();
+        sorted_final_yamls.sort_by_key(|(path, _)| path.clone()); // Sort for stable selection
+
+        let mut final_proactive_descriptions_for_llm_map: HashMap<String, String> = HashMap::new();
+        for (path, desc) in sorted_final_yamls.into_iter() {
+            if !file_contents_map.contains_key(path) && final_proactive_descriptions_for_llm_map.len() < max_proactive_descriptions_for_final_llm {
+                final_proactive_descriptions_for_llm_map.insert(path.clone(), desc.clone());
+            }
+        }
+
+        for (path, desc) in final_proactive_descriptions_for_llm_map {
             combined_project_file_descriptions.insert(path, desc);
         }
-        thoughts.push(format!("Combined project descriptions with {} proactive descriptions.", combined_project_file_descriptions.len()));
+        thoughts.push(format!("Combined project descriptions with {} filtered proactive descriptions for final LLM.", combined_project_file_descriptions.len()));
 
 
         // Create system prompt
@@ -346,16 +506,12 @@ impl AgentService {
 
         // Format messages for LLM
         thoughts.push("Formatting messages for the LLM conversation.".to_string());
-        let messages = format_messages_for_llm(&system_prompt, &unescaped_history, &user_message_for_llm);
+        let messages = format_messages_for_llm(&system_prompt, unescaped_history, &user_message_for_llm);
         thoughts.push("Messages formatted.".to_string());
 
         // Send to LLM
         thoughts.push("Sending final conversation to LLM for response generation.".to_string());
-        let mut llm_config = LlmServiceConfig::new();
-        if enable_grounding {
-            llm_config = llm_config.with_grounding_with_search(true);
-            thoughts.push("Grounding with Google Search is enabled for this LLM call.".to_string());
-        }
+
         let llm_response_content = llm_service
             .send_conversation(
                 &messages,
