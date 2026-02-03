@@ -276,6 +276,6 @@
   <OptimizePromptModal {project_name} queryId={query_id} initialPrompt={query_text} onClose={() => (isOptimizePromptModalOpen = false)} />
 {/if}
 
-<div class="actions">
+<div class="actions" style="position: absolute;bottom: 0;">
   <a href="/projects/{project_name}" class="button">Back to Project</a>
 </div>

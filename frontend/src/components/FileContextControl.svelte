@@ -59,7 +59,7 @@
   }
 </script>
 
-<h2>File context control</h2>
+<h2 style="margin: 0; text-align: center;">File context control</h2>
 <div class="file-snippets">
   <label>
     <input type="checkbox" checked={include_file_descriptions} onchange={toggleIncludeDescriptions} />

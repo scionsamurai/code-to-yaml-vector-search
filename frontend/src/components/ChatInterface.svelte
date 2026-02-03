@@ -4,12 +4,13 @@
   import BranchNavigation from './BranchNavigation.svelte';
   import { formatMessage } from "../lib/analyze-query/utils.js";
   import { highlightAction } from "../lib/analyze-query/syntax-highlighting.js";
+  import { fetchBranchingData } from '../lib/analyze-query/api.js';
 
   let { 
     project_name, 
     query_id, 
     chatHistory, 
-    branch_display_data = $bindable(),
+    branch_display_data, 
     git_stuff, 
     selectedFiles,
     project_provider,             // NEW: Receive project_provider
@@ -218,12 +219,14 @@ async function regenerateMessage(messageId: string) {
         const data = await response.json();
 
         if (data.success) {
-            chatHistory = chatHistory.map((msg: any) => {
-                if (msg.id === messageId) {
-                    return data.new_model_message;
-                }
-                return msg;
-            });
+
+          branch_display_data = await fetchBranchingData(project_name, query_id);
+          chatHistory = chatHistory.map((msg: any) => {
+              if (msg.id === messageId) {
+                  return data.new_model_message;
+              }
+              return msg;
+          });
         } else {
             alert(`Failed to regenerate response: ${data.message || 'Unknown error.'}`);
         }
