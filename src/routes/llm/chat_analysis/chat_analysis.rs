@@ -3,7 +3,7 @@
 use super::models::*;
 use super::utils::*;
 use crate::models::{AppState, ChatMessage};
-use crate::services::llm_service::{LlmService, LlmServiceConfig};
+use crate::services::llm_service::LlmService;
 use crate::services::project_service::ProjectService;
 use crate::services::git_service::{GitService, GitError};
 use actix_web::{post, web, HttpResponse};

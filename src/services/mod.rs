@@ -10,5 +10,5 @@ pub mod template;
 pub mod clustering_service;
 pub mod utils;
 pub mod git_service;
-pub mod agent_service;
+pub mod agent;
 pub mod path_utils;

@@ -1,6 +1,6 @@
 // src/services/path_utils.rs
 use crate::models::Project;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub struct PathUtils;
 

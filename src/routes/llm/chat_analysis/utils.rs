@@ -7,7 +7,7 @@ use crate::services::git_service::GitService;
 use git2::Repository;
 use actix_web::web;
 use std::path::Path;
-use crate::services::agent_service::AgentService; // Import AgentService
+use crate::services::agent::handle_agentic_message;
 // No need to add use uuid::Uuid; here
 
 pub fn get_context_and_contents(project: &Project, app_state: &web::Data<AppState>, query_id: &str) -> (Vec<String>, String) {
@@ -231,9 +231,7 @@ pub async fn handle_chat_message(
     let project_service = ProjectService::new();
 
     if agentic_mode_enabled {
-        // AgentService::handle_agentic_message will now also be updated to construct
-        // `conversational_messages` correctly and call `format_messages_for_llm` with the new signature.
-        AgentService::handle_agentic_message(
+        handle_agentic_message(
             project,
             app_state,
             query_id,

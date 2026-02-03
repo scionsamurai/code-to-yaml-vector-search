@@ -1,7 +1,7 @@
 // src/services/file/reading.rs
 use crate::models::{Project, ProjectFile};
 use std::fs::{read_dir, read_to_string, metadata};
-use std::path::{Path, PathBuf}; // Added PathBuf
+use std::path::Path; // Added PathBuf
 use crate::services::yaml::processing::gitignore_handler::{read_ignore_file, is_file_ignored}; // Import the function
 
 pub fn read_project_files(project: &Project) -> Vec<ProjectFile> {
@@ -110,7 +110,6 @@ pub fn read_specific_file(project: &Project, file_path: &str) -> Option<String> 
 pub fn read_exclude_search_files(project: &Project) -> Vec<ProjectFile> {
     let mut files = Vec::new();
     let project_root = Path::new(&project.source_dir);
-    let project_root_str = project.source_dir.clone();
 
     // Read the exclude patterns from the project root
     let exclude_patterns = read_ignore_file(project_root, ".assistantexcludesearch");

@@ -4,16 +4,18 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::models::Project;
-use crate::services::file::FileService;
-use crate::services::yaml::YamlService;
+// Remove direct FileService and YamlService imports, as file_context will handle them
+// use crate::services::file::FileService;
+// use crate::services::yaml::YamlService;
 use crate::services::path_utils::PathUtils;
-use crate::services::agent::file_context;
 
+use crate::services::search_service::SearchResult;
+use crate::services::agent::file_context; // Import the file_context module
 
 /// Consolidates search results from various sources into a single set of file paths.
 pub fn consolidate_search_results(
     project: &Project,
-    vector_search_results: &Vec<crate::models::SearchResult>, // Use the full path to SearchResult
+    vector_search_results: &Vec<SearchResult>, // Use the full path to SearchResult
     bm25f_results: &Vec<(String, f32)>,
     suggested_vector_files: &HashSet<String>,
     thoughts: &mut Vec<String>,
@@ -67,46 +69,65 @@ pub async fn populate_file_context(
     project_dir: &Path,
     thoughts: &mut Vec<String>,
 ) -> (HashMap<String, String>, HashMap<String, String>) {
-    let file_service = FileService {};
-    let yaml_service = YamlService::new();
+    // let file_service = FileService {}; // No longer needed directly here
+    // let yaml_service = YamlService::new(); // No longer needed directly here
     let mut file_contents_map: HashMap<String, String> = HashMap::new();
     let mut initial_proactive_yaml_summaries: HashMap<String, String> = HashMap::new();
 
-    let convert_path_to_yaml_location = |path: &str| {
-        project_dir.join(format!("{}.yml", path.replace("/", "*")))
-    };
+    // Prepare lists of paths for each type of loading
+    let mut paths_for_full_content: Vec<String> = Vec::new();
+    let mut paths_for_yaml_summaries: Vec<String> = Vec::new();
 
-    // Priority 1: Fetch full source for suggested_vector_files
+    println!("All relevant file paths: {:?}", all_relevant_file_paths);
+    println!("Suggested vector files: {:?}", suggested_vector_files);
     for file_path in all_relevant_file_paths {
-        if suggested_vector_files.contains(file_path) { // Prioritize files suggested by LLM analysis for full source
-            if let Some(content) = file_service.read_specific_file(project, file_path) {
-                file_contents_map.insert(file_path.clone(), content);
-                thoughts.push(format!("Added full source (from LLM vector suggestion): {}", file_path));
-            } else {
-                thoughts.push(format!("Failed to read suggested file for full source: {}. Trying YAML description.", file_path));
-                // If source cannot be read, fall back to YAML description
-                let yaml_loc = convert_path_to_yaml_location(file_path);
-                if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(project, &yaml_loc.to_string_lossy(), project_dir) {
-                    initial_proactive_yaml_summaries.insert(file_path.clone(), yaml_data.description);
-                    thoughts.push(format!("Added YAML description (suggested source failed): {}", file_path));
-                } else {
-                    thoughts.push(format!("Failed to get YAML description for {}: {}", file_path, yaml_loc.display()));
-                }
+        if suggested_vector_files.contains(file_path) {
+            paths_for_full_content.push(file_path.clone());
+        } else {
+            paths_for_yaml_summaries.push(file_path.clone());
+        }
+    }
+
+    // Load full file contents using file_context
+    thoughts.push(format!("Loading full contents for {} files via file_context.", paths_for_full_content.len()));
+    let loaded_full_contents = file_context::load_file_contents(project, &paths_for_full_content, thoughts);
+    for (path, content) in loaded_full_contents {
+        file_contents_map.insert(path, content);
+    }
+    thoughts.push(format!("Successfully loaded {} files with full content.", file_contents_map.len()));
+
+    // Load YAML summaries using file_context
+    thoughts.push(format!("Loading YAML summaries for {} files via file_context.", paths_for_yaml_summaries.len()));
+    let loaded_yaml_summaries = file_context::load_yaml_summaries(project, &paths_for_yaml_summaries, project_dir, thoughts).await;
+    for (path, summary) in loaded_yaml_summaries {
+        // Only insert if we don't already have the full content for this path
+        if !file_contents_map.contains_key(&path) {
+            initial_proactive_yaml_summaries.insert(path, summary);
+        }
+    }
+    thoughts.push(format!("Successfully loaded {} YAML summaries.", initial_proactive_yaml_summaries.len()));
+
+    // Edge case: If a suggested_vector_file failed to load full content, try to load its YAML
+    // This part is a bit more involved now. We should check which `paths_for_full_content`
+    // didn't make it into `file_contents_map` and then try to load their YAMLs.
+    let mut failed_full_content_paths: Vec<String> = Vec::new();
+    for path in paths_for_full_content {
+        if !file_contents_map.contains_key(&path) {
+            failed_full_content_paths.push(path);
+        }
+    }
+    if !failed_full_content_paths.is_empty() {
+        thoughts.push(format!("Attempting to load YAML descriptions for {} files where full content fetch failed.", failed_full_content_paths.len()));
+        let fallback_yaml_summaries = file_context::load_yaml_summaries(project, &failed_full_content_paths, project_dir, thoughts).await;
+        for (path, summary) in fallback_yaml_summaries {
+            // Ensure we don't accidentally overwrite if a file magically appeared, though unlikely
+            if !file_contents_map.contains_key(&path) && !initial_proactive_yaml_summaries.contains_key(&path) {
+                initial_proactive_yaml_summaries.insert(path.clone(), summary);
+                thoughts.push(format!("Added YAML description (fallback for failed full source): {}", path));
             }
         }
     }
 
-    // Priority 2: Get YAML descriptions for other relevant files (if not already full source)
-    for file_path in all_relevant_file_paths {
-        if !file_contents_map.contains_key(file_path) { // Only process if we don't have full source yet
-            let yaml_loc = convert_path_to_yaml_location(file_path);
-            if let Ok(yaml_data) = yaml_service.management.get_parsed_yaml_for_file_sync(project, &yaml_loc.to_string_lossy(), project_dir) {
-                initial_proactive_yaml_summaries.insert(file_path.clone(), yaml_data.description);
-            } else {
-                thoughts.push(format!("Failed to get YAML description for {}: {}", file_path, yaml_loc.display()));
-            }
-        }
-    }
 
     (file_contents_map, initial_proactive_yaml_summaries)
 }

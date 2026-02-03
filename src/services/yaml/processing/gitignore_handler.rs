@@ -1,7 +1,7 @@
 // src/services/yaml/processing/gitignore_handler.rs
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::{Path, PathBuf}; // Added PathBuf
+use std::path::Path; // Added PathBuf
 
 // This function remains public as it's used by `read_exclude_search_files`
 // and possibly other places where a specific directory's ignore file is read.

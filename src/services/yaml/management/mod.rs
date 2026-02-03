@@ -72,8 +72,8 @@ impl YamlManagement {
         source_file_path: &str, // Original source file path (e.g., "src/main.rs")
         output_dir: &Path, // The base output directory (e.g., "target")
     ) -> Result<FileYamlData, String> {
-        let yaml_file_name = source_file_path.replace("/", "*");
-        let yaml_file_path = output_dir.join(&project.name).join(yaml_file_name.clone());
+        let yaml_file_name = format!("{}.yml", source_file_path.replace("/", "*"));
+        let yaml_file_path = output_dir.join(yaml_file_name.clone());
 
         let file_content = self.file_service.read_specific_file(&project, &yaml_file_path.to_string_lossy()); // READ THE YAML FILE, not the source file
         
