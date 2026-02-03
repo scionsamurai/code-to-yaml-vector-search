@@ -9,7 +9,7 @@
     project_name, 
     query_id, 
     chatHistory, 
-    branch_display_data, 
+    branch_display_data = $bindable(),
     git_stuff, 
     selectedFiles,
     project_provider,             // NEW: Receive project_provider

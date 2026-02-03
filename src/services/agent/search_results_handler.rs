@@ -4,9 +4,6 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use crate::models::Project;
-// Remove direct FileService and YamlService imports, as file_context will handle them
-// use crate::services::file::FileService;
-// use crate::services::yaml::YamlService;
 use crate::services::path_utils::PathUtils;
 
 use crate::services::search_service::SearchResult;
@@ -78,8 +75,6 @@ pub async fn populate_file_context(
     let mut paths_for_full_content: Vec<String> = Vec::new();
     let mut paths_for_yaml_summaries: Vec<String> = Vec::new();
 
-    println!("All relevant file paths: {:?}", all_relevant_file_paths);
-    println!("Suggested vector files: {:?}", suggested_vector_files);
     for file_path in all_relevant_file_paths {
         if suggested_vector_files.contains(file_path) {
             paths_for_full_content.push(file_path.clone());

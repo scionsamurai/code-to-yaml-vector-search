@@ -86,8 +86,7 @@ impl TemplateService {
                     <!-- Search Form -->
                     <div class="search-form">
                         <form action="/projects/{}" method="get">
-                            <input type="hidden" name="id" id="id" value="">
-                            <textarea name="q" placeholder="Enter your query about project..." value="{}"></textarea>
+                            <textarea name="q" placeholder="Enter your query...">{}</textarea>
                             <button type="submit">Submit</button>
                         </form>
                     </div>

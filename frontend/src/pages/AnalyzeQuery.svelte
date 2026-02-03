@@ -51,7 +51,7 @@
     setProjectSourceDirectory(project_source_dir);
     chatHistory = await fetchChatHistory(project_name, query_id);
     otherProjectFiles = await fetchOtherProjectFiles(project_name, llm_suggested_files, relevant_files);
-    await fetchBranchingData(project_name, query_id);
+    branch_display_data = await fetchBranchingData(project_name, query_id);
   });
 
   // --- Derived States and Functions ---
