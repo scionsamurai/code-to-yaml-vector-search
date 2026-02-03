@@ -2,18 +2,18 @@
 use crate::models::{ChatMessage, Project};
 use crate::services::llm_service::{LlmService, LlmServiceConfig};
 use crate::routes::llm::chat_analysis::utils::{
-    create_system_prompt, format_messages_for_llm
+    create_system_prompt, format_messages_for_llm // Make sure format_messages_for_llm is imported
 };
 use crate::services::project_service::query_management::QueryManager;
 use std::path::Path;
 use actix_web::web;
 use crate::models::AppState;
-use crate::services::search_service::{SearchService, SearchResult};
+use crate::services::search_service::SearchService;
 use crate::services::file::FileService;
-use crate::services::yaml::{YamlService, FileYamlData};
+use crate::services::yaml::YamlService;
 use crate::services::path_utils::PathUtils;
 use std::collections::{HashMap, HashSet};
-use serde_json::Value; // To parse Architect LLM's JSON response
+use serde_json::Value;
 use crate::services::utils::html_utils::unescape_html;
 
 pub struct AgentService;
@@ -24,7 +24,7 @@ impl AgentService {
     /// combining the initial query, relevant chat history, and the latest user message.
     fn generate_contextual_vector_query(
         initial_query: &str,
-        unescaped_history: &Vec<ChatMessage>,
+        previous_history_for_llm: &Vec<ChatMessage>, // Use this for history
         user_message_content: &str,
     ) -> String {
         let mut query = String::new();
@@ -33,7 +33,7 @@ impl AgentService {
 
         // Take the last few (e.g., 6) messages from history for conciseness and context
         // Ensure system/model intro messages are not included, only user/model turns
-        let mut relevant_history_for_search: Vec<&ChatMessage> = unescaped_history.iter()
+        let mut relevant_history_for_search: Vec<&ChatMessage> = previous_history_for_llm.iter()
             .rev()
             .filter(|msg| msg.role == "user" || msg.role == "model")
             .take(6) // Adjust number of messages as needed
@@ -141,10 +141,10 @@ impl AgentService {
         project: &Project,
         app_state: &web::Data<AppState>,
         query_id: &str,
-        user_message_content: &str,
+        user_message_content_raw: &str,
         enable_grounding: bool,
         include_file_descriptions: bool,
-        unescaped_history: &Vec<ChatMessage>,
+        previous_history_for_llm: &Vec<ChatMessage>, // Updated parameter name for clarity
         commit_hash_for_user_message: Option<String>,
         hidden_context: Vec<String>,
     ) -> Result<ChatMessage, String> {
@@ -177,7 +177,7 @@ impl AgentService {
 
         // 1. Generate Contextual Query for Vector Search
         thoughts.push("Generating contextual query for hybrid search.".to_string());
-        let contextual_vector_query_llm_input = Self::generate_contextual_vector_query(&initial_query, unescaped_history, user_message_content);
+        let contextual_vector_query_llm_input = Self::generate_contextual_vector_query(&initial_query, previous_history_for_llm, user_message_content_raw);
         
         // Use LLM to generate a more detailed query for vector search, potentially based on history and current message
         let detailed_vector_query = llm_service.get_analysis(&contextual_vector_query_llm_input, &project.provider.clone(), project.specific_model.as_deref(), Some(llm_config.clone())).await;
@@ -204,7 +204,7 @@ impl AgentService {
             .map(|s| s.trim().to_string())
             .unwrap_or_else(|| "".to_string());
         let llm_analysis_json: Value = serde_json::from_str(&llm_analysis_json_str)
-            .map_err(|e| format!("Failed to parse LLM analysis JSON: {}", e))?;
+            .map_err(|e| format!("Failed to parse LLM analysis JSON2: {}\nFailed data: {}\nSource: {}", e, llm_analysis_json_str, llm_analysis_unescaped))?;
         
         let suggested_vector_files: HashSet<String> = llm_analysis_json["suggested_files"]
             .as_array()
@@ -276,7 +276,6 @@ impl AgentService {
             project_dir.join(format!("{}.yml", path.replace("/", "*")))
         };
 
-        println!("All relevant file paths: {:?}", all_relevant_file_paths);
         // Priority 1: Fetch full source for suggested_vector_files
         for file_path in &all_relevant_file_paths {
             if suggested_vector_files.contains(file_path) { // Prioritize files suggested by LLM analysis for full source
@@ -336,7 +335,7 @@ impl AgentService {
             &llm_service,
             project,
             &initial_query,
-            user_message_content,
+            user_message_content_raw, // The current user message
             &proactive_file_descriptions_for_architect_prompt, // Pass filtered YAML summaries
             &file_contents_map, // Pass active code files
         ).await?;
@@ -469,10 +468,10 @@ impl AgentService {
             }
         }
 
-        for (path, desc) in final_proactive_descriptions_for_llm_map {
+        for (path, desc) in final_proactive_descriptions_for_llm_map.clone() {
             combined_project_file_descriptions.insert(path, desc);
         }
-        thoughts.push(format!("Combined project descriptions with {} filtered proactive descriptions for final LLM.", combined_project_file_descriptions.len()));
+        thoughts.push(format!("Combined project descriptions with {} filtered proactive descriptions for final LLM.", final_proactive_descriptions_for_llm_map.len()));
 
 
         // Create system prompt
@@ -489,10 +488,10 @@ impl AgentService {
         );
         thoughts.push("System prompt created.".to_string());
 
-        // Create user message
-        let user_message_for_llm = ChatMessage {
+        // Create the current user message (the one the LLM is responding to)
+        let current_user_message_for_llm = ChatMessage {
             role: "user".to_string(),
-            content: user_message_content.to_string(),
+            content: user_message_content_raw.to_string(),
             hidden: false,
             commit_hash: commit_hash_for_user_message.clone(),
             timestamp: Some(chrono::Utc::now()),
@@ -501,12 +500,18 @@ impl AgentService {
             model: project.specific_model.clone(),
             hidden_context: Some(hidden_context.clone()),
             thoughts: None, // Thoughts are for the model's message
+            // For this specific message sent to the LLM, we generate a default ID and no parent_id.
+            // When it's *saved* in the chat graph, `add_chat_message` will assign it a proper ID and parent.
             ..Default::default()
         };
 
+        // Construct the full conversational messages for the LLM.
+        // This includes the previous history AND the current user message.
+        let conversational_messages: Vec<ChatMessage> = previous_history_for_llm.clone(); // Clone the history *before* this user message
+
         // Format messages for LLM
         thoughts.push("Formatting messages for the LLM conversation.".to_string());
-        let messages = format_messages_for_llm(&system_prompt, unescaped_history, &user_message_for_llm);
+        let messages = format_messages_for_llm(&system_prompt, &conversational_messages, &current_user_message_for_llm); // <--- CALL WITH NEW SIGNATURE
         thoughts.push("Messages formatted.".to_string());
 
         // Send to LLM

@@ -245,10 +245,9 @@ const handleGroundingToggle = async (newValue: boolean) => {
     // VS Code iframe opening logic
     chatContainer.addEventListener('click', (event) => {
         const link = (event.target as HTMLElement).closest('a.file-path-link') as HTMLAnchorElement;
-        console.log('link clicked:', link, event);
         if (link) {
             event.preventDefault(); // Prevent default browser navigation
-
+            console.log('link clicked:', link, event);
             // Create an invisible iframe
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none'; // Keep it hidden

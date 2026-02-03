@@ -5,6 +5,7 @@ use crate::services::yaml::management::YamlManagement;
 use std::fs::{read_to_string, write};
 use std::path::{Path, PathBuf};
 use serde::Deserialize;
+use crate::services::llm_service::LlmServiceConfig; // Import LlmServiceConfig
 
 #[derive(Deserialize)]
 pub struct QueryData {
@@ -27,7 +28,10 @@ pub async fn regenerate_yaml(
         if let Ok(project) = serde_json::from_str::<Project>(&project_settings_json) {
             let source_file_path = construct_source_path(&project.source_dir, &yaml_path);
             
-            let file_content = read_to_string(&source_file_path).unwrap();
+            let file_content = match read_to_string(&source_file_path) {
+                Ok(content) => content,
+                Err(e) => return HttpResponse::InternalServerError().body(format!("Failed to read source file {}: {}", source_file_path.display(), e)),
+            };
             let project_file = ProjectFile {
                 path: source_file_path.to_string_lossy().to_string(),
                 content: file_content,
@@ -35,15 +39,30 @@ pub async fn regenerate_yaml(
             };
             
             let yaml_management = YamlManagement::new();
-            // Pass specific_model (chat_model) and yaml_model from project
-            let combined_content = yaml_management.create_yaml_with_imports(&project_file, &project.provider, project.specific_model.as_deref(), project.yaml_model.as_deref()).await;
+            // Create a default LlmServiceConfig for the regeneration process
+            let llm_config = LlmServiceConfig::new();
+            let combined_content_option = yaml_management.create_yaml_with_imports(
+                &project_file, 
+                &project.provider, 
+                project.specific_model.as_deref(), 
+                project.yaml_model.as_deref(), 
+                Some(llm_config) // Pass config
+            ).await;
 
-            write(&yaml_path, &combined_content.clone().unwrap()).unwrap();
-            return HttpResponse::Ok().body(combined_content.unwrap());
+            if let Some(combined_content) = combined_content_option {
+                match write(&yaml_path, &combined_content) {
+                    Ok(_) => HttpResponse::Ok().body(combined_content),
+                    Err(e) => HttpResponse::InternalServerError().body(format!("Failed to write regenerated YAML to {}: {}", yaml_path, e)),
+                }
+            } else {
+                HttpResponse::InternalServerError().body("Failed to regenerate YAML: LLM conversion failed")
+            }
+        } else {
+            HttpResponse::InternalServerError().body("Failed to parse project settings")
         }
+    } else {
+        HttpResponse::InternalServerError().body("Failed to read project settings file")
     }
-
-    HttpResponse::InternalServerError().body("Failed to regenerate YAML")
 }
 
 

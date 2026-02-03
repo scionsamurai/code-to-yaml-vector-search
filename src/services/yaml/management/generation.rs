@@ -6,7 +6,9 @@ use crate::services::qdrant_service::QdrantService;
 use std::path::Path;
 use std::fs::write;
 use std::env;
-use crate::services::git_service::GitService; 
+use crate::services::git_service::GitService;
+use crate::services::llm_service::LlmServiceConfig; // Import LlmServiceConfig
+
 
 pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut Project, output_dir: &str, force: bool) {
     let output_path = Path::new(output_dir).join(&project.name);
@@ -63,13 +65,25 @@ pub async fn generate_yaml_files(yaml_management: &YamlManagement, project: &mut
             embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &markdown_content, git_blob_hash_for_file.clone()).await;
         } else if use_yaml && needs_update {
             println!("YAML update needed for: {}", &file.path);
-            let combined_content = yaml_management.create_yaml_with_imports(&file, &project.provider, project.specific_model.as_deref(), project.yaml_model.as_deref()).await;
+            // Create a default LlmServiceConfig for the generation process
+            let llm_config = LlmServiceConfig::new();
+            let combined_content_option = yaml_management.create_yaml_with_imports(
+                &file, 
+                &project.provider, 
+                project.specific_model.as_deref(), 
+                project.yaml_model.as_deref(), 
+                Some(llm_config) // Pass config
+            ).await;
 
-            // Write YAML to file
-            write(&yaml_path, combined_content.clone().unwrap()).unwrap();
+            if let Some(combined_content) = combined_content_option {
+                // Write YAML to file
+                write(&yaml_path, combined_content.clone()).unwrap();
 
-            // Generate and store embedding, passing the git_blob_hash
-            embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &combined_content.unwrap(), git_blob_hash_for_file.clone()).await;
+                // Generate and store embedding, passing the git_blob_hash
+                embedding::process_embedding(&embedding_service, &qdrant_service, project, &file.path, &combined_content, git_blob_hash_for_file.clone()).await;
+            } else {
+                eprintln!("Skipping embedding for '{}' due to YAML generation failure.", &file.path);
+            }
         }
     }
 

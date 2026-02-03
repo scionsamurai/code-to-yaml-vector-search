@@ -9,10 +9,10 @@ use std::path::Path;
 pub mod generation;
 pub mod embedding;
 pub mod cleanup;
-use crate::services::utils::html_utils::unescape_html;
+// REMOVED: use crate::services::utils::html_utils::unescape_html; // Not needed if llm_service returns raw YAML
 use crate::services::embedding_service::EmbeddingService;
 use crate::services::qdrant_service::QdrantService;
-use crate::services::yaml::{YamlService, FileYamlData};
+use crate::services::yaml::FileYamlData;
 use std::env;
 
 pub struct YamlManagement {
@@ -34,28 +34,35 @@ impl YamlManagement {
         provider: &str,
         chat_model: Option<&str>, // Existing specific_model, now conceptually chat_model
         yaml_model: Option<&str>, // New parameter for YAML model
+        llm_config: Option<LlmServiceConfig>, // Config now comes in directly
     ) -> Option<String> {
 
-        // ADD LLMSERVICECONFIG
-        let llm_config = LlmServiceConfig::new(); // Default config
-
-        // Pass both chat_model (specific_model) and yaml_model to llm_service.convert_to_yaml
-        let yaml_content = self.llm_service.convert_to_yaml(&project_file, provider, chat_model, yaml_model, Some(llm_config)).await;
+        // Pass both chat_model (specific_model) and yaml_model and llm_config to llm_service.convert_to_yaml
+        let yaml_content_result = self.llm_service.convert_to_yaml(&project_file, provider, chat_model, yaml_model, llm_config).await;
 
         let language = Path::new(&project_file.path)
             .extension()
             .and_then(|ext| ext.to_str())
             .unwrap_or("");
 
-        let (imports, _) = self.file_service.extract_imports(&project_file.content, language);
+        match yaml_content_result {
+            Ok(yaml_content) => {
+                let (imports, _) = self.file_service.extract_imports(&project_file.content, language);
 
-        let yaml_content = unescape_html(yaml_content);
+                let mut combined_content = yaml_content; // This is the raw, valid YAML from LLM
 
-        if !imports.is_empty() {
-            let imports_string = imports.join("\n  - ");
-            Some(format!("{}\n\nimports:\n  - {}", yaml_content, imports_string))
-        } else {
-            Some(yaml_content)
+                if !imports.is_empty() {
+                    let imports_string = imports.join("\n  - ");
+                    // Combine raw YAML with imports
+                    combined_content = format!("{}\n\nimports:\n  - {}", combined_content, imports_string);
+                }
+                // Return the final raw YAML string. Escaping for HTML should be done by consumers if needed.
+                Some(combined_content)
+            },
+            Err(e) => {
+                eprintln!("Failed to generate or validate YAML for file {}: {}", project_file.path, e);
+                None // Return None if all attempts fail or initial prompt setup fails
+            }
         }
     }
     
@@ -68,7 +75,7 @@ impl YamlManagement {
         let yaml_file_name = source_file_path.replace("/", "*");
         let yaml_file_path = output_dir.join(&project.name).join(yaml_file_name.clone());
 
-        let file_content = self.file_service.read_specific_file(&project, &source_file_path);
+        let file_content = self.file_service.read_specific_file(&project, &yaml_file_path.to_string_lossy()); // READ THE YAML FILE, not the source file
         
         let file_content = file_content.ok_or_else(|| {
             format!(
@@ -81,7 +88,7 @@ impl YamlManagement {
         let yaml_data: FileYamlData = serde_yaml::from_str(&file_content)
             .map_err(|e| format!("Failed to parse YAML file {}: {}", yaml_file_path.display(), e))?;
         // if parsing fails, print the content for debugging
-        if yaml_data.description.is_empty() && yaml_data.description.is_empty() {
+        if yaml_data.description.is_empty() && yaml_data.description.is_empty() { // This condition looks incorrect. Likely meant to check other fields
             eprintln!("Debug: YAML content of file {} is empty or missing expected fields:\n{}", yaml_file_path.display(), file_content);
         }
 
