@@ -8,6 +8,7 @@ pub mod path_comment;
 pub mod update_file_yaml_override;
 pub mod cluster;
 pub mod git_env_settings;
+pub mod submit_query;
 
 use actix_web::web;
 
@@ -21,5 +22,6 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
         .service(update_file_yaml_override::update_file_yaml_override)
         .service(cluster::cluster_project_embeddings)
         .service(git_env_settings::get_git_env_settings)
-        .service(git_env_settings::post_git_env_settings);
+        .service(git_env_settings::post_git_env_settings)
+        .service(submit_query::submit_query);
 }

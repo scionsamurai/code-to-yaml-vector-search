@@ -126,6 +126,7 @@ struct NewAnalyzeQueryProps { // Example data structure
     file_yaml_override: HashMap<String, bool>,
     default_use_yaml: bool,
     agentic_mode_enabled: bool,
+    initialContextUpdateMode: String,
 }
 
 #[get("/{project}/{query_id}")]
@@ -157,6 +158,7 @@ async fn new_analyze_query_route(
     let include_file_descriptions = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "include_file_descriptions").unwrap_or_else(|| "false".to_string()) == "true";
     let auto_commit = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "auto_commit").unwrap_or_else(|| "false".to_string()) == "true";
     let agentic_mode_enabled = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "agentic_mode_enabled").unwrap_or_else(|| "false".to_string()) == "true";
+    let context_update_mode = project_service.query_manager.get_query_data_field(&project_dir, &query_id, "context_update_mode").unwrap_or_else(|| "FullSearch".to_string());
 
     let available_queries = match project_service.query_manager.get_query_filenames(&project_dir) {
         Ok(queries) => queries,
@@ -226,6 +228,7 @@ async fn new_analyze_query_route(
         file_yaml_override: project.file_yaml_override.clone(),
         default_use_yaml: project.default_use_yaml,
         agentic_mode_enabled: agentic_mode_enabled,
+        initialContextUpdateMode: context_update_mode.clone(),
     };
 
     render_svelte("AnalyzeQuery", Some("Analyze Query"), Some(props))

@@ -54,6 +54,7 @@ impl ProjectService {
     }
 
     pub fn load_project(&self, output_dir: &Path) -> Result<Project, String> {
+        println!("Loading project from {:?}", output_dir);
         let project_settings_path = output_dir.join("project_settings.json");
         let project_settings_json = read_to_string(&project_settings_path)
             .map_err(|e| format!("Failed to read project settings: {}", e))?;

@@ -28,7 +28,7 @@
     all_branches, git_enabled, file_yaml_override, default_use_yaml,
     grounding_with_search,
     project_provider,
-    agentic_mode_enabled: initialAgenticModeEnabled
+    agentic_mode_enabled: initialAgenticModeEnabled, initialContextUpdateMode
   } = $derived(extraData);
 
   // --- Local UI State ---
@@ -40,6 +40,7 @@
   // This local state will now be updated by ChatInterface and then trigger the effect
   let currentGroundingWithSearch = $state(grounding_with_search); // MODIFIED: Use `currentGroundingWithSearch` to track UI state.
   let branch_display_data = $state<Record<string, any>>({}); // Initialize as an empty object with proper type
+  let contextUpdateMode = $state(initialContextUpdateMode);
 
   
   let selectedFiles = $state([...saved_context_files]);
@@ -66,28 +67,30 @@
     }
   });
 
-    $effect(() => {
-      if (currentAgenticModeEnabled !== initialAgenticModeEnabled) {
-        // Call API to update agentic_mode_enabled
-        updateAgenticMode(project_name, query_id, currentAgenticModeEnabled);
-      }
-  });
-
-  async function updateAgenticMode(projectName: string, queryId: string, enabled: boolean) {
+  async function updateAgenticMode(projectName: string, queryId: string, enabled: boolean, currentContextUpdateMode: string) {
     try {
       const response = await fetch('/llm/chat_analysis/update_agentic_mode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project: projectName, query_id: queryId, enabled }),
+        body: JSON.stringify({ project: projectName, query_id: queryId, enabled, context_update_mode: currentContextUpdateMode }),
       });
       if (!response.ok) throw new Error('Failed to update agentic mode');
       initialAgenticModeEnabled = enabled;
+      initialContextUpdateMode = currentContextUpdateMode;
       // Optionally refresh or show success message
     } catch (error) {
       console.error('Error updating agentic mode:', error);
       currentAgenticModeEnabled = !enabled; // Revert UI state on error
+      contextUpdateMode = !currentContextUpdateMode; // Revert UI state on error
     }
   }
+
+  $effect(() => {
+    if (currentAgenticModeEnabled !== initialAgenticModeEnabled || contextUpdateMode !== initialContextUpdateMode) {
+      // Call API to update agentic_mode_enabled, passing contextUpdateMode
+      updateAgenticMode(project_name, query_id, currentAgenticModeEnabled, contextUpdateMode);
+    }
+  });
 
   function switchQuery(e: Event) {
     const target = e.target as HTMLSelectElement;
@@ -215,6 +218,17 @@
         <input type="checkbox" bind:checked={currentAgenticModeEnabled} />
         Enable Agentic Control
       </label>
+      {#if currentAgenticModeEnabled}
+        <div>
+          <h2 style="margin: 0; text-align: center;">Agentic Settings</h2>
+          <label for="contextUpdateMode">Context Update Mode:</label>
+          <select id="contextUpdateMode" bind:value={contextUpdateMode}>
+            <option value="FullSearch">Full Search</option>
+            <option value="UpdateExisting">Update Existing Context</option>
+            <option value="NoSearch">No Search</option>
+          </select>
+        </div>
+      {/if}
     </div>
     {#if !currentAgenticModeEnabled}
       <FileContextControl

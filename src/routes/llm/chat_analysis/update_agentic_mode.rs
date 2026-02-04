@@ -2,7 +2,7 @@
 
 use actix_web::{post, web, HttpResponse, Responder};
 use serde::Deserialize;
-use crate::models::AppState;
+use crate::models::{AppState, ContextUpdateMode};
 use crate::services::project_service::ProjectService;
 use std::path::Path;
 
@@ -11,6 +11,7 @@ pub struct UpdateAgenticModeRequest {
     pub project: String,
     pub query_id: String,
     pub enabled: bool,
+    pub context_update_mode: String, // Modified to String
 }
 
 #[post("/llm/chat_analysis/update_agentic_mode")]
@@ -23,10 +24,18 @@ pub async fn update_agentic_mode(
     let project_dir = output_dir.join(&data.project);
     let query_id = &data.query_id;
 
+    let context_update_mode = match data.context_update_mode.as_str() {
+        "FullSearch" => ContextUpdateMode::FullSearch,
+        "UpdateExisting" => ContextUpdateMode::UpdateExisting,
+        "NoSearch" => ContextUpdateMode::NoSearch,
+        _ => ContextUpdateMode::FullSearch, // Default if invalid
+    };
+
     match project_service
         .query_manager
         .update_query_data_in_project(&project_dir, query_id, |qd| {
             qd.agentic_mode_enabled = data.enabled;
+            qd.context_update_mode = context_update_mode.clone();
         }) {
         Ok(_) => HttpResponse::Ok().body("Agentic mode updated successfully"),
         Err(e) => HttpResponse::InternalServerError().body(format!("Failed to update agentic mode: {}", e)),

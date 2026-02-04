@@ -72,6 +72,16 @@ pub struct QueryData {
     pub grounding_with_search: bool, // ADDED FOR GROUNDING WITH SEARCH
     #[serde(default = "default_false")] // ADDED FOR AGENTIC MODE
     pub agentic_mode_enabled: bool,
+    #[serde(default)]
+    pub context_update_mode: ContextUpdateMode,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub enum ContextUpdateMode {
+    #[default]
+    FullSearch,
+    UpdateExisting,
+    NoSearch,
 }
 
 impl std::fmt::Display for EmbeddingMetadata {
